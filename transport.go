@@ -1,20 +1,14 @@
 package ja3
 
 import (
-	"crypto/sha256"
-	"fmt"
-	"net"
-	"net/http"
-	"net/url"
-	"strconv"
-	"strings"
-
-	tls "github.com/refraction-networking/utls"
+   "crypto/sha256"
+   "fmt"
+   "github.com/refraction-networking/utls"
+   "net"
+   "net/http"
+   "strconv"
+   "strings"
 )
-
-// greasePlaceholder is a random value (well, kindof '0x?a?a) specified in a
-// random RFC.
-const greasePlaceholder = 0x0a0a
 
 // ErrExtensionNotExist is returned when an extension is not supported by the library
 type ErrExtensionNotExist string
@@ -180,15 +174,4 @@ func stringToSpec(ja3 string) (*tls.ClientHelloSpec, error) {
 		Extensions:         exts,
 		GetSessionID:       sha256.Sum256,
 	}, nil
-}
-
-func urlToHost(target *url.URL) *url.URL {
-	if !strings.Contains(target.Host, ":") {
-		if target.Scheme == "http" {
-			target.Host = target.Host + ":80"
-		} else if target.Scheme == "https" {
-			target.Host = target.Host + ":443"
-		}
-	}
-	return target
 }

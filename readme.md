@@ -2,4 +2,4 @@
 
 Impersonating JA3 signatures
 
-https://github.com/CUCyber/ja3transport
+https://godocs.io/github.com/89z/ja3
