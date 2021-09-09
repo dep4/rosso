@@ -4,24 +4,18 @@ import (
    "crypto/sha256"
    "fmt"
    "github.com/refraction-networking/utls"
-   "io"
    "net"
    "net/http"
    "strconv"
    "strings"
 )
 
-// ChromeAuto mocks Chrome 78
-var ChromeAuto = Browser{
-   JA3:       "769,47–53–5–10–49161–49162–49171–49172–50–56–19–4,0–10–11,23–24–25,0",
-   UserAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.97 Safari/537.36",
-}
-
-// SafariAuto mocks Safari 604.1
-var SafariAuto = Browser{
-   JA3:       "771,4865-4866-4867-49196-49195-49188-49187-49162-49161-52393-49200-49199-49192-49191-49172-49171-52392-157-156-61-60-53-47-49160-49170-10,65281-0-23-13-5-18-16-11-51-45-43-10-21,29-23-24-25,0",
-   UserAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 13_1_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0.1 Mobile/15E148 Safari/604.1",
-}
+const (
+   // ChromeAuto mocks Chrome 78
+   ChromeAuto = "769,47–53–5–10–49161–49162–49171–49172–50–56–19–4,0–10–11,23–24–25,0"
+   // SafariAuto mocks Safari 604.1
+   SafariAuto = "771,4865-4866-4867-49196-49195-49188-49187-49162-49161-52393-49200-49199-49192-49191-49172-49171-52392-157-156-61-60-53-47-49160-49170-10,65281-0-23-13-5-18-16-11-51-45-43-10-21,29-23-24-25,0"
+)
 
 // extMap maps extension values to the TLSExtension object associated with the
 // number. Some values are not put in here because they must be applied in a
@@ -29,49 +23,53 @@ var SafariAuto = Browser{
 // used to calculate the JA3 signature. These JA3-dependent values are applied
 // after the instantiation of the map.
 var extMap = map[string]tls.TLSExtension{
-	"0": &tls.SNIExtension{},
-	"5": &tls.StatusRequestExtension{},
-	// These are applied later
-	// "10": &tls.SupportedCurvesExtension{...}
-	// "11": &tls.SupportedPointsExtension{...}
-	"13": &tls.SignatureAlgorithmsExtension{
-		SupportedSignatureAlgorithms: []tls.SignatureScheme{
-			tls.ECDSAWithP256AndSHA256,
-			tls.PSSWithSHA256,
-			tls.PKCS1WithSHA256,
-			tls.ECDSAWithP384AndSHA384,
-			tls.PSSWithSHA384,
-			tls.PKCS1WithSHA384,
-			tls.PSSWithSHA512,
-			tls.PKCS1WithSHA512,
-			tls.PKCS1WithSHA1,
-		},
-	},
-	"16": &tls.ALPNExtension{
-		AlpnProtocols: []string{"h2", "http/1.1"},
-	},
-	"18": &tls.SCTExtension{},
-	"21": &tls.UtlsPaddingExtension{GetPaddingLen: tls.BoringPaddingStyle},
-	"23": &tls.UtlsExtendedMasterSecretExtension{},
-	"27": &tls.FakeCertCompressionAlgsExtension{},
-	"28": &tls.FakeRecordSizeLimitExtension{},
-	"35": &tls.SessionTicketExtension{},
-	"43": &tls.SupportedVersionsExtension{Versions: []uint16{
-		tls.GREASE_PLACEHOLDER,
-		tls.VersionTLS13,
-		tls.VersionTLS12,
-		tls.VersionTLS11,
-		tls.VersionTLS10}},
-	"44": &tls.CookieExtension{},
-	"45": &tls.PSKKeyExchangeModesExtension{
-		Modes: []uint8{
-			tls.PskModeDHE,
-		}},
-	"51":    &tls.KeyShareExtension{KeyShares: []tls.KeyShare{}},
-	"13172": &tls.NPNExtension{},
-	"65281": &tls.RenegotiationInfoExtension{
-		Renegotiation: tls.RenegotiateOnceAsClient,
-	},
+   "0": &tls.SNIExtension{},
+   "5": &tls.StatusRequestExtension{},
+   // These are applied later
+   // "10": &tls.SupportedCurvesExtension{...}
+   // "11": &tls.SupportedPointsExtension{...}
+   "13": &tls.SignatureAlgorithmsExtension{
+      SupportedSignatureAlgorithms: []tls.SignatureScheme{
+         tls.ECDSAWithP256AndSHA256,
+         tls.PSSWithSHA256,
+         tls.PKCS1WithSHA256,
+         tls.ECDSAWithP384AndSHA384,
+         tls.PSSWithSHA384,
+         tls.PKCS1WithSHA384,
+         tls.PSSWithSHA512,
+         tls.PKCS1WithSHA512,
+         tls.PKCS1WithSHA1,
+      },
+   },
+   "16": &tls.ALPNExtension{
+      AlpnProtocols: []string{"h2", "http/1.1"},
+   },
+   "18": &tls.SCTExtension{},
+   "21": &tls.UtlsPaddingExtension{GetPaddingLen: tls.BoringPaddingStyle},
+   "23": &tls.UtlsExtendedMasterSecretExtension{},
+   "27": &tls.FakeCertCompressionAlgsExtension{},
+   "28": &tls.FakeRecordSizeLimitExtension{},
+   "35": &tls.SessionTicketExtension{},
+   "43": &tls.SupportedVersionsExtension{
+      Versions: []uint16{
+         tls.GREASE_PLACEHOLDER,
+         tls.VersionTLS13,
+         tls.VersionTLS12,
+         tls.VersionTLS11,
+         tls.VersionTLS10,
+      },
+   },
+   "44": &tls.CookieExtension{},
+   "45": &tls.PSKKeyExchangeModesExtension{
+      Modes: []uint8{tls.PskModeDHE},
+   },
+   "51":    &tls.KeyShareExtension{
+      KeyShares: []tls.KeyShare{},
+   },
+   "13172": &tls.NPNExtension{},
+   "65281": &tls.RenegotiationInfoExtension{
+      Renegotiation: tls.RenegotiateOnceAsClient,
+   },
 }
 
 // NewTransport creates an http.Transport which mocks the given JA3 signature when HTTPS is used
@@ -181,36 +179,19 @@ func stringToSpec(ja3 string) (*tls.ClientHelloSpec, error) {
 	}, nil
 }
 
-// Browser represents a browser JA3 and User-Agent string
-type Browser struct {
-   JA3       string
-   UserAgent string
-}
-
 // ErrExtensionNotExist is returned when an extension is not supported by the
 // library
 type ErrExtensionNotExist string
 
 // Error is the error value which contains the extension that does not exist
 func (e ErrExtensionNotExist) Error() string {
-   return fmt.Sprintf("Extension does not exist: %s\n", string(e))
+   return fmt.Sprintf("Extension does not exist %q", e)
 }
 
 // JA3Client contains is similar to http.Client
 type JA3Client struct {
    *http.Client
-   Config  *tls.Config
-   Browser Browser
-}
-
-// New creates a JA3Client based on a Browser struct
-func New(b Browser) (*JA3Client, error) {
-   client, err := NewWithString(b.JA3)
-   if err != nil {
-      return nil, err
-   }
-   client.Browser = b
-   return client, nil
+   *tls.Config
 }
 
 // NewWithString creates a JA3 client with the specified JA3 string
@@ -221,36 +202,6 @@ func NewWithString(ja3 string) (*JA3Client, error) {
    }
    client := &http.Client{Transport: tr}
    return &JA3Client{
-      client,
-      &tls.Config{},
-      Browser{JA3: ja3},
+      client, &tls.Config{},
    }, nil
-}
-
-// Do sends an HTTP request and returns an HTTP response, following policy
-// (such as redirects, cookies, auth) as configured on the client.
-func (c *JA3Client) Do(req *http.Request) (*http.Response, error) {
-   if _, ok := req.Header["User-Agent"]; !ok && c.Browser.UserAgent != "" {
-      req.Header.Set("User-Agent", c.Browser.UserAgent)
-   }
-   return c.Client.Do(req)
-}
-
-// Get issues a GET to the specified URL.
-func (c *JA3Client) Get(targetURL string) (*http.Response, error) {
-   req, err := http.NewRequest("GET", targetURL, nil)
-   if err != nil {
-      return nil, err
-   }
-   return c.Do(req)
-}
-
-// Post issues a POST to the specified URL.
-func (c *JA3Client) Post(url, contentType string, body io.Reader) (*http.Response, error) {
-   req, err := http.NewRequest("POST", url, body)
-   if err != nil {
-      return nil, err
-   }
-   req.Header.Set("Content-Type", contentType)
-   return c.Do(req)
 }
