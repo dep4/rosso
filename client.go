@@ -107,82 +107,6 @@ func NewTransportWithConfig(ja3 string, config *tls.Config) (*http.Transport, er
 	return &http.Transport{DialTLS: dialtls}, nil
 }
 
-// Browser represents a browser JA3 and User-Agent string
-type Browser struct {
-   JA3       string
-   UserAgent string
-}
-
-// ErrExtensionNotExist is returned when an extension is not supported by the
-// library
-type ErrExtensionNotExist string
-
-// Error is the error value which contains the extension that does not exist
-func (e ErrExtensionNotExist) Error() string {
-   return fmt.Sprintf("Extension does not exist: %s\n", string(e))
-}
-
-// JA3Client contains is similar to http.Client
-type JA3Client struct {
-   *http.Client
-   Config  *tls.Config
-   Browser Browser
-}
-
-// New creates a JA3Client based on a Browser struct
-func New(b Browser) (*JA3Client, error) {
-   client, err := NewWithString(b.JA3)
-   if err != nil {
-      return nil, err
-   }
-   client.Browser = b
-   return client, nil
-}
-
-// NewWithString creates a JA3 client with the specified JA3 string
-func NewWithString(ja3 string) (*JA3Client, error) {
-   tr, err := NewTransport(ja3)
-   if err != nil {
-      return nil, err
-   }
-   client := &http.Client{Transport: tr}
-   return &JA3Client{
-      client,
-      &tls.Config{},
-      Browser{JA3: ja3},
-   }, nil
-}
-
-// Do sends an HTTP request and returns an HTTP response, following policy
-// (such as redirects, cookies, auth) as configured on the client.
-func (c *JA3Client) Do(req *http.Request) (*http.Response, error) {
-   if _, ok := req.Header["User-Agent"]; !ok && c.Browser.UserAgent != "" {
-      req.Header.Set("User-Agent", c.Browser.UserAgent)
-   }
-   return c.Client.Do(req)
-}
-
-// Get issues a GET to the specified URL.
-func (c *JA3Client) Get(targetURL string) (*http.Response, error) {
-   req, err := http.NewRequest("GET", targetURL, nil)
-   if err != nil {
-      return nil, err
-   }
-   return c.Do(req)
-}
-
-// Post issues a POST to the specified URL.
-func (c *JA3Client) Post(url, contentType string, body io.Reader) (*http.Response, error) {
-   req, err := http.NewRequest("POST", url, body)
-   if err != nil {
-      return nil, err
-   }
-   req.Header.Set("Content-Type", contentType)
-   return c.Do(req)
-}
-
-////////////////////////////////////////////////////////////////////////////////
-
 // stringToSpec creates a ClientHelloSpec based on a JA3 string
 func stringToSpec(ja3 string) (*tls.ClientHelloSpec, error) {
 	tokens := strings.Split(ja3, ",")
@@ -255,4 +179,78 @@ func stringToSpec(ja3 string) (*tls.ClientHelloSpec, error) {
 		Extensions:         exts,
 		GetSessionID:       sha256.Sum256,
 	}, nil
+}
+
+// Browser represents a browser JA3 and User-Agent string
+type Browser struct {
+   JA3       string
+   UserAgent string
+}
+
+// ErrExtensionNotExist is returned when an extension is not supported by the
+// library
+type ErrExtensionNotExist string
+
+// Error is the error value which contains the extension that does not exist
+func (e ErrExtensionNotExist) Error() string {
+   return fmt.Sprintf("Extension does not exist: %s\n", string(e))
+}
+
+// JA3Client contains is similar to http.Client
+type JA3Client struct {
+   *http.Client
+   Config  *tls.Config
+   Browser Browser
+}
+
+// New creates a JA3Client based on a Browser struct
+func New(b Browser) (*JA3Client, error) {
+   client, err := NewWithString(b.JA3)
+   if err != nil {
+      return nil, err
+   }
+   client.Browser = b
+   return client, nil
+}
+
+// NewWithString creates a JA3 client with the specified JA3 string
+func NewWithString(ja3 string) (*JA3Client, error) {
+   tr, err := NewTransport(ja3)
+   if err != nil {
+      return nil, err
+   }
+   client := &http.Client{Transport: tr}
+   return &JA3Client{
+      client,
+      &tls.Config{},
+      Browser{JA3: ja3},
+   }, nil
+}
+
+// Do sends an HTTP request and returns an HTTP response, following policy
+// (such as redirects, cookies, auth) as configured on the client.
+func (c *JA3Client) Do(req *http.Request) (*http.Response, error) {
+   if _, ok := req.Header["User-Agent"]; !ok && c.Browser.UserAgent != "" {
+      req.Header.Set("User-Agent", c.Browser.UserAgent)
+   }
+   return c.Client.Do(req)
+}
+
+// Get issues a GET to the specified URL.
+func (c *JA3Client) Get(targetURL string) (*http.Response, error) {
+   req, err := http.NewRequest("GET", targetURL, nil)
+   if err != nil {
+      return nil, err
+   }
+   return c.Do(req)
+}
+
+// Post issues a POST to the specified URL.
+func (c *JA3Client) Post(url, contentType string, body io.Reader) (*http.Response, error) {
+   req, err := http.NewRequest("POST", url, body)
+   if err != nil {
+      return nil, err
+   }
+   req.Header.Set("Content-Type", contentType)
+   return c.Do(req)
 }
