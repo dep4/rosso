@@ -1,4 +1,4 @@
-package ja3transport
+package ja3
 
 import (
 	"crypto/sha256"
