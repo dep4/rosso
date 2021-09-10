@@ -6,7 +6,7 @@ var tests = []string{
    "769,47,0-10-11-22,23-24-25,0",
 }
 
-func TestClient(t *testing.T) {
+func TestParse(t *testing.T) {
    for _, test := range tests {
       _, err := Parse(test)
       if err != nil {

@@ -65,8 +65,8 @@ var extMap = map[string]tls.TLSExtension{
 
 // NewTransport creates an http.Transport which mocks the given JA3 signature
 // when HTTPS is used.
-func NewTransport(spec *tls.ClientHelloSpec) http.Transport {
-   return http.Transport{
+func NewTransport(spec *tls.ClientHelloSpec) *http.Transport {
+   return &http.Transport{
       DialTLS: func(network, addr string) (net.Conn, error) {
          dialConn, err := net.Dial(network, addr)
          if err != nil {
