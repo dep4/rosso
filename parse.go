@@ -35,8 +35,8 @@ var extMap = map[string]tls.TLSExtension{
       AlpnProtocols: []string{"h2", "http/1.1"},
    },
    "18": &tls.SCTExtension{},
-   "22": &tls.GenericExtension{Id: 22}, // encrypt_then_mac
    "21": &tls.UtlsPaddingExtension{GetPaddingLen: tls.BoringPaddingStyle},
+   "22": &tls.GenericExtension{Id: 22}, // encrypt_then_mac
    "23": &tls.UtlsExtendedMasterSecretExtension{},
    "27": &tls.FakeCertCompressionAlgsExtension{},
    "28": &tls.FakeRecordSizeLimitExtension{},
@@ -54,6 +54,7 @@ var extMap = map[string]tls.TLSExtension{
    "45": &tls.PSKKeyExchangeModesExtension{
       Modes: []uint8{tls.PskModeDHE},
    },
+   "49": &tls.GenericExtension{Id: 49}, // post_handshake_auth
    "51": &tls.KeyShareExtension{
       KeyShares: []tls.KeyShare{},
    },
@@ -65,8 +66,8 @@ var extMap = map[string]tls.TLSExtension{
 
 // NewTransport creates an http.Transport which mocks the given JA3 signature
 // when HTTPS is used.
-func NewTransport(spec *tls.ClientHelloSpec) http.Transport {
-   return http.Transport{
+func NewTransport(spec *tls.ClientHelloSpec) *http.Transport {
+   return &http.Transport{
       DialTLS: func(network, addr string) (net.Conn, error) {
          dialConn, err := net.Dial(network, addr)
          if err != nil {
