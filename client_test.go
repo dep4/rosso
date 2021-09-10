@@ -8,7 +8,7 @@ var tests = []string{
 
 func TestClient(t *testing.T) {
    for _, test := range tests {
-      _, err := StringToSpec(test)
+      _, err := Parse(test)
       if err != nil {
          t.Fatal(err)
       }

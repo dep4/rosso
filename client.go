@@ -54,7 +54,7 @@ var extMap = map[string]tls.TLSExtension{
    "45": &tls.PSKKeyExchangeModesExtension{
       Modes: []uint8{tls.PskModeDHE},
    },
-   "51":    &tls.KeyShareExtension{
+   "51": &tls.KeyShareExtension{
       KeyShares: []tls.KeyShare{},
    },
    "13172": &tls.NPNExtension{},
@@ -64,34 +64,31 @@ var extMap = map[string]tls.TLSExtension{
 }
 
 // NewTransport creates an http.Transport which mocks the given JA3 signature
-// when HTTPS is used
-func NewTransport(ja3 string) (*http.Transport, error) {
-   spec, err := StringToSpec(ja3)
-   if err != nil {
-      return nil, err
+// when HTTPS is used.
+func NewTransport(spec *tls.ClientHelloSpec) http.Transport {
+   return http.Transport{
+      DialTLS: func(network, addr string) (net.Conn, error) {
+         dialConn, err := net.Dial(network, addr)
+         if err != nil {
+            return nil, err
+         }
+         config := &tls.Config{
+            ServerName: strings.Split(addr, ":")[0],
+         }
+         uTLSConn := tls.UClient(dialConn, config, tls.HelloCustom)
+         if err := uTLSConn.ApplyPreset(spec); err != nil {
+            return nil, err
+         }
+         if err := uTLSConn.Handshake(); err != nil {
+            return nil, err
+         }
+         return uTLSConn, nil
+      },
    }
-   dialtls := func(network, addr string) (net.Conn, error) {
-      dialConn, err := net.Dial(network, addr)
-      if err != nil {
-         return nil, err
-      }
-      config := &tls.Config{
-         ServerName: strings.Split(addr, ":")[0],
-      }
-      uTLSConn := tls.UClient(dialConn, config, tls.HelloCustom)
-      if err := uTLSConn.ApplyPreset(spec); err != nil {
-         return nil, err
-      }
-      if err := uTLSConn.Handshake(); err != nil {
-         return nil, err
-      }
-      return uTLSConn, nil
-   }
-   return &http.Transport{DialTLS: dialtls}, nil
 }
 
-// StringToSpec creates a ClientHelloSpec based on a JA3 string
-func StringToSpec(ja3 string) (*tls.ClientHelloSpec, error) {
+// Parse creates a ClientHelloSpec based on a JA3 string.
+func Parse(ja3 string) (*tls.ClientHelloSpec, error) {
    tokens := strings.Split(ja3, ",")
    version := tokens[0]
    ciphers := strings.Split(tokens[1], "-")
@@ -151,11 +148,11 @@ func StringToSpec(ja3 string) (*tls.ClientHelloSpec, error) {
       suites = append(suites, uint16(cid))
    }
    return &tls.ClientHelloSpec{
-      CipherSuites:       suites,
+      CipherSuites: suites,
       CompressionMethods: []byte{0},
-      Extensions:         exts,
-      GetSessionID:       sha256.Sum256,
-      TLSVersMax:         vid,
-      TLSVersMin:         vid,
+      Extensions: exts,
+      GetSessionID: sha256.Sum256,
+      TLSVersMax: vid,
+      TLSVersMin: vid,
    }, nil
 }
