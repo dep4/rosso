@@ -5,6 +5,11 @@ import (
    "io"
 )
 
+const (
+   allHashes = "https://ja3er.com/getAllHashesJson"
+   allUas = "https://ja3er.com/getAllUasJson"
+)
+
 type counts []struct {
    MD5 string
    UserAgent string `json:"User-Agent"`
