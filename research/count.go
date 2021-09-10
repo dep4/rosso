@@ -7,22 +7,6 @@ import (
    "sort"
 )
 
-const allUas = "https://ja3er.com/getAllUasJson"
-
-type counts []struct {
-   LastSeen string `json:"Last_seen"`
-   MD5 string
-   UserAgent string `json:"User-Agent"`
-}
-
-func newCounts(r io.Reader) (counts, error) {
-   var c counts
-   if err := json.NewDecoder(r).Decode(&c); err != nil {
-      return nil, err
-   }
-   return c, nil
-}
-
 func (c counts) groups() groups {
    var g groups
    m := make(map[string]int)
