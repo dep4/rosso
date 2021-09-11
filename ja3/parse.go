@@ -33,7 +33,7 @@ var extMap = map[string]tls.TLSExtension{
       },
    },
    "16": &tls.ALPNExtension{
-      AlpnProtocols: []string{"h2", "http/1.1"},
+      []string{"http/1.1"},
    },
    "18": &tls.SCTExtension{},
    "21": &tls.UtlsPaddingExtension{GetPaddingLen: tls.BoringPaddingStyle},
@@ -42,15 +42,6 @@ var extMap = map[string]tls.TLSExtension{
    "27": &tls.FakeCertCompressionAlgsExtension{},
    "28": &tls.FakeRecordSizeLimitExtension{},
    "35": &tls.SessionTicketExtension{},
-   "43": &tls.SupportedVersionsExtension{
-      Versions: []uint16{
-         tls.GREASE_PLACEHOLDER,
-         tls.VersionTLS13,
-         tls.VersionTLS12,
-         tls.VersionTLS11,
-         tls.VersionTLS10,
-      },
-   },
    "44": &tls.CookieExtension{},
    "45": &tls.PSKKeyExchangeModesExtension{
       Modes: []uint8{tls.PskModeDHE},
@@ -101,18 +92,21 @@ func Fingerprint(hello string) (*tls.ClientHelloSpec, error) {
 // Parse creates a ClientHelloSpec based on a JA3 string.
 func Parse(ja3 string) (*tls.ClientHelloSpec, error) {
    tokens := strings.Split(ja3, ",")
-   version := tokens[0]
+   // build CipherSuites
    ciphers := strings.Split(tokens[1], "-")
-   extensions := strings.Split(tokens[2], "-")
+   var suites []uint16
+   for _, c := range ciphers {
+      cid, err := strconv.ParseUint(c, 10, 16)
+      if err != nil {
+         return nil, err
+      }
+      suites = append(suites, uint16(cid))
+   }
+   // set extension 10
    curves := strings.Split(tokens[3], "-")
    if len(curves) == 1 && curves[0] == "" {
       curves = []string{}
    }
-   pointFormats := strings.Split(tokens[4], "-")
-   if len(pointFormats) == 1 && pointFormats[0] == "" {
-      pointFormats = []string{}
-   }
-   // parse curves
    var targetCurves []tls.CurveID
    for _, c := range curves {
       cid, err := strconv.ParseUint(c, 10, 16)
@@ -122,7 +116,11 @@ func Parse(ja3 string) (*tls.ClientHelloSpec, error) {
       targetCurves = append(targetCurves, tls.CurveID(cid))
    }
    extMap["10"] = &tls.SupportedCurvesExtension{Curves: targetCurves}
-   // parse point formats
+   // set extension 11
+   pointFormats := strings.Split(tokens[4], "-")
+   if len(pointFormats) == 1 && pointFormats[0] == "" {
+      pointFormats = []string{}
+   }
    var targetPointFormats []byte
    for _, p := range pointFormats {
       pid, err := strconv.ParseUint(p, 10, 8)
@@ -134,7 +132,18 @@ func Parse(ja3 string) (*tls.ClientHelloSpec, error) {
    extMap["11"] = &tls.SupportedPointsExtension{
       SupportedPoints: targetPointFormats,
    }
+   // set extension 43
+   vid64, err := strconv.ParseUint(tokens[0], 10, 16)
+   if err != nil {
+      return nil, err
+   }
+   extMap["43"] = &tls.SupportedVersionsExtension{
+      []uint16{
+         uint16(vid64),
+      },
+   }
    // build extenions list
+   extensions := strings.Split(tokens[2], "-")
    var exts []tls.TLSExtension
    for _, ext := range extensions {
       te, ok := extMap[ext]
@@ -143,27 +152,11 @@ func Parse(ja3 string) (*tls.ClientHelloSpec, error) {
       }
       exts = append(exts, te)
    }
-   // build SSLVersion
-   vid64, err := strconv.ParseUint(version, 10, 16)
-   if err != nil {
-      return nil, err
-   }
-   vid := uint16(vid64)
-   // build CipherSuites
-   var suites []uint16
-   for _, c := range ciphers {
-      cid, err := strconv.ParseUint(c, 10, 16)
-      if err != nil {
-         return nil, err
-      }
-      suites = append(suites, uint16(cid))
-   }
+   // return
    return &tls.ClientHelloSpec{
       CipherSuites: suites,
       CompressionMethods: []byte{0},
       Extensions: exts,
       GetSessionID: sha256.Sum256,
-      TLSVersMax: vid,
-      TLSVersMin: vid,
    }, nil
 }

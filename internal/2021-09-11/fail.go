@@ -14,7 +14,9 @@ var fail = &tls.ClientHelloSpec{
       &tls.SupportedCurvesExtension{
          Curves:[]tls.CurveID{0x1d, 0x17, 0x18, 0x19},
       },
-      &tls.SupportedPointsExtension{SupportedPoints:[]uint8{0x0}},
+      &tls.SupportedPointsExtension{
+         SupportedPoints:[]uint8{0x0},
+      },
       &tls.SignatureAlgorithmsExtension{
          SupportedSignatureAlgorithms:[]tls.SignatureScheme{
             0x804, 0x403, 0x807, 0x805, 0x806, 0x401, 0x501, 0x601, 0x503,
@@ -23,7 +25,7 @@ var fail = &tls.ClientHelloSpec{
       },
       &tls.RenegotiationInfoExtension{Renegotiation:1},
       &tls.ALPNExtension{
-         AlpnProtocols:[]string{"h2", "http/1.1"},
+         []string{"http/1.1"},
       },
       &tls.SCTExtension{},
       &tls.SupportedVersionsExtension{

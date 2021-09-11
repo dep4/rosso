@@ -2,6 +2,8 @@ package ja3
 
 import (
    "net/http"
+   "net/http/httputil"
+   "os"
    "testing"
 )
 
@@ -17,11 +19,18 @@ func TestParse(t *testing.T) {
    if err != nil {
       t.Fatal(err)
    }
-   req, err := http.NewRequest("HEAD", "https://example.com", nil)
+   req, err := http.NewRequest("GET", "https://example.com", nil)
    if err != nil {
       t.Fatal(err)
    }
-   if _, err := NewTransport(spec).RoundTrip(req); err != nil {
+   res, err := NewTransport(spec).RoundTrip(req)
+   if err != nil {
       t.Fatal(err)
    }
+   defer res.Body.Close()
+   b, err := httputil.DumpResponse(res, true)
+   if err != nil {
+      t.Fatal(err)
+   }
+   os.Stdout.Write(b)
 }
