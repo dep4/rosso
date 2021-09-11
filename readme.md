@@ -4,17 +4,11 @@ Go parsers for web formats
 
 https://godocs.io/github.com/89z/parse
 
-
 ## JavaScript package
 
-I have a JavaScript lexer here:
-
-https://github.com/89z/mech/tree/9ca13fda
-
-but I removed it, as I am currently not using it. Takes JavaScript input, and
-will return a `map`. Keys are the variable names, and values are the variable
-values. The values are returned as `byte` slices, to make it easy to
-`json.Unmarshal`.
+Takes JavaScript input, and will return a `map`. Keys are the variable names,
+and values are the variable values. The values are returned as `byte` slices,
+to make it easy to `json.Unmarshal`.
 
 ## HTML package
 
