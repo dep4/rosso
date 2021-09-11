@@ -107,7 +107,7 @@ func Parse(ja3 string) (*tls.ClientHelloSpec, error) {
    for _, c := range curves {
       cid, err := strconv.ParseUint(c, 10, 16)
       if err != nil {
-         return nil, fmt.Errorf("curve %v", err)
+         return nil, err
       }
       targetCurves = append(targetCurves, tls.CurveID(cid))
    }
@@ -117,7 +117,7 @@ func Parse(ja3 string) (*tls.ClientHelloSpec, error) {
    for _, p := range pointFormats {
       pid, err := strconv.ParseUint(p, 10, 8)
       if err != nil {
-         return nil, fmt.Errorf("pointFormat %v", err)
+         return nil, err
       }
       targetPointFormats = append(targetPointFormats, byte(pid))
    }
@@ -136,7 +136,7 @@ func Parse(ja3 string) (*tls.ClientHelloSpec, error) {
    // build SSLVersion
    vid64, err := strconv.ParseUint(version, 10, 16)
    if err != nil {
-      return nil, fmt.Errorf("version %v", err)
+      return nil, err
    }
    vid := uint16(vid64)
    // build CipherSuites
@@ -144,7 +144,7 @@ func Parse(ja3 string) (*tls.ClientHelloSpec, error) {
    for _, c := range ciphers {
       cid, err := strconv.ParseUint(c, 10, 16)
       if err != nil {
-         return nil, fmt.Errorf("cipher %v", err)
+         return nil, err
       }
       suites = append(suites, uint16(cid))
    }
