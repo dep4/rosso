@@ -2,6 +2,7 @@ package ja3
 
 import (
    "crypto/sha256"
+   "encoding/hex"
    "fmt"
    "github.com/refraction-networking/utls"
    "net"
@@ -86,6 +87,15 @@ func NewTransport(spec *tls.ClientHelloSpec) *http.Transport {
          return uTLSConn, nil
       },
    }
+}
+
+func Fingerprint(hello string) (*tls.ClientHelloSpec, error) {
+   data, err := hex.DecodeString(hello)
+   if err != nil {
+      return nil, err
+   }
+   f := tls.Fingerprinter{AllowBluntMimicry: true}
+   return f.FingerprintClientHello(data)
 }
 
 // Parse creates a ClientHelloSpec based on a JA3 string.
