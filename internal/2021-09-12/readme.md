@@ -13,3 +13,13 @@ manual review "771,52393-52392-49195-49199-49196-49200-49171-49172-156-157-47-53
 {37f691b063c10372135db21579643bf1 9283 curl/7.29.0}
 200 OK
 ~~~
+
+Lets think about this. If someone says `771` (0x0303) (VersionTLS12), that is
+the same as:
+
+~~~
+VersionTLS13 = 0x0304 no
+VersionTLS12 = 0x0303 yes
+VersionTLS11 = 0x0302 yes
+VersionTLS10 = 0x0301 yes
+~~~
