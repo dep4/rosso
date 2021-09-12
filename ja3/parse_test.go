@@ -5,8 +5,6 @@ import (
    "testing"
 )
 
-// 3 EllipticCurve
-// 4 EllipticCurvePointFormat
 const test =
    "771," +
    "49196-49195-49200-49199-159-158-49188-49187-49192-49191-49162-49161-49172-49171-157-156-61-60-53-47-10," +
@@ -17,6 +15,7 @@ func TestParse(t *testing.T) {
    if err != nil {
       t.Fatal(err)
    }
+   // https://www.reddit.com
    req, err := http.NewRequest("GET", "https://example.com", nil)
    if err != nil {
       t.Fatal(err)
