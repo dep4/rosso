@@ -1,25 +1,64 @@
 package main
 
 import (
+   "fmt"
    "github.com/89z/parse/ja3"
    "net/http"
+   "net/url"
+   "os"
+   "strings"
+   "time"
 )
 
-const test =
-   "771," +
-   "49196-49195-49200-49199-159-158-49188-49187-49192-49191-49162-49161-49172-49171-157-156-61-60-53-47-10," +
-   "0-10-11-13-35-23-65281,,"
-
 func main() {
-   spec, err := ja3.Parse(test)
+   pass := os.Getenv("ENCRYPTEDPASS")
+   if pass == "" {
+      fmt.Println("missing pass")
+      return
+   }
+   val := url.Values{
+      "Email": {"srpen6@gmail.com"},
+      "sdk_version": {"17"},
+      "EncryptedPasswd": {pass},
+   }
+   ua, err := os.Open("getAllUasJson.json")
    if err != nil {
       panic(err)
    }
-   req, err := http.NewRequest("HEAD", "https://example.com", nil)
+   defer ua.Close()
+   hash, err := os.Open("getAllHashesJson.json")
    if err != nil {
       panic(err)
    }
-   if _, err := ja3.NewTransport(spec).RoundTrip(req); err != nil {
+   defer hash.Close()
+   j, err := ja3.NewJA3er(ua, hash)
+   if err != nil {
       panic(err)
+   }
+   j.SortUsers()
+   for _, user := range j.Users {
+      fmt.Println(user)
+      spec, err := ja3.Parse(j.JA3(user.MD5))
+      if err != nil {
+         panic(err)
+      }
+      req, err := http.NewRequest(
+         "POST", "https://android.clients.google.com/auth",
+         strings.NewReader(val.Encode()),
+      )
+      if err != nil {
+         panic(err)
+      }
+      req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+      res, err := ja3.NewTransport(spec).RoundTrip(req)
+      if err != nil {
+         panic(err)
+      }
+      defer res.Body.Close()
+      fmt.Println(res.Status)
+      if res.StatusCode == http.StatusOK {
+         break
+      }
+      time.Sleep(time.Second)
    }
 }
