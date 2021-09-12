@@ -51,11 +51,7 @@ func HelloGolang() *tls.ClientHelloSpec {
    }
 }
 
-// extMap maps extension values to the TLSExtension object associated with the
-// number. Some values are not put in here because they must be applied in a
-// special way. For example, "10" is the SupportedCurves extension which is also
-// used to calculate the JA3 signature. These JA3-dependent values are applied
-// after the instantiation of the map.
+// iana.org/assignments/tls-extensiontype-values/tls-extensiontype-values.xhtml
 var extMap = map[string]tls.TLSExtension{
    "0": &tls.SNIExtension{},
    "5": &tls.StatusRequestExtension{},
@@ -87,6 +83,7 @@ var extMap = map[string]tls.TLSExtension{
       []uint8{tls.PskModeDHE},
    },
    "49": &tls.GenericExtension{Id: 49}, // post_handshake_auth
+   "50": &tls.GenericExtension{Id: 50}, // signature_algorithms_cert
    "51": &tls.KeyShareExtension{},
    "13172": &tls.NPNExtension{},
    "65281": &tls.RenegotiationInfoExtension{tls.RenegotiateOnceAsClient},

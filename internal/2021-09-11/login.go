@@ -1,13 +1,15 @@
 package main
 
 import (
+   "bufio"
    "fmt"
-   "github.com/89z/parse/ja3"
+   "github.com/refraction-networking/utls"
+   "net"
    "net/http"
+   "net/http/httputil"
    "net/url"
    "os"
    "strings"
-   "time"
 )
 
 func main() {
@@ -21,54 +23,39 @@ func main() {
       "sdk_version": {"17"},
       "EncryptedPasswd": {pass},
    }
-   ua, err := os.Open("getAllUasJson.json")
+   req, err := http.NewRequest(
+      "POST", "https://android.clients.google.com/auth",
+      strings.NewReader(val.Encode()),
+   )
    if err != nil {
       panic(err)
    }
-   defer ua.Close()
-   hash, err := os.Open("getAllHashesJson.json")
+   req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+   dReq, err := httputil.DumpRequest(req, true)
    if err != nil {
       panic(err)
    }
-   defer hash.Close()
-   j, err := ja3.NewJA3er(ua, hash)
+   os.Stdout.Write(append(dReq, '\n'))
+   tcpConn, err := net.Dial("tcp", req.URL.Host + ":" + req.URL.Scheme)
    if err != nil {
       panic(err)
    }
-   j.SortUsers()
-   for _, user := range j.Users {
-      fmt.Println(user)
-      spec, err := ja3.Parse(j.JA3(user.MD5))
-      if err != nil {
-         panic(err)
-      }
-      req, err := http.NewRequest(
-         "POST", "https://android.clients.google.com/auth",
-         strings.NewReader(val.Encode()),
-      )
-      if err != nil {
-         panic(err)
-      }
-      req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-      res, err := ja3.NewTransport(spec).RoundTrip(req)
-      if err != nil {
-         spec, err := ja3.Parse(j.JA3(user.MD5))
-         if err != nil {
-            panic(err)
-         }
-         req, err := http.NewRequest("HEAD", "https://www.reddit.com", nil)
-         if err != nil {
-            panic(err)
-         }
-         if _, err := ja3.NewTransport(spec).RoundTrip(req); err != nil {
-            panic(err)
-         }
-      }
-      defer res.Body.Close()
-      fmt.Println(res.Status)
-      if res.StatusCode == http.StatusOK {
-         break
-      }
-      time.Sleep(time.Second)
+   config := &tls.Config{ServerName: req.URL.Host}
+   tlsConn := tls.UClient(tcpConn, config, tls.HelloCustom)
+   if err := tlsConn.ApplyPreset(preset); err != nil {
+      panic(err)
    }
+   if err := req.Write(tlsConn); err != nil {
+      panic(err)
+   }
+   res, err := http.ReadResponse(bufio.NewReader(tlsConn), req)
+   if err != nil {
+      panic(err)
+   }
+   defer res.Body.Close()
+   dRes, err := httputil.DumpResponse(res, true)
+   if err != nil {
+      panic(err)
+   }
+   os.Stdout.Write(dRes)
 }
