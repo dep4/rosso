@@ -3,7 +3,6 @@ package main
 import (
    "bufio"
    "fmt"
-   "github.com/89z/parse/internal"
    "github.com/refraction-networking/utls"
    "net"
    "net/http"
@@ -43,7 +42,7 @@ func main() {
    }
    config := &tls.Config{ServerName: req.URL.Host}
    tlsConn := tls.UClient(tcpConn, config, tls.HelloCustom)
-   if err := tlsConn.ApplyPreset(internal.Preset); err != nil {
+   if err := tlsConn.ApplyPreset(preset); err != nil {
       panic(err)
    }
    if err := req.Write(tlsConn); err != nil {
