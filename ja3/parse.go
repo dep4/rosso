@@ -91,33 +91,31 @@ func Parse(ja3 string) (*tls.ClientHelloSpec, error) {
       spec.CipherSuites = append(spec.CipherSuites, uint16(cid))
    }
    // set extension 10
-   curves := strings.Split(tokens[3], "-")
-   if len(curves) == 1 && curves[0] == "" {
-      curves = []string{}
-   }
-   var targetCurves []tls.CurveID
-   for _, c := range curves {
-      cid, err := strconv.ParseUint(c, 10, 16)
-      if err != nil {
-         return nil, err
+   curves := tokens[3]
+   var ids []tls.CurveID
+   for _, c := range strings.Split(curves, "-") {
+      if c != "" {
+         cid, err := strconv.ParseUint(c, 10, 16)
+         if err != nil {
+            return nil, err
+         }
+         ids = append(ids, tls.CurveID(cid))
       }
-      targetCurves = append(targetCurves, tls.CurveID(cid))
    }
-   extMap["10"] = &tls.SupportedCurvesExtension{targetCurves}
+   extMap["10"] = &tls.SupportedCurvesExtension{ids}
    // set extension 11
-   pointFormats := strings.Split(tokens[4], "-")
-   if len(pointFormats) == 1 && pointFormats[0] == "" {
-      pointFormats = []string{}
-   }
-   var targetPointFormats []byte
-   for _, p := range pointFormats {
-      pid, err := strconv.ParseUint(p, 10, 8)
-      if err != nil {
-         return nil, err
+   pointFmts := tokens[4]
+   var pids []byte
+   for _, p := range strings.Split(pointFmts, "-") {
+      if p != "" {
+         pid, err := strconv.ParseUint(p, 10, 8)
+         if err != nil {
+            return nil, err
+         }
+         pids = append(pids, byte(pid))
       }
-      targetPointFormats = append(targetPointFormats, byte(pid))
    }
-   extMap["11"] = &tls.SupportedPointsExtension{targetPointFormats}
+   extMap["11"] = &tls.SupportedPointsExtension{pids}
    // set extension 43
    vid64, err := strconv.ParseUint(tokens[0], 10, 16)
    if err != nil {
