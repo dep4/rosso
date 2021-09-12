@@ -22,4 +22,5 @@ VersionTLS13 = 0x0304 no
 VersionTLS12 = 0x0303 yes
 VersionTLS11 = 0x0302 yes
 VersionTLS10 = 0x0301 yes
+VersionSSL30 = 0x0300 yes
 ~~~
