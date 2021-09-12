@@ -10,6 +10,75 @@ import (
    "strings"
 )
 
+var HelloGolang = &tls.ClientHelloSpec{
+   CipherSuites: []uint16{
+      0xC02B, // TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
+      0xC02F, // TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+      0xC02C, // TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
+      0xC030, // TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+      0xCCA9, // TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256
+      0xCCA8, // TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256
+      0xC009, // TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA
+      0xC013, // TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA
+      0xC00A, // TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA
+      0xC014, // TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA
+      0x009C, // TLS_RSA_WITH_AES_128_GCM_SHA256
+      0x009D, // TLS_RSA_WITH_AES_256_GCM_SHA384
+      0x002F, // TLS_RSA_WITH_AES_128_CBC_SHA
+      0x0035, // TLS_RSA_WITH_AES_256_CBC_SHA
+      0xC012, // TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA
+      0x000A, // TLS_RSA_WITH_3DES_EDE_CBC_SHA
+      0x1301, // TLS_AES_128_GCM_SHA256
+      0x1302, // TLS_AES_256_GCM_SHA384
+      0x1303, // TLS_CHACHA20_POLY1305_SHA256
+   },
+   CompressionMethods: []uint8{0x00},
+   Extensions: []tls.TLSExtension{
+      &tls.SNIExtension{},
+      &tls.StatusRequestExtension{},
+      &tls.SupportedCurvesExtension{
+         []tls.CurveID{
+            tls.X25519,
+            tls.CurveP256,
+            tls.CurveP384,
+            tls.CurveP521,
+         },
+      },
+      &tls.SupportedPointsExtension{
+         SupportedPoints: []uint8{0x00},
+      },
+      &tls.SignatureAlgorithmsExtension{
+         SupportedSignatureAlgorithms: []tls.SignatureScheme{
+            0x804,
+            0x403,
+            0x807,
+            0x805,
+            0x806,
+            0x401,
+            0x501,
+            0x601,
+            0x503,
+            0x603,
+            0x201,
+            0x203,
+         },
+      },
+      &tls.RenegotiationInfoExtension{Renegotiation: 1},
+      &tls.ALPNExtension{
+         AlpnProtocols: []string{"h2", "http/1.1"},
+      },
+      &tls.SCTExtension{},
+      &tls.SupportedVersionsExtension{
+         Versions: []uint16{0x304, 0x303, 0x302, 0x301},
+      },
+      &tls.KeyShareExtension{
+         KeyShares: []tls.KeyShare{
+            tls.KeyShare{Group: 0x1D},
+         },
+      },
+   },
+}
+
 // extMap maps extension values to the TLSExtension object associated with the
 // number. Some values are not put in here because they must be applied in a
 // special way. For example, "10" is the SupportedCurves extension which is also
