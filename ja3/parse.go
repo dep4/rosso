@@ -2,7 +2,6 @@ package ja3
 
 import (
    "crypto/sha256"
-   "encoding/hex"
    "fmt"
    "github.com/refraction-networking/utls"
    "net"
@@ -20,7 +19,7 @@ var extMap = map[string]tls.TLSExtension{
    "0": &tls.SNIExtension{},
    "5": &tls.StatusRequestExtension{},
    "13": &tls.SignatureAlgorithmsExtension{
-      SupportedSignatureAlgorithms: []tls.SignatureScheme{
+      []tls.SignatureScheme{
          tls.ECDSAWithP256AndSHA256,
          tls.PSSWithSHA256,
          tls.PKCS1WithSHA256,
@@ -44,16 +43,12 @@ var extMap = map[string]tls.TLSExtension{
    "35": &tls.SessionTicketExtension{},
    "44": &tls.CookieExtension{},
    "45": &tls.PSKKeyExchangeModesExtension{
-      Modes: []uint8{tls.PskModeDHE},
+      []uint8{tls.PskModeDHE},
    },
    "49": &tls.GenericExtension{Id: 49}, // post_handshake_auth
-   "51": &tls.KeyShareExtension{
-      KeyShares: []tls.KeyShare{},
-   },
+   "51": &tls.KeyShareExtension{},
    "13172": &tls.NPNExtension{},
-   "65281": &tls.RenegotiationInfoExtension{
-      Renegotiation: tls.RenegotiateOnceAsClient,
-   },
+   "65281": &tls.RenegotiationInfoExtension{tls.RenegotiateOnceAsClient},
 }
 
 // NewTransport creates an http.Transport which mocks the given JA3 signature
@@ -80,27 +75,20 @@ func NewTransport(spec *tls.ClientHelloSpec) *http.Transport {
    }
 }
 
-func Fingerprint(hello string) (*tls.ClientHelloSpec, error) {
-   data, err := hex.DecodeString(hello)
-   if err != nil {
-      return nil, err
-   }
-   f := tls.Fingerprinter{AllowBluntMimicry: true}
-   return f.FingerprintClientHello(data)
-}
-
 // Parse creates a ClientHelloSpec based on a JA3 string.
 func Parse(ja3 string) (*tls.ClientHelloSpec, error) {
    tokens := strings.Split(ja3, ",")
+   spec := &tls.ClientHelloSpec{
+      CompressionMethods: []byte{0}, GetSessionID: sha256.Sum256,
+   }
    // build CipherSuites
-   ciphers := strings.Split(tokens[1], "-")
-   var suites []uint16
-   for _, c := range ciphers {
+   ciphers := tokens[1]
+   for _, c := range strings.Split(ciphers, "-") {
       cid, err := strconv.ParseUint(c, 10, 16)
       if err != nil {
          return nil, err
       }
-      suites = append(suites, uint16(cid))
+      spec.CipherSuites = append(spec.CipherSuites, uint16(cid))
    }
    // set extension 10
    curves := strings.Split(tokens[3], "-")
@@ -115,7 +103,7 @@ func Parse(ja3 string) (*tls.ClientHelloSpec, error) {
       }
       targetCurves = append(targetCurves, tls.CurveID(cid))
    }
-   extMap["10"] = &tls.SupportedCurvesExtension{Curves: targetCurves}
+   extMap["10"] = &tls.SupportedCurvesExtension{targetCurves}
    // set extension 11
    pointFormats := strings.Split(tokens[4], "-")
    if len(pointFormats) == 1 && pointFormats[0] == "" {
@@ -129,9 +117,7 @@ func Parse(ja3 string) (*tls.ClientHelloSpec, error) {
       }
       targetPointFormats = append(targetPointFormats, byte(pid))
    }
-   extMap["11"] = &tls.SupportedPointsExtension{
-      SupportedPoints: targetPointFormats,
-   }
+   extMap["11"] = &tls.SupportedPointsExtension{targetPointFormats}
    // set extension 43
    vid64, err := strconv.ParseUint(tokens[0], 10, 16)
    if err != nil {
@@ -144,19 +130,13 @@ func Parse(ja3 string) (*tls.ClientHelloSpec, error) {
    }
    // build extenions list
    extensions := strings.Split(tokens[2], "-")
-   var exts []tls.TLSExtension
    for _, ext := range extensions {
       te, ok := extMap[ext]
       if !ok {
          return nil, fmt.Errorf("extension does not exist %q", ext)
       }
-      exts = append(exts, te)
+      spec.Extensions = append(spec.Extensions, te)
    }
    // return
-   return &tls.ClientHelloSpec{
-      CipherSuites: suites,
-      CompressionMethods: []byte{0},
-      Extensions: exts,
-      GetSessionID: sha256.Sum256,
-   }, nil
+   return spec, nil
 }
