@@ -51,43 +51,6 @@ func HelloGolang() *tls.ClientHelloSpec {
    }
 }
 
-// iana.org/assignments/tls-extensiontype-values/tls-extensiontype-values.xhtml
-var extMap = map[string]tls.TLSExtension{
-   "0": &tls.SNIExtension{},
-   "5": &tls.StatusRequestExtension{},
-   "13": &tls.SignatureAlgorithmsExtension{
-      []tls.SignatureScheme{
-         tls.ECDSAWithP256AndSHA256,
-         tls.PSSWithSHA256,
-         tls.PKCS1WithSHA256,
-         tls.ECDSAWithP384AndSHA384,
-         tls.PSSWithSHA384,
-         tls.PKCS1WithSHA384,
-         tls.PSSWithSHA512,
-         tls.PKCS1WithSHA512,
-         tls.PKCS1WithSHA1,
-      },
-   },
-   "16": &tls.ALPNExtension{
-      []string{"http/1.1"},
-   },
-   "18": &tls.SCTExtension{},
-   "21": &tls.UtlsPaddingExtension{GetPaddingLen: tls.BoringPaddingStyle},
-   "22": &tls.GenericExtension{Id: 22}, // encrypt_then_mac
-   "23": &tls.UtlsExtendedMasterSecretExtension{},
-   "27": &tls.FakeCertCompressionAlgsExtension{},
-   "28": &tls.FakeRecordSizeLimitExtension{},
-   "35": &tls.SessionTicketExtension{},
-   "44": &tls.CookieExtension{},
-   "45": &tls.PSKKeyExchangeModesExtension{
-      []uint8{tls.PskModeDHE},
-   },
-   "49": &tls.GenericExtension{Id: 49}, // post_handshake_auth
-   "50": &tls.GenericExtension{Id: 50}, // signature_algorithms_cert
-   "51": &tls.KeyShareExtension{},
-   "13172": &tls.NPNExtension{},
-   "65281": &tls.RenegotiationInfoExtension{tls.RenegotiateOnceAsClient},
-}
 
 // NewTransport creates an http.Transport which mocks the given JA3 signature
 // when HTTPS is used.
@@ -114,7 +77,10 @@ func NewTransport(spec *tls.ClientHelloSpec) *http.Transport {
 }
 
 // Parse creates a ClientHelloSpec based on a JA3 string.
+// iana.org/assignments/tls-extensiontype-values/tls-extensiontype-values.xhtml
 func Parse(ja3 string) (*tls.ClientHelloSpec, error) {
+   // This must be local, to prevent mutation.
+   exts := make(map[string]tls.TLSExtension)
    tokens := strings.Split(ja3, ",")
    spec := &tls.ClientHelloSpec{
       CompressionMethods: []byte{0}, GetSessionID: sha256.Sum256,
@@ -128,6 +94,8 @@ func Parse(ja3 string) (*tls.ClientHelloSpec, error) {
       }
       spec.CipherSuites = append(spec.CipherSuites, uint16(cid))
    }
+   // set extension 0
+   exts["0"] = &tls.SNIExtension{}
    // set extension 10
    curves := tokens[3]
    var ids []tls.CurveID
@@ -140,7 +108,7 @@ func Parse(ja3 string) (*tls.ClientHelloSpec, error) {
          ids = append(ids, tls.CurveID(cid))
       }
    }
-   extMap["10"] = &tls.SupportedCurvesExtension{ids}
+   exts["10"] = &tls.SupportedCurvesExtension{ids}
    // set extension 11
    pointFmts := tokens[4]
    var pids []byte
@@ -153,22 +121,54 @@ func Parse(ja3 string) (*tls.ClientHelloSpec, error) {
          pids = append(pids, byte(pid))
       }
    }
-   extMap["11"] = &tls.SupportedPointsExtension{pids}
+   exts["11"] = &tls.SupportedPointsExtension{pids}
+   // set extension 13
+   exts["13"] = &tls.SignatureAlgorithmsExtension{
+      []tls.SignatureScheme{
+         tls.ECDSAWithP256AndSHA256,
+         tls.PSSWithSHA256,
+         tls.PKCS1WithSHA256,
+         tls.ECDSAWithP384AndSHA384,
+         tls.PSSWithSHA384,
+         tls.PKCS1WithSHA384,
+         tls.PSSWithSHA512,
+         tls.PKCS1WithSHA512,
+         tls.PKCS1WithSHA1,
+      },
+   }
+   // set extension 16
+   exts["16"] = &tls.ALPNExtension{
+      []string{"http/1.1"},
+   }
+   // set extension 21
+   exts["21"] = &tls.UtlsPaddingExtension{GetPaddingLen: tls.BoringPaddingStyle}
+   // set extension 22
+   exts["22"] = &tls.GenericExtension{Id: 22} // encrypt_then_mac
+   // set extension 23
+   exts["23"] = &tls.UtlsExtendedMasterSecretExtension{}
    // set extension 43
    vid64, err := strconv.ParseUint(tokens[0], 10, 16)
    if err != nil {
       return nil, err
    }
-   extMap["43"] = &tls.SupportedVersionsExtension{
+   exts["43"] = &tls.SupportedVersionsExtension{
       version(uint16(vid64)),
    }
+   // set extension 45
+   exts["45"] = &tls.PSKKeyExchangeModesExtension{
+      []uint8{tls.PskModeDHE},
+   }
+   // set extension 49
+   exts["49"] = &tls.GenericExtension{Id: 49} // post_handshake_auth
+   // set extension 51
+   exts["51"] = &tls.KeyShareExtension{}
    // build extenions list
    extensions := strings.Split(tokens[2], "-")
    for _, ext := range extensions {
       if ext == "10" && curves == "" {
          return nil, fmt.Errorf("SSLExtension %q EllipticCurve %q", ext, curves)
       }
-      te, ok := extMap[ext]
+      te, ok := exts[ext]
       if !ok {
          return nil, fmt.Errorf("extension does not exist %q", ext)
       }
