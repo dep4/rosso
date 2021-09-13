@@ -3,7 +3,7 @@ package main
 import (
    "fmt"
    "github.com/refraction-networking/utls"
-   "golang.org/x/net/http2"
+   //"golang.org/x/net/http2"
    "net"
    "net/http"
 )
@@ -37,14 +37,14 @@ func main() {
       if err := uTlsConn.ApplyPreset(spec); err != nil {
          panic(err)
       }
-      if err := uTlsConn.Handshake(); err != nil {
-         panic(err)
-      }
+      err = uTlsConn.Handshake()
+      /*
       cConn, err := new(http2.Transport).NewClientConn(uTlsConn)
       if err != nil {
          panic(err)
       }
       _, err = cConn.RoundTrip(req)
+      */
       fmt.Println(err, site)
    }
 }
@@ -57,33 +57,28 @@ func HelloGolang() *tls.ClientHelloSpec {
       },
       CompressionMethods:[]uint8{0x0},
       Extensions:[]tls.TLSExtension{
-         &tls.SNIExtension{},
-         &tls.StatusRequestExtension{},
-         &tls.SupportedCurvesExtension{
+         &tls.SNIExtension{}, // 0
+         &tls.SupportedCurvesExtension{ // 10
+            // all fail
             Curves:[]tls.CurveID{0x1d, 0x17, 0x18, 0x19},
          },
          &tls.SupportedPointsExtension{
-            SupportedPoints:[]uint8{0x0},
+            // all fail
+            //SupportedPoints:[]uint8{0x0},
          },
-         &tls.SignatureAlgorithmsExtension{
+         &tls.SignatureAlgorithmsExtension{ // 13
             SupportedSignatureAlgorithms:[]tls.SignatureScheme{
                0x804, 0x403, 0x807, 0x805, 0x806, 0x401, 0x501, 0x601, 0x503,
                0x603, 0x201, 0x203,
             },
          },
-         &tls.RenegotiationInfoExtension{Renegotiation:1},
-         &tls.ALPNExtension{
-            AlpnProtocols:[]string{"h2", "http/1.1"},
-         },
-         &tls.SCTExtension{},
-         &tls.SupportedVersionsExtension{
-            Versions:[]uint16{0x304, 0x303, 0x302, 0x301},
-         },
-         &tls.KeyShareExtension{
-            KeyShares:[]tls.KeyShare{
-               tls.KeyShare{Group:0x1d},
-            },
-         },
+         &tls.SessionTicketExtension{}, // 35
+         &tls.UtlsExtendedMasterSecretExtension{}, // 23
+         &tls.RenegotiationInfoExtension{Renegotiation:1}, // 65281
       },
+      /*
+      TLSVersMax: 772,
+      TLSVersMin: 771,
+      */
    }
 }

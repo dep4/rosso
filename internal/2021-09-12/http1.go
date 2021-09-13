@@ -7,6 +7,16 @@ import (
    "net/http"
 )
 
+func version(min uint16) []uint16 {
+   vs := []uint16{772, 771, 770, 769, 768}
+   for k, v := range vs {
+      if v == min {
+         return vs[:k+1]
+      }
+   }
+   return nil
+}
+
 func main() {
    for _, site := range sites {
       spec := HelloGolang()
@@ -32,64 +42,39 @@ var sites = []string{
    "https://www.youtube.com",
 }
 
+const hello1 =
+   "771," +
+   "49196-49195-49200-49199-159-158-49188-49187-49192-49191-49162-49161-49172-49171-157-156-61-60-53-47-10," +
+   "0-10-11-13-35-23-65281,,"
+
 func HelloGolang() *tls.ClientHelloSpec {
    return &tls.ClientHelloSpec{
       CipherSuites:[]uint16{
-         4865,4866,4867,49195,49199,49196,49200,52393,52392,49171,49172,156,157,
-         47,53,
+         0xc02b, 0xc02f, 0xc02c, 0xc030, 0xcca9, 0xcca8, 0xc009, 0xc013, 0xc00a,
+         0xc014, 0x9c, 0x9d, 0x2f, 0x35, 0xc012, 0xa, 0x1301, 0x1302, 0x1303,
       },
       CompressionMethods:[]uint8{0x0},
       Extensions:[]tls.TLSExtension{
          &tls.SNIExtension{}, // 0
-         &tls.UtlsExtendedMasterSecretExtension{}, // 23
-         &tls.RenegotiationInfoExtension{Renegotiation:1}, // 65281
          &tls.SupportedCurvesExtension{ // 10
             // all fail
             Curves:[]tls.CurveID{0x1d, 0x17, 0x18, 0x19},
          },
-         &tls.SupportedPointsExtension{}, // 11
-         &tls.SessionTicketExtension{}, // 35
-         &tls.ALPNExtension{ // 16
-            AlpnProtocols:[]string{"http/1.1"},
+         &tls.SupportedPointsExtension{
+            // all fail
+            SupportedPoints:[]uint8{0x0},
          },
-         &tls.StatusRequestExtension{}, // 5
          &tls.SignatureAlgorithmsExtension{ // 13
             SupportedSignatureAlgorithms:[]tls.SignatureScheme{
                0x804, 0x403, 0x807, 0x805, 0x806, 0x401, 0x501, 0x601, 0x503,
                0x603, 0x201, 0x203,
             },
          },
-         &tls.SCTExtension{}, // 18
-         &tls.KeyShareExtension{ // 51
-            KeyShares:[]tls.KeyShare{
-               tls.KeyShare{Group:0x1d},
-            },
-         },
-         &tls.PSKKeyExchangeModesExtension{ // 45
-            []uint8{tls.PskModeDHE},
-         },
-         &tls.SupportedVersionsExtension{ // 43
-            Versions:[]uint16{772,771},
-         },
-         &tls.FakeCertCompressionAlgsExtension{}, // 27
-         &tls.UtlsPaddingExtension{ // 21
-            GetPaddingLen: tls.BoringPaddingStyle,
-         },
+         &tls.SessionTicketExtension{}, // 35
+         &tls.UtlsExtendedMasterSecretExtension{}, // 23
+         &tls.RenegotiationInfoExtension{Renegotiation:1}, // 65281
       },
+      TLSVersMax: 772,
+      TLSVersMin: 771,
    }
-}
-
-const hello1 =
-   "771," +
-   "4865-4866-4867-49195-49199-49196-49200-52393-52392-49171-49172-156-157-47-53," +
-   "0-23-65281-10-11-35-16-5-13-18-51-45-43-27-21,,"
-
-func version(min uint16) []uint16 {
-   vs := []uint16{772, 771, 770, 769, 768}
-   for k, v := range vs {
-      if v == min {
-         return vs[:k+1]
-      }
-   }
-   return nil
 }
