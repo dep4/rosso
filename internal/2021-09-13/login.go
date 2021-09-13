@@ -21,7 +21,10 @@ func main() {
    if err != nil {
       panic(err)
    }
-   for _, agent := range j.Agents("37f691b063c10372135db21579643bf1") {
-      fmt.Println(agent)
+   j.SortUsers()
+   md5 := "37f691b063c10372135db21579643bf1"
+   fmt.Println(md5)
+   for _, user := range j.FilterUsers(md5) {
+      fmt.Println(user.Count, user.Agent)
    }
 }
