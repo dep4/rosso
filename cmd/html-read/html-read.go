@@ -3,7 +3,7 @@ package main
 import (
    "encoding/json"
    "fmt"
-   "github.com/89z/mech/html"
+   "github.com/89z/parse/html"
    "net/http"
    "net/http/httputil"
    "os"
