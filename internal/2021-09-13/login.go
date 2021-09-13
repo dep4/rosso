@@ -36,12 +36,19 @@ func main() {
       panic(err)
    }
    j.SortUsers()
+   done := make(map[string]bool)
    for _, user := range j.Users {
+      if done[user.MD5] {
+         continue
+      } else {
+         done[user.MD5] = true
+      }
       fmt.Println(user)
       hello := j.JA3(user.MD5)
       spec, err := ja3.Parse(hello)
       if err != nil {
-         panic(err)
+         fmt.Println(err)
+         continue
       }
       req, err := http.NewRequest(
          "POST", "https://android.clients.google.com/auth",
@@ -53,11 +60,7 @@ func main() {
       req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
       res, err := ja3.NewTransport(spec).RoundTrip(req)
       if err != nil {
-         err := sanityCheck(hello)
-         if err != nil {
-            fmt.Println(err)
-            continue
-         }
+         panic(err)
       }
       defer res.Body.Close()
       fmt.Println(res.Status)
@@ -70,14 +73,14 @@ func main() {
 
 func sanityCheck(hello string) error {
    tests := []string{
-      "https://www.reddit.com",
       "https://github.com",
-      "https://nebulance.io",
       "https://stackoverflow.com",
       "https://variety.com",
       "https://vimeo.com",
       "https://www.google.com",
       "https://www.indiewire.com",
+      "https://www.nytimes.com",
+      "https://www.reddit.com",
       "https://www.wikipedia.org",
       "https://www.youtube.com",
    }
