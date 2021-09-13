@@ -45,13 +45,3 @@ var sites = []string{
    "https://www.wikipedia.org",
    "https://www.youtube.com",
 }
-
-func version(min uint16) []uint16 {
-   vs := []uint16{772, 771, 770, 769, 768}
-   for k, v := range vs {
-      if v == min {
-         return vs[:k+1]
-      }
-   }
-   return nil
-}

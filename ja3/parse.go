@@ -160,13 +160,14 @@ func Parse(ja3 string) (*tls.ClientHelloSpec, error) {
       return nil, err
    }
    extMap["43"] = &tls.SupportedVersionsExtension{
-      []uint16{
-         uint16(vid64),
-      },
+      version(uint16(vid64)),
    }
    // build extenions list
    extensions := strings.Split(tokens[2], "-")
    for _, ext := range extensions {
+      if ext == "10" && curves == "" {
+         return nil, fmt.Errorf("SSLExtension %q EllipticCurve %q", ext, curves)
+      }
       te, ok := extMap[ext]
       if !ok {
          return nil, fmt.Errorf("extension does not exist %q", ext)
@@ -175,4 +176,14 @@ func Parse(ja3 string) (*tls.ClientHelloSpec, error) {
    }
    // return
    return spec, nil
+}
+
+func version(min uint16) []uint16 {
+   vs := []uint16{772, 771, 770, 769, 768}
+   for k, v := range vs {
+      if v == min {
+         return vs[:k+1]
+      }
+   }
+   return nil
 }
