@@ -51,7 +51,6 @@ func HelloGolang() *tls.ClientHelloSpec {
    }
 }
 
-
 // NewTransport creates an http.Transport which mocks the given JA3 signature
 // when HTTPS is used.
 func NewTransport(spec *tls.ClientHelloSpec) *http.Transport {
@@ -96,6 +95,8 @@ func Parse(ja3 string) (*tls.ClientHelloSpec, error) {
    }
    // set extension 0
    exts["0"] = &tls.SNIExtension{}
+   // set extension 5
+   exts["5"] = &tls.StatusRequestExtension{}
    // set extension 10
    curves := tokens[3]
    var ids []tls.CurveID
@@ -140,12 +141,20 @@ func Parse(ja3 string) (*tls.ClientHelloSpec, error) {
    exts["16"] = &tls.ALPNExtension{
       []string{"http/1.1"},
    }
+   // set extension 18
+   exts["18"] = &tls.SCTExtension{}
    // set extension 21
    exts["21"] = &tls.UtlsPaddingExtension{GetPaddingLen: tls.BoringPaddingStyle}
    // set extension 22
    exts["22"] = &tls.GenericExtension{Id: 22} // encrypt_then_mac
    // set extension 23
    exts["23"] = &tls.UtlsExtendedMasterSecretExtension{}
+   // set extension 27
+   exts["27"] = &tls.FakeCertCompressionAlgsExtension{}
+   // set extension 28
+   exts["28"] = &tls.FakeRecordSizeLimitExtension{}
+   // set extension 35
+   exts["35"] = &tls.SessionTicketExtension{}
    // set extension 43
    vid64, err := strconv.ParseUint(tokens[0], 10, 16)
    if err != nil {
@@ -160,8 +169,18 @@ func Parse(ja3 string) (*tls.ClientHelloSpec, error) {
    }
    // set extension 49
    exts["49"] = &tls.GenericExtension{Id: 49} // post_handshake_auth
+   // set extension 50
+   exts["50"] = &tls.GenericExtension{Id: 50} // signature_algorithms_cert
    // set extension 51
-   exts["51"] = &tls.KeyShareExtension{}
+   exts["51"] = &tls.KeyShareExtension{
+      KeyShares:[]tls.KeyShare{
+         tls.KeyShare{Group:0x1d},
+      },
+   }
+   // set extension 13172
+   exts["13172"] = &tls.NPNExtension{}
+   // set extension 65281
+   exts["65281"] = &tls.RenegotiationInfoExtension{Renegotiation:1}
    // build extenions list
    extensions := strings.Split(tokens[2], "-")
    for _, ext := range extensions {
