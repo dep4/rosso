@@ -2,6 +2,7 @@ package ja3
 
 import (
    "encoding/json"
+   "fmt"
    "io"
    "sort"
 )
@@ -28,6 +29,24 @@ func NewJA3er(ua, hash io.Reader) (*JA3er, error) {
       return nil, err
    }
    return &j, nil
+}
+
+func (j JA3er) Find(callback func(string)error) *User {
+   done := make(map[string]bool)
+   for _, user := range j.Users {
+      hello := j.JA3(user.MD5)
+      if done[hello] {
+         continue
+      } else {
+         done[hello] = true
+      }
+      err := callback(hello)
+      if err == nil {
+         return &user
+      }
+      fmt.Println(err)
+   }
+   return nil
 }
 
 func (j JA3er) JA3(md5 string) string {
