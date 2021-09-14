@@ -1,42 +1,73 @@
-package ja3
+package main
 
 import (
    "fmt"
+   "github.com/89z/parse/ja3"
    "net/http"
+   "net/url"
    "os"
-   "testing"
+   "strings"
+   "time"
 )
 
-func TestAgent(t *testing.T) {
+func main() {
+   pass := os.Getenv("ENCRYPTEDPASS")
+   if pass == "" {
+      fmt.Println("missing pass")
+      return
+   }
+   val := url.Values{
+      "Email": {"srpen6@gmail.com"},
+      "sdk_version": {"17"},
+      "EncryptedPasswd": {pass},
+   }
    ua, err := os.Open("getAllUasJson.json")
    if err != nil {
-      t.Fatal(err)
+      panic(err)
    }
    defer ua.Close()
    hash, err := os.Open("getAllHashesJson.json")
    if err != nil {
-      t.Fatal(err)
+      panic(err)
    }
    defer hash.Close()
-   j, err := NewJA3er(ua, hash)
+   j, err := ja3.NewJA3er(ua, hash)
    if err != nil {
-      t.Fatal(err)
+      panic(err)
    }
    j.SortUsers()
-   user := j.Users[0]
-   fmt.Printf("%+v\n", user)
-   spec, err := Parse(j.JA3(user.MD5))
-   if err != nil {
-      t.Fatal(err)
+   done := make(map[string]bool)
+   for _, user := range j.Users {
+      if done[user.MD5] {
+         continue
+      } else {
+         done[user.MD5] = true
+      }
+      fmt.Println(user)
+      hello := j.JA3(user.MD5)
+      spec, err := ja3.Parse(hello)
+      if err != nil {
+         fmt.Println(err)
+         continue
+      }
+      req, err := http.NewRequest(
+         "POST", "https://android.clients.google.com/auth",
+         strings.NewReader(val.Encode()),
+      )
+      if err != nil {
+         panic(err)
+      }
+      req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+      res, err := ja3.NewTransport(spec).RoundTrip(req)
+      if err != nil {
+         fmt.Println(err)
+         continue
+      }
+      defer res.Body.Close()
+      fmt.Println(res.Status)
+      if res.StatusCode == http.StatusOK {
+         break
+      }
+      time.Sleep(time.Second)
    }
-   req, err := http.NewRequest("GET", "https://ja3er.com/json", nil)
-   if err != nil {
-      t.Fatal(err)
-   }
-   res, err := NewTransport(spec).RoundTrip(req)
-   if err != nil {
-      t.Fatal(err)
-   }
-   defer res.Body.Close()
-   os.Stdout.ReadFrom(res.Body)
 }
