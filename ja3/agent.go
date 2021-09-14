@@ -12,11 +12,7 @@ const (
 )
 
 type JA3er struct {
-   Users []struct {
-      MD5 string
-      Count int
-      Agent string `json:"User-Agent"`
-   }
+   Users []User
    Hashes []struct {
       MD5 string
       JA3 string
@@ -47,4 +43,10 @@ func (j JA3er) SortUsers() {
    sort.Slice(j.Users, func(a, b int) bool {
       return j.Users[b].Count < j.Users[a].Count
    })
+}
+
+type User struct {
+   MD5 string
+   Count int
+   Agent string `json:"User-Agent"`
 }
