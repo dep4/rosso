@@ -12,7 +12,11 @@ const (
 )
 
 type JA3er struct {
-   Users []User
+   Users []struct {
+      MD5 string
+      Count int
+      Agent string `json:"User-Agent"`
+   }
    Hashes []struct {
       MD5 string
       JA3 string
@@ -30,16 +34,6 @@ func NewJA3er(ua, hash io.Reader) (*JA3er, error) {
    return &j, nil
 }
 
-func (j JA3er) FilterUsers(md5 string) []User {
-   var us []User
-   for _, u := range j.Users {
-      if u.MD5 == md5 {
-         us = append(us, u)
-      }
-   }
-   return us
-}
-
 func (j JA3er) JA3(md5 string) string {
    for _, hash := range j.Hashes {
       if hash.MD5 == md5 {
@@ -53,10 +47,4 @@ func (j JA3er) SortUsers() {
    sort.Slice(j.Users, func(a, b int) bool {
       return j.Users[b].Count < j.Users[a].Count
    })
-}
-
-type User struct {
-   MD5 string
-   Count int
-   Agent string `json:"User-Agent"`
 }
