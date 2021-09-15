@@ -18,7 +18,7 @@ func main() {
    flag.StringVar(&output, "o", "", "output file")
    flag.Parse()
    if flag.NArg() != 1 {
-      fmt.Println("mech [flags] [request file]")
+      fmt.Println("http [flags] [request file]")
       flag.PrintDefaults()
       return
    }

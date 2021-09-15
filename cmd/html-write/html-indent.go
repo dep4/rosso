@@ -3,7 +3,7 @@ package main
 import (
    "flag"
    "fmt"
-   "github.com/89z/mech/html"
+   "github.com/89z/parse/html"
    "os"
 )
 
