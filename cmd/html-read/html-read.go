@@ -5,7 +5,6 @@ import (
    "fmt"
    "github.com/89z/parse/html"
    "net/http"
-   "net/http/httputil"
    "os"
 )
 
@@ -14,18 +13,9 @@ func main() {
       fmt.Println("media [URL]")
       return
    }
-   req, err := http.NewRequest("GET", os.Args[1], nil)
-   if err != nil {
-      panic(err)
-   }
-   // instagram.com
-   req.Header.Set("User-Agent", "Mozilla")
-   d, err := httputil.DumpRequest(req, false)
-   if err != nil {
-      panic(err)
-   }
-   os.Stdout.Write(d)
-   res, err := new(http.Client).Do(req)
+   addr := os.Args[1]
+   fmt.Println("GET", addr)
+   res, err := http.Get(addr)
    if err != nil {
       panic(err)
    }
