@@ -13,7 +13,7 @@ func NewValues(r io.Reader) (Values, error) {
    if err != nil {
       return nil, err
    }
-   v := make(Values)
+   val := make(Values)
    for _, iStmt := range ast.BlockStmt.List {
       eStmt, ok := iStmt.(*js.ExprStmt)
       if ok {
@@ -23,9 +23,9 @@ func NewValues(r io.Reader) (Values, error) {
             if err != nil {
                return nil, err
             }
-            v[bExpr.X.JS()] = y
+            val[bExpr.X.JS()] = y
          }
       }
    }
-   return v, nil
+   return val, nil
 }
