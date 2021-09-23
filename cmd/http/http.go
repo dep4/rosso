@@ -42,11 +42,11 @@ func main() {
       panic(err)
    }
    defer res.Body.Close()
-   d, err := httputil.DumpResponse(res, false)
+   dum, err := httputil.DumpResponse(res, false)
    if err != nil {
       panic(err)
    }
-   os.Stdout.Write(d)
+   os.Stdout.Write(dum)
    if output == "" {
       os.Stdout.ReadFrom(res.Body)
       return
