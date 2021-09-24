@@ -2,6 +2,7 @@ package html
 
 import (
    "bytes"
+   "github.com/tdewolff/parse/v2"
    "github.com/tdewolff/parse/v2/html"
    "io"
 )
@@ -13,6 +14,18 @@ var VoidElement = map[string]bool{
    "input": true,
    "link": true,
    "meta": true,
+}
+
+// godocs.io/github.com/tdewolff/parse/v2/html#Lexer
+type Lexer struct {
+   *html.Lexer
+}
+
+// godocs.io/github.com/tdewolff/parse/v2/html#NewLexer
+func NewLexer(r io.Reader) Lexer {
+   return Lexer{
+      Lexer: html.NewLexer(parse.NewInput(r)),
+   }
 }
 
 // godocs.io/golang.org/x/net/html#Render
