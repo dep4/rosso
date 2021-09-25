@@ -30,8 +30,18 @@ type Lexer struct {
 }
 
 func NewLexer(r io.Reader) Lexer {
+   in := parse.NewInput(r)
+   return newLexer(in)
+}
+
+func NewLexerBytes(b []byte) Lexer {
+   in := parse.NewInputBytes(b)
+   return newLexer(in)
+}
+
+func newLexer(r *parse.Input) Lexer {
    return Lexer{
-      html.NewLexer(parse.NewInput(r)),
+      html.NewLexer(r),
    }
 }
 

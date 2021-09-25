@@ -76,6 +76,7 @@ func bare(hello *tls.ClientHelloSpec) []byte {
    // collect extensions
    last = len(hello.Extensions) - 1
    if len(hello.Extensions) > 1 {
+      /*
       for _, ext := range hello.Extensions[:last] {
          // filter GREASE values
          if !greaseValues[uint16(ext)] {
@@ -83,14 +84,17 @@ func bare(hello *tls.ClientHelloSpec) []byte {
             buffer = append(buffer, sepValueByte)
          }
       }
+      */
    }
    // append last element if extensions are not empty
    if last != -1 {
+      /*
       ext := hello.Extensions[last]
-      // filter GREASE values
+      filter GREASE values
       if !greaseValues[uint16(ext)] {
          buffer = strconv.AppendInt(buffer, int64(ext), 10)
       }
+      */
    }
    buffer = append(buffer, sepFieldByte)
    // collect supported groups
