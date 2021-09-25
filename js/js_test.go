@@ -1,6 +1,7 @@
 package js
 
 import (
+   "fmt"
    "os"
    "testing"
 )
@@ -11,7 +12,11 @@ func TestJS(t *testing.T) {
       t.Fatal(err)
    }
    defer f.Close()
-   if _, err := statements(f); err != nil {
+   p, err := Parse(f)
+   if err != nil {
       t.Fatal(err)
+   }
+   for k, v := range p {
+      fmt.Println(k, v)
    }
 }

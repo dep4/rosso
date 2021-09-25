@@ -6,26 +6,27 @@ import (
    "io"
 )
 
-type Values map[string]string
-
-func NewValues(r io.Reader) (Values, error) {
+func Parse(r io.Reader) ([]string, error) {
    ast, err := js.Parse(parse.NewInput(r))
    if err != nil {
       return nil, err
    }
-   val := make(Values)
-   for _, iStmt := range ast.BlockStmt.List {
-      eStmt, ok := iStmt.(*js.ExprStmt)
-      if ok {
-         bExpr, ok := eStmt.Value.(*js.BinaryExpr)
-         if ok {
-            y, err := bExpr.Y.JSON()
-            if err != nil {
-               return nil, err
-            }
-            val[bExpr.X.JS()] = y
-         }
-      }
-   }
-   return val, nil
+   var vis visit
+   js.Walk(&vis, ast)
+   return vis.nodes, nil
 }
+
+type visit struct {
+   nodes []string
+}
+
+func (v *visit) Enter(n js.INode) js.IVisitor {
+   node, err := n.JSON()
+   if err != nil {
+      return v
+   }
+   v.nodes = append(v.nodes, node)
+   return nil
+}
+
+func (visit) Exit(js.INode) {}
