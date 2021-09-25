@@ -25,17 +25,32 @@ import (
    "io"
 )
 
-type lexer struct {
+type Lexer struct {
    *html.Lexer
 }
 
-func newLexer(r io.Reader) lexer {
-   return lexer{
+func NewLexer(r io.Reader) Lexer {
+   return Lexer{
       html.NewLexer(parse.NewInput(r)),
    }
 }
 
-func (l lexer) nextTag(name string) bool {
+// Keep going until we reach "Text", "EndTag" (</script>), "StartTagVoid" (/>)
+// or "StartTag" (<script>). If the current element is void, such as <meta>,
+// this might produce unexpected result. This is a compromise, as the fix would
+// be to maintain a list of all void elements.
+func (l Lexer) Bytes() []byte {
+   for {
+      switch tt, data := l.Next(); tt {
+      case html.ErrorToken, html.EndTagToken:
+         return nil
+      case html.TextToken, html.StartTagVoidToken, html.StartTagToken:
+         return data
+      }
+   }
+}
+
+func (l Lexer) NextTag(name string) bool {
    for {
       // the second return value look like "<script"
       switch tt, _ := l.Next(); tt {
@@ -45,25 +60,6 @@ func (l lexer) nextTag(name string) bool {
          if string(l.Text()) == name {
             return true
          }
-      }
-   }
-}
-
-// Keep going until we reach "Text", "EndTag", "StartTagVoid" or "StartTag". If
-// the current element is void, such as <meta>, this might produce unexpected
-// result. This is a compromise, as the fix would be to maintain a list of all
-// void elements.
-func (l lexer) nextText() bool {
-   for {
-      switch tt, _ := l.Next(); tt {
-      case html.ErrorToken:
-         return false
-      case
-      html.TextToken,
-      html.EndTagToken,
-      html.StartTagVoidToken,
-      html.StartTagToken:
-         return true
       }
    }
 }
