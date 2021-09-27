@@ -10,11 +10,6 @@ type visit struct{}
 
 func (visit) Exit(js.INode) {}
 
-func (v visit) Enter(n js.INode) js.IVisitor {
-   fmt.Println(n)
-   return v
-}
-
 func main() {
    ast, err := js.Parse(parse.NewInputString("var x = 'lorem ipsum';"))
    if err != nil {
@@ -22,4 +17,9 @@ func main() {
    }
    var vis visit
    js.Walk(vis, ast)
+}
+
+func (v visit) Enter(n js.INode) js.IVisitor {
+   fmt.Println(n)
+   return v
 }
