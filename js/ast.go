@@ -25,8 +25,6 @@ func (ast *AST) String() string {
 	return s
 }
 
-////////////////////////////////////////////////////////////////
-
 // DeclType specifies the kind of declaration.
 type DeclType uint16
 
@@ -81,16 +79,6 @@ func (v Var) String() string {
 	return string(v.Name())
 }
 
-// JS converts the node back to valid JavaScript
-func (v Var) JS() string {
-	return v.String()
-}
-
-// JSON converts the node back to valid JSON
-func (n Var) JSON() (string, error) {
-	return "", ErrInvalidJSON
-}
-
 // VarsByUses is sortable by uses in descending order.
 type VarsByUses VarArray
 
@@ -105,8 +93,6 @@ func (vs VarsByUses) Swap(i, j int) {
 func (vs VarsByUses) Less(i, j int) bool {
 	return vs[i].Uses > vs[j].Uses
 }
-
-////////////////////////////////////////////////////////////////
 
 // VarArray is a set of variables in scopes.
 type VarArray []*Var
@@ -330,8 +316,6 @@ func (s *Scope) Unscope() {
 	s.Undeclared = s.Undeclared[:0]
 }
 
-////////////////////////////////////////////////////////////////
-
 // INode is an interface for AST nodes
 type INode interface {
 	String() string
@@ -357,20 +341,10 @@ type IExpr interface {
 	exprNode()
 }
 
-////////////////////////////////////////////////////////////////
-
 // BlockStmt is a block statement.
 type BlockStmt struct {
 	List []IStmt
 	Scope
-}
-
-func (n BlockStmt) String() string {
-	s := "Stmt({"
-	for _, item := range n.List {
-		s += " " + item.String()
-	}
-	return s + " })"
 }
 
 // JS converts the node back to valid JavaScript
@@ -388,17 +362,8 @@ func (n BlockStmt) JS() string {
 	return s
 }
 
-// JSON converts the node back to valid JSON
-func (n BlockStmt) JSON() (string, error) {
-	return "", ErrInvalidJSON
-}
-
 // EmptyStmt is an empty statement.
 type EmptyStmt struct {
-}
-
-func (n EmptyStmt) String() string {
-	return "Stmt(;)"
 }
 
 // JS converts the node back to valid JavaScript
@@ -406,22 +371,9 @@ func (n EmptyStmt) JS() string {
 	return ";"
 }
 
-// JSON converts the node back to valid JSON
-func (n EmptyStmt) JSON() (string, error) {
-	return "", ErrInvalidJSON
-}
-
 // ExprStmt is an expression statement.
 type ExprStmt struct {
 	Value IExpr
-}
-
-func (n ExprStmt) String() string {
-	val := n.Value.String()
-	if val[0] == '(' && val[len(val)-1] == ')' {
-		return "Stmt" + n.Value.String()
-	}
-	return "Stmt(" + n.Value.String() + ")"
 }
 
 // JS converts the node back to valid JavaScript
@@ -429,24 +381,11 @@ func (n ExprStmt) JS() string {
 	return n.Value.JS()
 }
 
-// JSON converts the node back to valid JSON
-func (n ExprStmt) JSON() (string, error) {
-	return "", ErrInvalidJSON
-}
-
 // IfStmt is an if statement.
 type IfStmt struct {
 	Cond IExpr
 	Body IStmt
 	Else IStmt // can be nil
-}
-
-func (n IfStmt) String() string {
-	s := "Stmt(if " + n.Cond.String() + " " + n.Body.String()
-	if n.Else != nil {
-		s += " else " + n.Else.String()
-	}
-	return s + ")"
 }
 
 // JS converts the node back to valid JavaScript
@@ -469,16 +408,13 @@ func (n IfStmt) JS() string {
 	return s
 }
 
-// JSON converts the node back to valid JSON
-func (n IfStmt) JSON() (string, error) {
-	return "", ErrInvalidJSON
-}
-
 // DoWhileStmt is a do-while iteration statement.
 type DoWhileStmt struct {
 	Cond IExpr
 	Body IStmt
 }
+
+////////////////////////////////////////////////////////////////////////////////
 
 func (n DoWhileStmt) String() string {
 	return "Stmt(do " + n.Body.String() + " while " + n.Cond.String() + ")"
