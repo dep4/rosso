@@ -1,3 +1,7 @@
+// Package buffer contains buffer and wrapper types for byte slices. It is useful for writing lexers or other high-performance byte slice handling.
+// The `Reader` and `Writer` types implement the `io.Reader` and `io.Writer` respectively and provide a thinner and faster interface than `bytes.Buffer`.
+// The `Lexer` type is useful for building lexers because it keeps track of the start and end position of a byte selection, and shifts the bytes whenever a valid token is found.
+// The `StreamLexer` does the same, but keeps a buffer pool so that it reads a limited amount at a time, allowing to parse from streaming sources.
 package buffer
 
 import (
@@ -161,4 +165,94 @@ func (z *Lexer) Bytes() []byte {
 func (z *Lexer) Reset() {
 	z.start = 0
 	z.pos = 0
+}
+
+
+// defaultBufSize specifies the default initial length of internal buffers.
+var defaultBufSize = 4096
+
+// MinBuf specifies the default initial length of internal buffers.
+// Solely here to support old versions of parse.
+var MinBuf = defaultBufSize
+
+
+// Reader implements an io.Reader over a byte slice.
+type Reader struct {
+	buf []byte
+	pos int
+}
+
+// NewReader returns a new Reader for a given byte slice.
+func NewReader(buf []byte) *Reader {
+	return &Reader{
+		buf: buf,
+	}
+}
+
+// Read reads bytes into the given byte slice and returns the number of bytes read and an error if occurred.
+func (r *Reader) Read(b []byte) (n int, err error) {
+	if len(b) == 0 {
+		return 0, nil
+	}
+	if r.pos >= len(r.buf) {
+		return 0, io.EOF
+	}
+	n = copy(b, r.buf[r.pos:])
+	r.pos += n
+	return
+}
+
+// Bytes returns the underlying byte slice.
+func (r *Reader) Bytes() []byte {
+	return r.buf
+}
+
+// Reset resets the position of the read pointer to the beginning of the underlying byte slice.
+func (r *Reader) Reset() {
+	r.pos = 0
+}
+
+// Len returns the length of the buffer.
+func (r *Reader) Len() int {
+	return len(r.buf)
+}
+
+// Writer implements an io.Writer over a byte slice.
+type Writer struct {
+	buf []byte
+}
+
+// NewWriter returns a new Writer for a given byte slice.
+func NewWriter(buf []byte) *Writer {
+	return &Writer{
+		buf: buf,
+	}
+}
+
+// Write writes bytes from the given byte slice and returns the number of bytes written and an error if occurred. When err != nil, n == 0.
+func (w *Writer) Write(b []byte) (int, error) {
+	n := len(b)
+	end := len(w.buf)
+	if end+n > cap(w.buf) {
+		buf := make([]byte, end, 2*cap(w.buf)+n)
+		copy(buf, w.buf)
+		w.buf = buf
+	}
+	w.buf = w.buf[:end+n]
+	return copy(w.buf[end:], b), nil
+}
+
+// Len returns the length of the underlying byte slice.
+func (w *Writer) Len() int {
+	return len(w.buf)
+}
+
+// Bytes returns the underlying byte slice.
+func (w *Writer) Bytes() []byte {
+	return w.buf
+}
+
+// Reset empties and reuses the current buffer. Subsequent writes will overwrite the buffer, so any reference to the underlying slice is invalidated after this call.
+func (w *Writer) Reset() {
+	w.buf = w.buf[:0]
 }
