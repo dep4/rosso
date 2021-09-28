@@ -27,12 +27,12 @@ func (s *scanner) scan() bool {
          for {
             _, err := dec.Token()
             if err != nil {
-               if dec.More() {
-                  break
-               }
                s.left = s.right[:dec.InputOffset()]
                s.right = s.right[dec.InputOffset():]
-               return true
+               if json.Valid(s.left) {
+                  return true
+               }
+               break
             }
          }
       }
