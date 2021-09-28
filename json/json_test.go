@@ -1,4 +1,4 @@
-package js
+package json
 
 import (
    "fmt"
@@ -9,9 +9,9 @@ import (
 
 func TestBytes(t *testing.T) {
    b := []byte("9;8")
-   s := newScanner(b)
-   for s.scan() {
-      fmt.Printf("%s\n", s.bytes())
+   s := NewScanner(b)
+   for s.Scan() {
+      fmt.Printf("%s\n", s.Bytes())
    }
 }
 
@@ -25,9 +25,9 @@ func TestHTML(t *testing.T) {
    for l.NextTag("script") {
       b := l.Bytes()
       fmt.Printf("BEGIN\n%s\nEND\n", b)
-      s := newScanner(b)
-      for s.scan() {
-         fmt.Printf("%s\n---\n", s.bytes())
+      s := NewScanner(b)
+      for s.Scan() {
+         fmt.Printf("%s\n---\n", s.Bytes())
       }
    }
 }

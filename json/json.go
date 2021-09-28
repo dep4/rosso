@@ -1,34 +1,34 @@
-package js
+package json
 
 import (
    "bytes"
    "encoding/json"
 )
 
-type scanner struct {
+type Scanner struct {
    left []byte
    right []byte
 }
 
-func newScanner(b []byte) scanner {
-   return scanner{right: b}
+func NewScanner(b []byte) Scanner {
+   return Scanner{right: b}
 }
 
-func (s scanner) bytes() []byte {
+func (s Scanner) Bytes() []byte {
    return s.left
 }
 
-func (s *scanner) scan() bool {
+func (s *Scanner) Scan() bool {
    for len(s.right) > 0 {
-      r := bytes.NewReader(s.right)
-      dec := json.NewDecoder(r)
+      read := bytes.NewReader(s.right)
+      dec := json.NewDecoder(read)
       _, err := dec.Token()
       if err == nil {
          for {
             _, err := dec.Token()
             if err != nil {
-               s.left = s.right[:dec.InputOffset()]
-               s.right = s.right[dec.InputOffset():]
+               off := dec.InputOffset()
+               s.left, s.right = s.right[:off], s.right[off:]
                if json.Valid(s.left) {
                   return true
                }
