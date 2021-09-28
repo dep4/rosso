@@ -7,6 +7,14 @@ import (
    "testing"
 )
 
+func TestBytes(t *testing.T) {
+   b := []byte("9;8")
+   s := newScanner(b)
+   for s.scan() {
+      fmt.Printf("%s\n", s.bytes())
+   }
+}
+
 func TestHTML(t *testing.T) {
    f, err := os.Open("index.html")
    if err != nil {
@@ -21,16 +29,5 @@ func TestHTML(t *testing.T) {
       for s.scan() {
          fmt.Printf("%s\n---\n", s.bytes())
       }
-   }
-}
-
-func TestJS(t *testing.T) {
-   b, err := os.ReadFile("ig.js")
-   if err != nil {
-      t.Fatal(err)
-   }
-   s := newScanner(b)
-   for s.scan() {
-      fmt.Printf("%s\n---\n", s.bytes())
    }
 }
