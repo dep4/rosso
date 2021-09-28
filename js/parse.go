@@ -6,7 +6,6 @@ import (
 	"io"
 
 	"github.com/tdewolff/parse/v2"
-	"github.com/tdewolff/parse/v2/buffer"
 )
 
 // Parser is the state for the parser.
@@ -61,7 +60,7 @@ func Parse(r *parse.Input) (*AST, error) {
 		p.err = p.l.Err()
 	} else {
 		offset := p.l.r.Offset() - len(p.data)
-		p.err = parse.NewError(buffer.NewReader(p.l.r.Bytes()), offset, p.err.Error())
+		p.err = parse.NewError(NewReader(p.l.r.Bytes()), offset, p.err.Error())
 	}
 	if p.err == io.EOF {
 		p.err = nil

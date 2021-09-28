@@ -1,5 +1,4 @@
-// Package parse contains a collection of parsers for various formats in its subpackages.
-package parse
+package js
 
 import (
 	"bytes"
