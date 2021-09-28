@@ -118,13 +118,6 @@ func NewError(r io.Reader, offset int, message string, a ...interface{}) *Error 
 	}
 }
 
-// NewErrorLexer creates a new error from an active Lexer.
-func NewErrorLexer(l *Input, message string, a ...interface{}) *Error {
-	r := bytes.NewBuffer(l.Bytes())
-	offset := l.Offset()
-	return NewError(r, offset, message, a...)
-}
-
 // Position returns the line, column, and context of the error.
 // Context is the entire line at which the error occurred.
 func (e *Error) Position() (int, int, string) {
