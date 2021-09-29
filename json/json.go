@@ -5,22 +5,9 @@ import (
    "encoding/json"
 )
 
-type Scanner struct {
-   left []byte
-   right []byte
-}
-
-func NewScanner(b []byte) Scanner {
-   return Scanner{right: b}
-}
-
-func (s Scanner) Bytes() []byte {
-   return s.left
-}
-
-func (s *Scanner) Scan() bool {
-   for len(s.right) > 0 {
-      read := bytes.NewReader(s.right)
+func Unmarshal(data []byte, v interface{}) error {
+   for len(data) > 0 {
+      read := bytes.NewReader(data)
       dec := json.NewDecoder(read)
       _, err := dec.Token()
       if err == nil {
@@ -28,15 +15,22 @@ func (s *Scanner) Scan() bool {
             _, err := dec.Token()
             if err != nil {
                off := dec.InputOffset()
-               s.left, s.right = s.right[:off], s.right[off:]
-               if json.Valid(s.left) {
-                  return true
+               err := json.Unmarshal(data[:off], v)
+               if err == nil {
+                  return nil
                }
+               data = data[off:]
                break
             }
          }
       }
-      s.right = s.right[1:]
+      data = data[1:]
    }
-   return false
+   return NotFound{}
+}
+
+type NotFound struct{}
+
+func (NotFound) Error() string {
+   return "not found"
 }

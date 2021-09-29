@@ -2,32 +2,22 @@ package json
 
 import (
    "fmt"
-   "github.com/89z/parse/html"
    "os"
    "testing"
 )
 
-func TestBytes(t *testing.T) {
-   b := []byte("9;8")
-   s := NewScanner(b)
-   for s.Scan() {
-      fmt.Printf("%s\n", s.Bytes())
-   }
-}
-
-func TestHTML(t *testing.T) {
-   f, err := os.Open("index.html")
+func TestJSON(t *testing.T) {
+   data, err := os.ReadFile("ig.js")
    if err != nil {
       t.Fatal(err)
    }
-   defer f.Close()
-   l := html.NewLexer(f)
-   for l.NextTag("script") {
-      b := l.Bytes()
-      fmt.Printf("BEGIN\n%s\nEND\n", b)
-      s := NewScanner(b)
-      for s.Scan() {
-         fmt.Printf("%s\n---\n", s.Bytes())
+   var v struct {
+      Shortcode_Media struct {
+         ID string
       }
    }
+   if err := Unmarshal(data, &v); err != nil {
+      t.Fatal(err)
+   }
+   fmt.Printf("%+v\n", v)
 }
