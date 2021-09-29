@@ -15,8 +15,9 @@
 //  github.com/tdewolff/parse/v2 v2.5.21
 //  github.com/tdewolff/test v1.0.6
 //
-// and because "tdewolff" also has a JavaScript parser, and "golang.org" does
-// not.
+// also, if you count lines of code in non test Go files, including imported
+// packages, "golang.org/x/net/html" has 8,149, while
+// "github.com/tdewolff/parse/v2/html" has 1,718.
 package html
 
 import (
