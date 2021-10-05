@@ -4,7 +4,7 @@ go 1.17
 
 require (
 	github.com/refraction-networking/utls v0.0.0-20210713165636-0b2885c8c0d4
-	github.com/tdewolff/parse/v2 v2.5.21
+	github.com/tdewolff/parse/v2 v2.5.22
 )
 
 require (
