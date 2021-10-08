@@ -2,7 +2,6 @@ package main
 
 import (
    "bufio"
-   "fmt"
    "github.com/refraction-networking/utls"
    "net"
    "net/http"
@@ -13,15 +12,10 @@ import (
 )
 
 func main() {
-   pass := os.Getenv("ENCRYPTEDPASS")
-   if pass == "" {
-      fmt.Println("missing pass")
-      return
-   }
    val := url.Values{
       "Email": {"srpen6@gmail.com"},
       "sdk_version": {"17"},
-      "EncryptedPasswd": {pass},
+      "EncryptedPasswd": {encryptedPasswd},
    }
    req, err := http.NewRequest(
       "POST", "https://android.clients.google.com/auth",

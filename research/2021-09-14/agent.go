@@ -11,14 +11,10 @@ import (
 )
 
 func callback(hello string) error {
-   pass := os.Getenv("ENCRYPTEDPASS")
-   if pass == "" {
-      return fmt.Errorf("ENCRYPTEDPASS %q", pass)
-   }
    val := url.Values{
       "Email": {"srpen6@gmail.com"},
       "sdk_version": {"17"},
-      "EncryptedPasswd": {pass},
+      "EncryptedPasswd": {encryptedPasswd},
    }
    req, err := http.NewRequest(
       "POST", "https://android.clients.google.com/auth",
