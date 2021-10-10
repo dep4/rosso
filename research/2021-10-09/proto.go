@@ -1,17 +1,16 @@
 package proto
 
 import (
-   "fmt"
    "google.golang.org/protobuf/encoding/protowire"
 )
 
 type token struct {
-   tag struct {
-      num protowire.Number
-      typ protowire.Type
+   Tag struct {
+      Num protowire.Number
+      Typ protowire.Type
    }
-   length int
-   tokens interface{}
+   Length int
+   Tokens interface{}
 }
 
 func parseUnknown(b []byte) []token {
@@ -22,8 +21,8 @@ func parseUnknown(b []byte) []token {
          return nil
       }
       var tok token
-      tok.tag.num = n
-      tok.tag.typ = t
+      tok.Tag.Num = n
+      tok.Tag.Typ = t
       _, _, taglen := protowire.ConsumeTag(b[:fieldlen])
       if taglen < 1 {
          return nil
@@ -35,6 +34,8 @@ func parseUnknown(b []byte) []token {
       switch t {
       case protowire.VarintType:
          v, vlen = protowire.ConsumeVarint(b[taglen:fieldlen])
+      case protowire.Fixed32Type:
+         v, vlen = protowire.ConsumeFixed32(b[taglen:fieldlen])
       case protowire.Fixed64Type:
          v, vlen = protowire.ConsumeFixed64(b[taglen:fieldlen])
       case protowire.BytesType:
@@ -43,18 +44,22 @@ func parseUnknown(b []byte) []token {
          if sub != nil {
             v = sub
          }
-      case protowire.Fixed32Type:
-         v, vlen = protowire.ConsumeFixed32(b[taglen:fieldlen])
+      case protowire.StartGroupType:
+         v, vlen = protowire.ConsumeGroup(n, b[taglen:fieldlen])
+         sub := parseUnknown(v.([]byte))
+         if sub != nil {
+            v = sub
+         }
       }
       if vlen < 1 {
          return nil
       }
-      tok.length = vlen - taglen
+      tok.Length = vlen - taglen
       bytes, ok := v.([]byte)
       if ok {
-         tok.tokens = fmt.Sprintf("%q", bytes)
+         tok.Tokens = string(bytes)
       } else {
-         tok.tokens = v
+         tok.Tokens = v
       }
       toks = append(toks, tok)
       b = b[fieldlen:]

@@ -17,6 +17,6 @@
 >
 > [Joel Haver (2021)](//youtube.com/watch?v=hnUpTyKSjag)
 
-Go parsers for web formats
+Parsers for web formats
 
 https://godocs.io/github.com/89z/parse
