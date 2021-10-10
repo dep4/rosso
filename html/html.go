@@ -21,6 +21,7 @@
 package html
 
 import (
+   "bytes"
    "github.com/tdewolff/parse/v2"
    "github.com/tdewolff/parse/v2/html"
    "io"
@@ -31,19 +32,15 @@ type Lexer struct {
 }
 
 func NewLexer(r io.Reader) Lexer {
-   in := parse.NewInput(r)
-   return newLexer(in)
-}
-
-func NewLexerBytes(b []byte) Lexer {
-   in := parse.NewInputBytes(b)
-   return newLexer(in)
-}
-
-func newLexer(r *parse.Input) Lexer {
+   inp := parse.NewInput(r)
    return Lexer{
-      html.NewLexer(r),
+      html.NewLexer(inp),
    }
+}
+
+func (l Lexer) AttrVal() []byte {
+   val := l.Lexer.AttrVal()
+   return bytes.Trim(val, `'"`)
 }
 
 // Keep going until we reach "Text", "EndTag" (</script>), "StartTagVoid" (/>)
@@ -62,14 +59,13 @@ func (l Lexer) Bytes() []byte {
    }
 }
 
-func (l Lexer) NextTag(name string) bool {
+func (l Lexer) NextAttr(key, val string) bool {
    for {
-      // the second return value look like "<script"
       switch tt, _ := l.Next(); tt {
       case html.ErrorToken:
          return false
-      case html.StartTagToken:
-         if string(l.Text()) == name {
+      case html.AttributeToken:
+         if string(l.Text()) == key && string(l.AttrVal()) == val {
             return true
          }
       }
