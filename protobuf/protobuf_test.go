@@ -1,4 +1,4 @@
-package proto
+package protobuf
 
 import (
    "encoding/json"
@@ -11,7 +11,7 @@ func TestProto(t *testing.T) {
    if err != nil {
       t.Fatal(err)
    }
-   toks := parseUnknown(data)
+   toks := ParseUnknown(data)
    enc := json.NewEncoder(os.Stdout)
    enc.SetIndent("", " ")
    if err := enc.Encode(toks); err != nil {

@@ -20,3 +20,11 @@
 Parsers for web formats
 
 https://godocs.io/github.com/89z/parse
+
+## Formats
+
+- HTML
+- HTTP
+- JA3
+- JSON
+- Protobuf
