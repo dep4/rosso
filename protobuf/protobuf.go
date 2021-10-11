@@ -4,6 +4,32 @@ import (
    "google.golang.org/protobuf/encoding/protowire"
 )
 
+func consume(n protowire.Number, t protowire.Type, data []byte) (interface{}, int) {
+   switch t {
+   case protowire.VarintType:
+      return protowire.ConsumeVarint(data)
+   case protowire.Fixed32Type:
+      return protowire.ConsumeFixed32(data)
+   case protowire.Fixed64Type:
+      return protowire.ConsumeFixed64(data)
+   case protowire.BytesType:
+      v, vLen := protowire.ConsumeBytes(data)
+      sub := ParseUnknown(v)
+      if sub != nil {
+         return sub, vLen
+      }
+      return v, vLen
+   case protowire.StartGroupType:
+      v, vLen := protowire.ConsumeGroup(n, data)
+      sub := ParseUnknown(v)
+      if sub != nil {
+         return sub, vLen
+      }
+      return v, vLen
+   }
+   return nil, 0
+}
+
 type Field struct {
    Number protowire.Number
    Type protowire.Type
@@ -21,30 +47,7 @@ func ParseUnknown(data []byte) []Field {
       if tLen < 1 {
          return nil
       }
-      var (
-         v interface{}
-         vLen int
-      )
-      switch t {
-      case protowire.VarintType:
-         v, vLen = protowire.ConsumeVarint(data[tLen:fLen])
-      case protowire.Fixed32Type:
-         v, vLen = protowire.ConsumeFixed32(data[tLen:fLen])
-      case protowire.Fixed64Type:
-         v, vLen = protowire.ConsumeFixed64(data[tLen:fLen])
-      case protowire.BytesType:
-         v, vLen = protowire.ConsumeBytes(data[tLen:fLen])
-         sub := ParseUnknown(v.([]byte))
-         if sub != nil {
-            v = sub
-         }
-      case protowire.StartGroupType:
-         v, vLen = protowire.ConsumeGroup(n, data[tLen:fLen])
-         sub := ParseUnknown(v.([]byte))
-         if sub != nil {
-            v = sub
-         }
-      }
+      v, vLen := consume(n, t, data[tLen:fLen])
       if vLen < 1 {
          return nil
       }
