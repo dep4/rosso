@@ -14,14 +14,14 @@ func consume(n protowire.Number, t protowire.Type, data []byte) (interface{}, in
       return protowire.ConsumeFixed64(data)
    case protowire.BytesType:
       v, vLen := protowire.ConsumeBytes(data)
-      sub := ParseUnknown(v)
+      sub := Parse(v)
       if sub != nil {
          return sub, vLen
       }
       return v, vLen
    case protowire.StartGroupType:
       v, vLen := protowire.ConsumeGroup(n, data)
-      sub := ParseUnknown(v)
+      sub := Parse(v)
       if sub != nil {
          return sub, vLen
       }
@@ -36,7 +36,7 @@ type Field struct {
    Value interface{}
 }
 
-func ParseUnknown(data []byte) []Field {
+func Parse(data []byte) []Field {
    var flds []Field
    for len(data) > 0 {
       n, t, fLen := protowire.ConsumeField(data)

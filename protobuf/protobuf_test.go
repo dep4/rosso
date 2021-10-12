@@ -11,7 +11,7 @@ func TestProto(t *testing.T) {
    if err != nil {
       t.Fatal(err)
    }
-   toks := ParseUnknown(data)
+   toks := Parse(data)
    enc := json.NewEncoder(os.Stdout)
    enc.SetIndent("", " ")
    if err := enc.Encode(toks); err != nil {
