@@ -1,6 +1,7 @@
 package parse
 
 import (
+   "fmt"
    "github.com/segmentio/encoding/proto"
 )
 
@@ -17,7 +18,7 @@ func consume(f proto.FieldNumber, t proto.WireType, dat proto.RawValue) interfac
       if sub != nil {
          return sub
       }
-      return string(dat)
+      return fmt.Sprintf("%q", dat)
    }
    return nil
 }
