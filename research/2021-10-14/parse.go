@@ -4,12 +4,6 @@ import (
    "github.com/segmentio/encoding/proto"
 )
 
-type field struct {
-   num proto.FieldNumber
-   typ proto.WireType
-   val interface{}
-}
-
 func consume(f proto.FieldNumber, t proto.WireType, dat proto.RawValue) interface{} {
    switch t {
    case proto.Fixed32:
@@ -26,6 +20,12 @@ func consume(f proto.FieldNumber, t proto.WireType, dat proto.RawValue) interfac
       return string(dat)
    }
    return nil
+}
+
+type field struct {
+   num proto.FieldNumber
+   typ proto.WireType
+   val interface{}
 }
 
 func parse(data []byte) []field {

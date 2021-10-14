@@ -18,7 +18,7 @@ func consume(n protowire.Number, t protowire.Type, data []byte) (interface{}, in
       if sub != nil {
          return sub, vLen
       }
-      return v, vLen
+      return string(v), vLen
    case protowire.StartGroupType:
       v, vLen := protowire.ConsumeGroup(n, data)
       sub := Parse(v)
@@ -51,14 +51,7 @@ func Parse(data []byte) []Field {
       if vLen < 1 {
          return nil
       }
-      fld := Field{Number: n, Type: t}
-      bytes, ok := v.([]byte)
-      if ok {
-         fld.Value = string(bytes)
-      } else {
-         fld.Value = v
-      }
-      flds = append(flds, fld)
+      flds = append(flds, Field{n, t, v})
       data = data[fLen:]
    }
    return flds

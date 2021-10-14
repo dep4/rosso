@@ -15,6 +15,15 @@ type (
    Tag = protopack.Tag
 )
 
+func TestFile(t *testing.T) {
+   data, err := os.ReadFile("details.txt")
+   if err != nil {
+      t.Fatal(err)
+   }
+   flds := parse(data)
+   fmt.Printf("%+v\n", flds)
+}
+
 func TestParse(t *testing.T) {
    in := Message{
       Tag{6, BytesType}, LengthPrefix{
