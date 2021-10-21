@@ -67,9 +67,6 @@ func NewTransport(spec *tls.ClientHelloSpec) *http.Transport {
          if err := uTLSConn.ApplyPreset(spec); err != nil {
             return nil, err
          }
-         if err := uTLSConn.Handshake(); err != nil {
-            return nil, err
-         }
          return uTLSConn, nil
       },
    }

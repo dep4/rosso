@@ -1,8 +1,7 @@
 # October 21 2021
 
-~~~
-sorry, we just need to make sure you're not a robot
-For best results, please make sure your browser is accepting cookies
-~~~
+We need to go here:
 
-https://github.com/gocolly/colly/issues/628
+https://client.tlsfingerprint.io:8443
+
+with Android.
