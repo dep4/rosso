@@ -57,32 +57,32 @@ var preset = &tls.ClientHelloSpec{
       },
       &tls.SupportedCurvesExtension{
          []tls.CurveID{
-            tls.X25519,
-            tls.CurveP256,
+            tls.X25519, // 0x1D
+            tls.CurveP256, // 0x17
             0x001E, // Curve448
-            tls.CurveP521,
-            tls.CurveP384,
+            tls.CurveP521, // 0x19
+            tls.CurveP384, // 0x18
          },
       },
-      &tls.GenericExtension{Id: 35}, // session_ticket
-      &tls.GenericExtension{Id: 22}, // encrypt_then_mac
+      &tls.SessionTicketExtension{},
+      &tls.GenericExtension{Id: 0x16}, // 22 encrypt_then_mac
       &tls.UtlsExtendedMasterSecretExtension{},
       &tls.SignatureAlgorithmsExtension{
          SupportedSignatureAlgorithms: []tls.SignatureScheme{
-            tls.ECDSAWithP256AndSHA256,
-            tls.PKCS1WithSHA256,
-            tls.PSSWithSHA256,
+            tls.ECDSAWithP256AndSHA256, // 0x0403
+            tls.PKCS1WithSHA256, // 0x0401
+            tls.PSSWithSHA256, // 0x0804
          },
       },
       &tls.SupportedVersionsExtension{
-         []uint16{tls.VersionTLS12},
+         []uint16{tls.VersionTLS12}, // 0x0303
       },
       &tls.PSKKeyExchangeModesExtension{
-         []uint8{tls.PskModeDHE},
+         []uint8{tls.PskModeDHE}, // 0x1
       },
       &tls.KeyShareExtension{
          []tls.KeyShare{
-            {Group: tls.X25519},
+            {Group: tls.X25519}, // 0x1D
          },
       },
    },
