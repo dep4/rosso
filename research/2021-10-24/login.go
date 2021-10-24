@@ -12,8 +12,6 @@ import (
    "strings"
 )
 
-var _ = bufio.NewReader
-
 func main() {
    f, err := os.Open("PCAPdroid_22_Oct_15_19_28.pcap")
    if err != nil {
