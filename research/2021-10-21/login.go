@@ -2,7 +2,6 @@ package main
 
 import (
    "bufio"
-   "fmt"
    "github.com/89z/parse/pcap"
    "github.com/refraction-networking/utls"
    "net"
@@ -11,8 +10,9 @@ import (
    "net/url"
    "os"
    "strings"
-   "time"
 )
+
+var _ = bufio.NewReader
 
 func main() {
    f, err := os.Open("PCAPdroid_22_Oct_15_19_28.pcap")
@@ -25,44 +25,20 @@ func main() {
       panic(err)
    }
    fp := tls.Fingerprinter{AllowBluntMimicry: true}
-   for _, hand := range hands {
-      fmt.Println(hand)
-      spec, err := fp.FingerprintClientHello(hand)
-      if err != nil {
-         fmt.Println(err)
-         continue
-      }
-      var exts []tls.TLSExtension
-      for _, ext := range spec.Extensions {
-         switch v := ext.(type) {
-         case *tls.ALPNExtension:
-            exts = append(exts, &tls.ALPNExtension{
-               []string{"http/1.1"},
-            })
-         case *tls.GenericExtension:
-            if v.Id != 0x7550 {
-               exts = append(exts, ext)
-            }
-         default:
-            exts = append(exts, ext)
-         }
-      }
-      spec.Extensions = exts
-      res, err := post(spec)
-      if err != nil {
-         panic(err)
-      }
-      defer res.Body.Close()
-      dum, err := httputil.DumpResponse(res, true)
-      if err != nil {
-         panic(err)
-      }
-      os.Stdout.Write(dum)
-      if res.StatusCode == http.StatusOK {
-         break
-      }
-      time.Sleep(time.Second)
+   spec, err := fp.FingerprintClientHello(hands[0])
+   if err != nil {
+      panic(err)
    }
+   res, err := post(spec)
+   if err != nil {
+      panic(err)
+   }
+   defer res.Body.Close()
+   dum, err := httputil.DumpResponse(res, true)
+   if err != nil {
+      panic(err)
+   }
+   os.Stdout.Write(dum)
 }
 
 func post(spec *tls.ClientHelloSpec) (*http.Response, error) {
