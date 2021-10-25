@@ -1,38 +1,40 @@
 package pcap
 
 import (
-   "encoding/hex"
-   "github.com/google/gopacket"
-   "github.com/google/gopacket/layers"
-   "github.com/google/gopacket/pcapgo"
-   "io"
+   "bytes"
+   "encoding/binary"
+   "github.com/refraction-networking/utls"
 )
 
 type Handshake []byte
 
-func Handshakes(r io.Reader) ([]Handshake, error) {
-   read, err := pcapgo.NewReader(r)
-   if err != nil {
-      return nil, err
-   }
+func Handshakes(data []byte) []Handshake {
    var hands []Handshake
    for {
-      data, _, err := read.ReadPacketData()
-      if err == io.EOF {
-         return hands, nil
-      } else if err != nil {
-         return nil, err
+      // start of record
+      rec1 := bytes.IndexByte(data, 0x16)
+      if rec1 == -1 {
+         return hands
       }
-      pack := gopacket.NewPacket(
-         data, read.LinkType(), gopacket.DecodeStreamsAsDatagrams,
-      )
-      tls, ok := pack.Layer(layers.LayerTypeTLS).(*layers.TLS)
-      if ok && tls.Handshake != nil {
-         hands = append(hands, tls.BaseLayer.Contents)
+      // start of version
+      ver1 := rec1 + 1
+      // start of length
+      len1 := ver1 + 2
+      // end of length
+      len2 := len1 + 2
+      if len2 < len(data) {
+         recLen := binary.BigEndian.Uint16(data[len1:len2])
+         // end of record
+         rec2 := len2 + int(recLen)
+         if rec2 < len(data) {
+            hands = append(hands, data[rec1:rec2])
+         }
       }
+      data = data[rec1+1:]
    }
 }
 
-func (h Handshake) String() string {
-   return hex.EncodeToString(h)
+func (h Handshake) ClientHello() (*tls.ClientHelloSpec, error) {
+   var fp tls.Fingerprinter
+   return fp.FingerprintClientHello(h)
 }

@@ -7,16 +7,14 @@ import (
 )
 
 func TestPcap(t *testing.T) {
-   f, err := os.Open("PCAPdroid_22_Oct_15_19_28.pcap")
+   data, err := os.ReadFile("PCAPdroid_25_Oct_21_53_41.pcap")
    if err != nil {
       t.Fatal(err)
    }
-   defer f.Close()
-   hands, err := Handshakes(f)
-   if err != nil {
-      t.Fatal(err)
-   }
-   for _, hand := range hands {
-      fmt.Println(hand)
+   for _, hand := range Handshakes(data) {
+      spec, err := hand.ClientHello()
+      if err == nil {
+         fmt.Printf("%+v\n", spec)
+      }
    }
 }

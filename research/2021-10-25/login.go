@@ -13,30 +13,26 @@ import (
 )
 
 func main() {
-   f, err := os.Open("PCAPdroid_22_Oct_15_19_28.pcap")
+   data, err := os.ReadFile("PCAPdroid_25_Oct_21_53_41.pcap")
    if err != nil {
       panic(err)
    }
-   defer f.Close()
-   hands, err := pcap.Handshakes(f)
-   if err != nil {
-      panic(err)
+   for _, hand := range pcap.Handshakes(data) {
+      spec, err := hand.ClientHello()
+      if err == nil {
+         res, err := post(spec)
+         if err != nil {
+            panic(err)
+         }
+         defer res.Body.Close()
+         dum, err := httputil.DumpResponse(res, true)
+         if err != nil {
+            panic(err)
+         }
+         os.Stdout.Write(dum)
+         break
+      }
    }
-   fp := tls.Fingerprinter{AllowBluntMimicry: true}
-   spec, err := fp.FingerprintClientHello(hands[0])
-   if err != nil {
-      panic(err)
-   }
-   res, err := post(spec)
-   if err != nil {
-      panic(err)
-   }
-   defer res.Body.Close()
-   dum, err := httputil.DumpResponse(res, true)
-   if err != nil {
-      panic(err)
-   }
-   os.Stdout.Write(dum)
 }
 
 func post(spec *tls.ClientHelloSpec) (*http.Response, error) {
