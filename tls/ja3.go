@@ -1,4 +1,4 @@
-package ja3
+package tls
 
 import (
    "crypto/sha256"
@@ -9,47 +9,6 @@ import (
    "strconv"
    "strings"
 )
-
-// Default values can be deleted, but otherwise dont delete or change anything,
-// to avoid making a mistake. Using a function prevents modification.
-func HelloGolang() *tls.ClientHelloSpec {
-   return &tls.ClientHelloSpec{
-      CipherSuites:[]uint16{
-         0xc02b, 0xc02f, 0xc02c, 0xc030, 0xcca9, 0xcca8, 0xc009, 0xc013, 0xc00a,
-         0xc014, 0x9c, 0x9d, 0x2f, 0x35, 0xc012, 0xa, 0x1301, 0x1302, 0x1303,
-      },
-      CompressionMethods:[]uint8{0x0},
-      Extensions:[]tls.TLSExtension{
-         &tls.SNIExtension{},
-         &tls.StatusRequestExtension{},
-         &tls.SupportedCurvesExtension{
-            Curves:[]tls.CurveID{0x1d, 0x17, 0x18, 0x19},
-         },
-         &tls.SupportedPointsExtension{
-            SupportedPoints:[]uint8{0x0},
-         },
-         &tls.SignatureAlgorithmsExtension{
-            SupportedSignatureAlgorithms:[]tls.SignatureScheme{
-               0x804, 0x403, 0x807, 0x805, 0x806, 0x401, 0x501, 0x601, 0x503,
-               0x603, 0x201, 0x203,
-            },
-         },
-         &tls.RenegotiationInfoExtension{Renegotiation:1},
-         &tls.ALPNExtension{
-            AlpnProtocols:[]string{"h2", "http/1.1"},
-         },
-         &tls.SCTExtension{},
-         &tls.SupportedVersionsExtension{
-            Versions:[]uint16{0x304, 0x303, 0x302, 0x301},
-         },
-         &tls.KeyShareExtension{
-            KeyShares:[]tls.KeyShare{
-               tls.KeyShare{Group:0x1d},
-            },
-         },
-      },
-   }
-}
 
 // NewTransport creates an http.Transport which mocks the given JA3 signature
 // when HTTPS is used.
@@ -63,11 +22,14 @@ func NewTransport(spec *tls.ClientHelloSpec) *http.Transport {
          config := &tls.Config{
             ServerName: strings.Split(addr, ":")[0],
          }
-         uTLSConn := tls.UClient(dialConn, config, tls.HelloCustom)
-         if err := uTLSConn.ApplyPreset(spec); err != nil {
+         uconn := tls.UClient(dialConn, config, tls.HelloCustom)
+         if err := uconn.ApplyPreset(spec); err != nil {
             return nil, err
          }
-         return uTLSConn, nil
+         if err := uconn.Handshake(); err != nil {
+            return nil, err
+         }
+         return uconn, nil
       },
    }
 }
@@ -203,3 +165,4 @@ func version(min uint16) []uint16 {
    }
    return nil
 }
+

@@ -1,4 +1,4 @@
-package pcap
+package tls
 
 import (
    "bytes"
@@ -8,6 +8,10 @@ import (
 )
 
 type Handshake []byte
+
+func Decode(s string) (Handshake, error) {
+   return hex.DecodeString(s)
+}
 
 func Handshakes(data []byte) []Handshake {
    var hands []Handshake
@@ -38,8 +42,4 @@ func Handshakes(data []byte) []Handshake {
 func (h Handshake) ClientHello() (*tls.ClientHelloSpec, error) {
    var fp tls.Fingerprinter
    return fp.FingerprintClientHello(h)
-}
-
-func (h Handshake) String() string {
-   return hex.EncodeToString(h)
 }

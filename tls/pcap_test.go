@@ -1,4 +1,4 @@
-package pcap
+package tls
 
 import (
    "fmt"
@@ -14,7 +14,6 @@ func TestPcap(t *testing.T) {
    for _, hand := range Handshakes(data) {
       spec, err := hand.ClientHello()
       if err == nil {
-         fmt.Println(hand)
          fmt.Printf("%+v\n", spec)
       }
    }

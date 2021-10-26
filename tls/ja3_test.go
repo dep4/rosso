@@ -1,4 +1,4 @@
-package ja3
+package tls
 
 import (
    "encoding/hex"
