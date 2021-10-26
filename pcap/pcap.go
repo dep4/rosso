@@ -3,6 +3,7 @@ package pcap
 import (
    "bytes"
    "encoding/binary"
+   "encoding/hex"
    "github.com/refraction-networking/utls"
 )
 
@@ -37,4 +38,8 @@ func Handshakes(data []byte) []Handshake {
 func (h Handshake) ClientHello() (*tls.ClientHelloSpec, error) {
    var fp tls.Fingerprinter
    return fp.FingerprintClientHello(h)
+}
+
+func (h Handshake) String() string {
+   return hex.EncodeToString(h)
 }
