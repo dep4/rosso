@@ -4,35 +4,9 @@ import (
    "crypto/sha256"
    "fmt"
    "github.com/refraction-networking/utls"
-   "net"
-   "net/http"
    "strconv"
    "strings"
 )
-
-// NewTransport creates an http.Transport which mocks the given JA3 signature
-// when HTTPS is used.
-func NewTransport(spec *tls.ClientHelloSpec) *http.Transport {
-   return &http.Transport{
-      DialTLS: func(network, addr string) (net.Conn, error) {
-         dialConn, err := net.Dial(network, addr)
-         if err != nil {
-            return nil, err
-         }
-         config := &tls.Config{
-            ServerName: strings.Split(addr, ":")[0],
-         }
-         uconn := tls.UClient(dialConn, config, tls.HelloCustom)
-         if err := uconn.ApplyPreset(spec); err != nil {
-            return nil, err
-         }
-         if err := uconn.Handshake(); err != nil {
-            return nil, err
-         }
-         return uconn, nil
-      },
-   }
-}
 
 // Parse creates a ClientHelloSpec based on a JA3 string.
 // iana.org/assignments/tls-extensiontype-values/tls-extensiontype-values.xhtml
@@ -165,4 +139,3 @@ func version(min uint16) []uint16 {
    }
    return nil
 }
-

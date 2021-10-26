@@ -5,7 +5,32 @@ import (
    "encoding/binary"
    "encoding/hex"
    "github.com/refraction-networking/utls"
+   "net"
+   "net/http"
+   "strings"
 )
+
+func NewTransport(spec *tls.ClientHelloSpec) *http.Transport {
+   return &http.Transport{
+      DialTLS: func(network, addr string) (net.Conn, error) {
+         dialConn, err := net.Dial(network, addr)
+         if err != nil {
+            return nil, err
+         }
+         config := &tls.Config{
+            ServerName: strings.Split(addr, ":")[0],
+         }
+         uconn := tls.UClient(dialConn, config, tls.HelloCustom)
+         if err := uconn.ApplyPreset(spec); err != nil {
+            return nil, err
+         }
+         if err := uconn.Handshake(); err != nil {
+            return nil, err
+         }
+         return uconn, nil
+      },
+   }
+}
 
 type Handshake []byte
 
