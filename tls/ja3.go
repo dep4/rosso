@@ -5,11 +5,75 @@ import (
    "encoding/binary"
    "fmt"
    "github.com/refraction-networking/utls"
+   "io"
    "strconv"
    "strings"
 )
 
-// iana.org/assignments/tls-extensiontype-values/tls-extensiontype-values.xhtml
+func Marshal(hello *ClientHello) ([]byte, error) {
+   var data []byte
+   // Version
+   data = strconv.AppendUint(data, uint64(hello.Version), 10)
+   data = append(data, ',')
+   // Cipher Suites
+   if len(hello.CipherSuites) == 0 {
+      data = append(data, ',')
+   } else {
+      for _, val := range hello.CipherSuites {
+         data = strconv.AppendUint(data, uint64(val), 10)
+         data = append(data, '-')
+      }
+      // Replace last dash with a comma
+      data[len(data)-1] = ','
+   }
+   // Extensions
+   var (
+      supportedCurves []tls.CurveID
+      supportedPoints []uint8
+   )
+   if len(hello.Extensions) == 0 {
+      data = append(data, ',')
+   } else {
+      for _, iExt := range hello.Extensions {
+         switch sExt := iExt.(type) {
+         case *tls.SupportedCurvesExtension:
+            supportedCurves = sExt.Curves
+         case *tls.SupportedPointsExtension:
+            supportedPoints = sExt.SupportedPoints
+         }
+         val, err := value(iExt)
+         if err != nil {
+            return nil, err
+         }
+         data = strconv.AppendUint(data, uint64(val), 10)
+         data = append(data, '-')
+      }
+      // Replace last dash with a comma
+      data[len(data)-1] = ','
+   }
+   // Elliptic curves
+   if len(supportedCurves) == 0 {
+      data = append(data, ',')
+   } else {
+      for _, val := range supportedCurves {
+         data = strconv.AppendUint(data, uint64(val), 10)
+         data = append(data, '-')
+      }
+      // Replace last dash with a comma
+      data[len(data)-1] = ','
+   }
+   // ECPF
+   if len(supportedPoints) > 0 {
+      for _, val := range supportedPoints {
+         data = strconv.AppendUint(data, uint64(val), 10)
+         data = append(data, '-')
+      }
+      // Remove last dash
+      data = data[:len(data)-1]
+   }
+   return data, nil
+}
+
 func Parse(ja3 string) (*ClientHello, error) {
    // This must be local, to prevent mutation.
    exts := make(map[string]tls.TLSExtension)
@@ -129,4 +193,12 @@ func Parse(ja3 string) (*ClientHello, error) {
    return &ClientHello{
       spec, binary.BigEndian.Uint16(version),
    }, nil
+}
+
+func value(ext tls.TLSExtension) (uint16, error) {
+   data, err := io.ReadAll(ext)
+   if err != nil {
+      return 0, err
+   }
+   return binary.BigEndian.Uint16(data), nil
 }
