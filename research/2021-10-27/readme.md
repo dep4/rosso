@@ -1,8 +1,8 @@
-# October 26 2021
+# October 27 2021
 
 https://godocs.io/sort#Search
 
-`ClientHelloSpec` to `JA3`
+`ClientHello` to `JA3`
 
 58 lines:
 

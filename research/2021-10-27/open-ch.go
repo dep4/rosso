@@ -1,55 +1,67 @@
 package main
 
 import (
-   "github.com/refraction-networking/utls"
+   "github.com/89z/parse/tls"
 )
 
-func marshalJA3(hello *tls.ClientHelloSpec) []byte {
+func value(ext tls.TLSExtension) (uint16, error) {
+   data, err := io.ReadAll(ext)
+   if err != nil {
+      return 0, err
+   }
+   return binary.BigEndian.Uint16(data), nil
+}
+
+func marshalJA3(hello *tls.ClientHello) []byte {
    // An uint16 can contain numbers with up to 5 digits and an uint8 can
    // contain numbers with up to 3 digits, but we also need a byte for each
    // separating character, except at the end.
    var data []byte
    // Version
-   data = strconv.AppendUint(data, uint64(j.version), 10)
-   data = append(data, commaByte)
+   data = strconv.AppendUint(data, uint64(hello.Version), 10)
+   data = append(data, ',')
    // Cipher Suites
-   if len(j.cipherSuites) != 0 {
-      for _, val := range j.cipherSuites {
+   if len(hello.CipherSuites) == 0 {
+      data = append(data, ',')
+   } else {
+      for _, val := range hello.CipherSuites {
          data = strconv.AppendUint(data, uint64(val), 10)
-         data = append(data, dashByte)
+         data = append(data, '-')
       }
       // Replace last dash with a comma
-      data[len(data)-1] = commaByte
-   } else {
-      data = append(data, commaByte)
+      data[len(data)-1] = ','
    }
    // Extensions
-   if len(j.extensions) != 0 {
-      for _, val := range j.extensions {
+   if len(hello.Extensions) == 0 {
+      data = append(data, ',')
+   } else {
+      for _, ext := range hello.Extensions {
+         val, err := value(ext)
+         if err != nil {
+            return nil
+         }
          data = strconv.AppendUint(data, uint64(val), 10)
-         data = append(data, dashByte)
+         data = append(data, '-')
       }
       // Replace last dash with a comma
-      data[len(data)-1] = commaByte
-   } else {
-      data = append(data, commaByte)
+      data[len(data)-1] = ','
    }
    // Elliptic curves
    if len(j.ellipticCurves) != 0 {
       for _, val := range j.ellipticCurves {
          data = strconv.AppendUint(data, uint64(val), 10)
-         data = append(data, dashByte)
+         data = append(data, '-')
       }
       // Replace last dash with a comma
-      data[len(data)-1] = commaByte
+      data[len(data)-1] = ','
    } else {
-      data = append(data, commaByte)
+      data = append(data, ',')
    }
    // ECPF
    if len(j.ellipticCurvePF) != 0 {
       for _, val := range j.ellipticCurvePF {
          data = strconv.AppendUint(data, uint64(val), 10)
-         data = append(data, dashByte)
+         data = append(data, '-')
       }
       // Remove last dash
       data = data[:len(data)-1]

@@ -2,20 +2,21 @@ package tls
 
 import (
    "crypto/sha256"
+   "encoding/binary"
    "fmt"
    "github.com/refraction-networking/utls"
    "strconv"
    "strings"
 )
 
-// Parse creates a ClientHelloSpec based on a JA3 string.
 // iana.org/assignments/tls-extensiontype-values/tls-extensiontype-values.xhtml
-func Parse(ja3 string) (*tls.ClientHelloSpec, error) {
+func Parse(ja3 string) (*ClientHello, error) {
    // This must be local, to prevent mutation.
    exts := make(map[string]tls.TLSExtension)
    tokens := strings.Split(ja3, ",")
    spec := &tls.ClientHelloSpec{
-      CompressionMethods: []byte{0}, GetSessionID: sha256.Sum256,
+      CompressionMethods: []byte{0},
+      GetSessionID: sha256.Sum256,
    }
    // build CipherSuites
    ciphers := tokens[1]
@@ -88,13 +89,10 @@ func Parse(ja3 string) (*tls.ClientHelloSpec, error) {
    exts["28"] = &tls.FakeRecordSizeLimitExtension{}
    // set extension 35
    exts["35"] = &tls.SessionTicketExtension{}
-   // set extension 43
-   vid64, err := strconv.ParseUint(tokens[0], 10, 16)
-   if err != nil {
-      return nil, err
-   }
+   // Set extension 43. JA3 does not specify what these should be, so just use
+   // Golang default.
    exts["43"] = &tls.SupportedVersionsExtension{
-      version(uint16(vid64)),
+      []uint16{0x304, 0x303, 0x302, 0x301},
    }
    // set extension 45
    exts["45"] = &tls.PSKKeyExchangeModesExtension{
@@ -127,15 +125,8 @@ func Parse(ja3 string) (*tls.ClientHelloSpec, error) {
       spec.Extensions = append(spec.Extensions, te)
    }
    // return
-   return spec, nil
-}
-
-func version(min uint16) []uint16 {
-   vs := []uint16{772, 771, 770, 769, 768}
-   for k, v := range vs {
-      if v == min {
-         return vs[:k+1]
-      }
-   }
-   return nil
+   version := []byte(tokens[0])
+   return &ClientHello{
+      spec, binary.BigEndian.Uint16(version),
+   }, nil
 }
