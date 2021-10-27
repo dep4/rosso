@@ -1,21 +1,15 @@
 # October 26 2021
 
-In an actual handshake, the version is sent over as two bytes:
+`ClientHelloSpec` does not store the TLS Version for the initial Client Hello,
+only `SupportedVersionsExtension`:
 
-~~~
-0x03 0x01
-~~~
+<https://github.com/refraction-networking/utls/blob/0b2885c8/u_common.go#L114-L117>
 
-but other versions could be available via `SupportedVersionsExtension`.
+Then, for the initial Client Hello, TLS version 1.0 is used:
 
-https://godocs.io/sort#Search
+https://github.com/refraction-networking/utls/blob/0b2885c8/conn.go#L944-L948
 
-`ClientHelloSpec` to `JA3`
+To solve, we need to make our own struct. Here are some examples:
 
-58 lines:
-
-https://github.com/open-ch/ja3/blob/d0c402d2/parser.go#L277-L335
-
-108 lines:
-
-https://github.com/dreadl0ck/ja3/blob/94ba70d7/ja3.go#L75-L183
+- https://github.com/dreadl0ck/tlsx/blob/v1.0.0/clientHello.go#L287-L300
+- https://github.com/open-ch/ja3/blob/v1.0.1/ja3.go#L15-L24
