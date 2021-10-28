@@ -1,4 +1,4 @@
-package tls
+package main
 
 import (
    "fmt"
@@ -8,13 +8,12 @@ import (
    "net/url"
    "os"
    "strings"
-   "testing"
 )
 
-func TestParse(t *testing.T) {
-   hello, err := parse(tls.Android)
+func main() {
+   hello, err := tls.Parse(tls.Android)
    if err != nil {
-      t.Fatal(err)
+      panic(err)
    }
    val := url.Values{
       "Email": {"srpen6@gmail.com"},
@@ -26,19 +25,19 @@ func TestParse(t *testing.T) {
       strings.NewReader(val.Encode()),
    )
    if err != nil {
-      t.Fatal(err)
+      panic(err)
    }
    req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
    fmt.Println("RoundTrip")
    res, err := tls.NewTransport(hello.ClientHelloSpec).RoundTrip(req)
    if err != nil {
-      t.Fatal(err)
+      panic(err)
    }
    defer res.Body.Close()
    fmt.Println("DumpResponse")
    dum, err := httputil.DumpResponse(res, true)
    if err != nil {
-      t.Fatal(err)
+      panic(err)
    }
    os.Stdout.Write(dum)
 }
