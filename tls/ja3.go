@@ -10,68 +10,59 @@ import (
    "strings"
 )
 
-func Marshal(hello *ClientHello) ([]byte, error) {
-   var data []byte
+const Android = "769,49195-49196-52393-49199-49200-52392-158-159-49161-49162-49171-49172-51-57-156-157-47-53,65281-0-23-35-13-16-11-10,23,0"
+
+func Marshal(hello *ClientHello) (string, error) {
+   buf := new(strings.Builder)
    // Version
-   data = strconv.AppendUint(data, uint64(hello.Version), 10)
-   data = append(data, ',')
+   fmt.Fprint(buf, hello.Version)
    // Cipher Suites
-   if len(hello.CipherSuites) == 0 {
-      data = append(data, ',')
-   } else {
-      for _, val := range hello.CipherSuites {
-         data = strconv.AppendUint(data, uint64(val), 10)
-         data = append(data, '-')
+   buf.WriteByte(',')
+   for key, val := range hello.CipherSuites {
+      if key > 0 {
+         buf.WriteByte('-')
       }
-      // Replace last dash with a comma
-      data[len(data)-1] = ','
+      fmt.Fprint(buf, val)
    }
    // Extensions
+   buf.WriteByte(',')
    var (
-      supportedCurves []tls.CurveID
-      supportedPoints []uint8
+      curves []tls.CurveID
+      points []uint8
    )
-   if len(hello.Extensions) == 0 {
-      data = append(data, ',')
-   } else {
-      for _, iExt := range hello.Extensions {
-         switch sExt := iExt.(type) {
-         case *tls.SupportedCurvesExtension:
-            supportedCurves = sExt.Curves
-         case *tls.SupportedPointsExtension:
-            supportedPoints = sExt.SupportedPoints
-         }
-         val, err := value(iExt)
-         if err != nil {
-            return nil, err
-         }
-         data = strconv.AppendUint(data, uint64(val), 10)
-         data = append(data, '-')
+   for key, val := range hello.Extensions {
+      if key > 0 {
+         buf.WriteByte('-')
       }
-      // Replace last dash with a comma
-      data[len(data)-1] = ','
+      typ, err := extensionType(val)
+      if err != nil {
+         return "", err
+      }
+      fmt.Fprint(buf, typ)
+      switch ext := val.(type) {
+      case *tls.SupportedCurvesExtension:
+         curves = ext.Curves
+      case *tls.SupportedPointsExtension:
+         points = ext.SupportedPoints
+      }
    }
    // Elliptic curves
-   if len(supportedCurves) == 0 {
-      data = append(data, ',')
-   } else {
-      for _, val := range supportedCurves {
-         data = strconv.AppendUint(data, uint64(val), 10)
-         data = append(data, '-')
+   buf.WriteByte(',')
+   for key, val := range curves {
+      if key > 0 {
+         buf.WriteByte('-')
       }
-      // Replace last dash with a comma
-      data[len(data)-1] = ','
+      fmt.Fprint(buf, val)
    }
    // ECPF
-   if len(supportedPoints) > 0 {
-      for _, val := range supportedPoints {
-         data = strconv.AppendUint(data, uint64(val), 10)
-         data = append(data, '-')
+   buf.WriteByte(',')
+   for key, val := range points {
+      if key > 0 {
+         buf.WriteByte('-')
       }
-      // Remove last dash
-      data = data[:len(data)-1]
+      fmt.Fprint(buf, val)
    }
-   return data, nil
+   return buf.String(), nil
 }
 
 func Parse(ja3 string) (*ClientHello, error) {
@@ -189,13 +180,16 @@ func Parse(ja3 string) (*ClientHello, error) {
       spec.Extensions = append(spec.Extensions, te)
    }
    // return
-   version := []byte(tokens[0])
+   ver, err := strconv.Atoi(tokens[0])
+   if err != nil {
+      return nil, err
+   }
    return &ClientHello{
-      spec, binary.BigEndian.Uint16(version),
+      spec, uint16(ver),
    }, nil
 }
 
-func value(ext tls.TLSExtension) (uint16, error) {
+func extensionType(ext tls.TLSExtension) (uint16, error) {
    data, err := io.ReadAll(ext)
    if err != nil {
       return 0, err
