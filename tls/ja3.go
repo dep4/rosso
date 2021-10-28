@@ -5,7 +5,6 @@ import (
    "fmt"
    "github.com/refraction-networking/utls"
    "io"
-   "strconv"
    "strings"
 )
 
@@ -66,54 +65,46 @@ func Marshal(hello *ClientHello) (string, error) {
 
 func Parse(ja3 string) (*ClientHello, error) {
    tokens := strings.Split(ja3, ",")
-   ver, err := strconv.Atoi(tokens[0])
-   if err != nil {
-      return nil, err
-   }
+   var version uint16
+   fmt.Sscan(tokens[0], &version)
    hello := ClientHello{
-      new(tls.ClientHelloSpec), uint16(ver),
+      new(tls.ClientHelloSpec), version,
    }
    // build CipherSuites
    ciphers := strings.Split(tokens[1], "-")
-   for _, key := range ciphers {
-      val, err := strconv.ParseUint(key, 10, 16)
-      if err != nil {
-         return nil, err
-      }
-      hello.CipherSuites = append(hello.CipherSuites, uint16(val))
+   for _, cipher := range ciphers {
+      var scan uint16
+      fmt.Sscan(cipher, &scan)
+      hello.CipherSuites = append(hello.CipherSuites, scan)
    }
    // build extenions list
-   extensions := strings.Split(tokens[2], "-")
-   for _, key := range extensions {
-      var val tls.TLSExtension
-      switch key {
+   extKeys := strings.Split(tokens[2], "-")
+   for _, extKey := range extKeys {
+      var ext tls.TLSExtension
+      switch extKey {
       case "0":
-         val = &tls.SNIExtension{}
+         ext = &tls.SNIExtension{}
       case "10":
-         var cids []tls.CurveID
-         curves := strings.Split(tokens[3], "-")
-         for _, key := range curves {
-            val, err := strconv.ParseUint(key, 10, 16)
-            if err != nil {
-               return nil, err
-            }
-            cids = append(cids, tls.CurveID(val))
+         var curves []tls.CurveID
+         curveKeys := strings.Split(tokens[3], "-")
+         for _, curveKey := range curveKeys {
+            var curve tls.CurveID
+            fmt.Sscan(curveKey, &curve)
+            curves = append(curves, curve)
          }
-         val = &tls.SupportedCurvesExtension{cids}
+         ext = &tls.SupportedCurvesExtension{curves}
       case "11":
-         var pids []uint8
-         points := strings.Split(tokens[4], "-")
-         for _, key := range points {
-            val, err := strconv.ParseUint(key, 10, 8)
-            if err != nil {
-               return nil, err
-            }
-            pids = append(pids, uint8(val))
+         var points []uint8
+         pointKeys := strings.Split(tokens[4], "-")
+         for _, pointKey := range pointKeys {
+            var point uint8
+            fmt.Sscan(pointKey, &point)
+            points = append(points, point)
          }
-         val = &tls.SupportedPointsExtension{pids}
+         ext = &tls.SupportedPointsExtension{points}
       case "13":
          // this cant be empty, so just use the Go default
-         val = &tls.SignatureAlgorithmsExtension{
+         ext = &tls.SignatureAlgorithmsExtension{
             []tls.SignatureScheme{
                0x804, 0x403, 0x807, 0x805, 0x806, 0x401,
                0x501, 0x601, 0x503, 0x603, 0x201, 0x203,
@@ -121,17 +112,17 @@ func Parse(ja3 string) (*ClientHello, error) {
          }
       case "16":
          // if we leave this empty, it will fail on any HTTP/2 servers
-         val = &tls.ALPNExtension{
+         ext = &tls.ALPNExtension{
             []string{"http/1.1"},
          }
       case "23":
-         val = &tls.UtlsExtendedMasterSecretExtension{}
+         ext = &tls.UtlsExtendedMasterSecretExtension{}
       case "35":
-         val = &tls.SessionTicketExtension{}
+         ext = &tls.SessionTicketExtension{}
       case "65281":
-         val = &tls.RenegotiationInfoExtension{}
+         ext = &tls.RenegotiationInfoExtension{}
       }
-      hello.Extensions = append(hello.Extensions, val)
+      hello.Extensions = append(hello.Extensions, ext)
    }
    return &hello, nil
 }
