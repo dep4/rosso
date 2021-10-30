@@ -2,50 +2,37 @@ package binary
 
 import (
    "bytes"
-   "encoding/binary"
+   "github.com/89z/parse/binary"
+   "io"
 )
 
-// L1        L2 H2        H3                H1
-//  |         |  |         |                 |
-//  +---------+--+---------+-----------------+
 func handshakes(data []byte) [][]byte {
+   r := bytes.NewReader(data)
    var hands [][]byte
    for {
-      L1 := bytes.IndexByte(data, 0x16)
-      if L1 == -1 {
-         return hands
-      }
-      L2 := L1
-      // skip content type
-      L2 += 1
-      // skip version
-      L2 += 2
-      H2 := L2
-      // skip length
-      H2 += 2
-      H3 := H2
-      // skip handshake
-      length := slice(data, L2, H2)
-      if length != nil {
-         H3 += int(binary.BigEndian.Uint16(length))
-         hand := slice(data, L1, H3)
-         if hand != nil {
-            hands = append(hands, hand)
+      for {
+         typ, err := r.ReadByte()
+         if err != nil {
+            return hands
+         }
+         if typ == 0x16 {
+            break
          }
       }
-      data = data[1:]
+      w := new(bytes.Buffer)
+      // Content Type
+      io.CopyN(w, r, 1)
+      // Version
+      io.CopyN(w, r, 2)
+      // Length, Handshake Protocol
+      var buf [2]byte
+      r.Read(buf[:])
+      w.Write(buf[:])
+      off, err := io.CopyN(w, r, binary.Varint(buf[:]))
+      if err != nil {
+         r.Seek(-off, io.SeekCurrent)
+      } else {
+         hands = append(hands, w.Bytes())
+      }
    }
-}
-
-func slice(data []byte, low, high int) []byte {
-   if high <= low {
-      return nil
-   }
-   if high < 0 {
-      return nil
-   }
-   if high > len(data) {
-      return nil
-   }
-   return data[low:high]
 }
