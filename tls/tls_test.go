@@ -14,7 +14,7 @@ func TestHandshakes(t *testing.T) {
    if err != nil {
       t.Fatal(err)
    }
-   for _, hand := range Handshakes(data) {
+   for _, hand := range handshakes(data) {
       hello, err := ParseHandshake(hand)
       if err == nil {
          fmt.Printf("%+v\n", hello)

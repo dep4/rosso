@@ -13,6 +13,6 @@ func TestDecode(t *testing.T) {
    if err != nil {
       t.Fatal(err)
    }
-   mod := newDecoder(data).uint32LengthPrefixed()
+   mod := NewDecoder(data).Uint32LengthPrefixed()
    fmt.Println(len(mod))
 }

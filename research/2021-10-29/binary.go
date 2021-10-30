@@ -1,84 +1,51 @@
 package binary
 
 import (
+   "bytes"
    "encoding/binary"
 )
 
-type decoder struct {
-   data []byte
-   low, high int
-}
-
-func newDecoder(data []byte) *decoder {
-   return &decoder{
-      data: data, high: len(data),
-   }
-}
-
-func (d decoder) slice() []byte {
-   if d.high < d.low {
-      return nil
-   }
-   if d.high < 0 {
-      return nil
-   }
-   if d.high > len(d.data) {
-      return nil
-   }
-   return d.data[d.low:d.high]
-}
-
-func (d *decoder) uint16LengthPrefixed() []byte {
-   d.high = d.low + 2
-   data := d.slice()
-   if data == nil {
-      return nil
-   }
-   d.low += 2
-   d.high = d.low + int(binary.BigEndian.Uint16(data))
-   data = d.slice()
-   d.low = d.high
-   return data
-}
-
-func (d *decoder) uint32LengthPrefixed() []byte {
-   d.high = d.low + 4
-   data := d.slice()
-   if data == nil {
-      return nil
-   }
-   d.low += 4
-   d.high = d.low + int(binary.BigEndian.Uint32(data))
-   data = d.slice()
-   d.low = d.high
-   return data
-}
-
-func (d *decoder) seek(n int) {
-   d.low += n
-}
-
-func (d *decoder) seekByte(b byte) {
-   d.low += bytes.IndexByte(d.slice(), b)
-}
-
+// L1        L2 H2        H3                H1
+//  |         |  |         |                 |
+//  +---------+--+---------+-----------------+
 func handshakes(data []byte) [][]byte {
    var hands [][]byte
-   dec := newDecoder(data)
    for {
-      dec.seekByte(0x16)
-      // Content Type
-      dec.seek(1)
-      // Version
-      dec.seek(2)
-      // Length, Handshake Protocol
-      dec.uint16LengthPrefixed()
-      // FIXME
-      dec.low = low
-      hand := dec.slice()
-      if len(data) > 0 {
-         hands = append(hands, hand)
+      L1 := bytes.IndexByte(data, 0x16)
+      if L1 == -1 {
+         return hands
       }
-      dec.seek(1)
+      L2 := L1
+      // skip content type
+      L2 += 1
+      // skip version
+      L2 += 2
+      H2 := L2
+      // skip length
+      H2 += 2
+      H3 := H2
+      // skip handshake
+      length := slice(data, L2, H2)
+      if length != nil {
+         H3 += int(binary.BigEndian.Uint16(length))
+         hand := slice(data, L1, H3)
+         if hand != nil {
+            hands = append(hands, hand)
+         }
+      }
+      data = data[1:]
    }
+}
+
+func slice(data []byte, low, high int) []byte {
+   if high <= low {
+      return nil
+   }
+   if high < 0 {
+      return nil
+   }
+   if high > len(data) {
+      return nil
+   }
+   return data[low:high]
 }
