@@ -2,8 +2,8 @@ package tls
 
 import (
    "bytes"
+   "encoding/binary"
    "fmt"
-   "github.com/89z/parse/binary"
    "github.com/refraction-networking/utls"
    "io"
    "net"
@@ -25,15 +25,13 @@ func Handshakes(data []byte) [][]byte {
       ver1 := rec1 + 1
       // start of length
       len1 := ver1 + 2
-      recLen, ok := binary.Uint16(data[len1:])
-      if ok {
-         // end of length
-         len2 := len1 + 2
-         // end of record
-         rec2 := len2 + int(recLen)
-         if rec2 < len(data) {
-            hands = append(hands, data[rec1:rec2])
-         }
+      recLen := binary.BigEndian.Uint16(data[len1:])
+      // end of length
+      len2 := len1 + 2
+      // end of record
+      rec2 := len2 + int(recLen)
+      if rec2 < len(data) {
+         hands = append(hands, data[rec1:rec2])
       }
       data = data[rec1+1:]
    }
@@ -68,11 +66,7 @@ func extensionType(ext tls.TLSExtension) (uint16, error) {
    if err != nil {
       return 0, err
    }
-   typ, ok := binary.Uint16(data)
-   if ! ok {
-      return 0, io.ErrShortBuffer
-   }
-   return typ, nil
+   return binary.BigEndian.Uint16(data), nil
 }
 
 type ClientHello struct {
@@ -81,10 +75,7 @@ type ClientHello struct {
 }
 
 func ParseHandshake(data []byte) (*ClientHello, error) {
-   version, ok := binary.Uint16(data[1:])
-   if ! ok {
-      return nil, io.ErrShortBuffer
-   }
+   version := binary.BigEndian.Uint16(data[1:])
    var fin tls.Fingerprinter
    spec, err := fin.FingerprintClientHello(data)
    if err != nil {
