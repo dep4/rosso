@@ -3,64 +3,43 @@ package bytes
 import (
    "bytes"
    "encoding/binary"
-   "github.com/89z/parse/tls"
 )
 
-func handshake(b []byte) *tls.ClientHello {
-   for {
-      low := bytes.IndexByte(b, 0x16)
-      if low == -1 {
-         return nil
-      }
-      r := newReader(b[low:])
-      var w []byte
-      buf, ok := r.readN(1)
-      if ok {
-         w = append(w, buf...)
-      }
-      buf, ok = r.readN(2)
-      if ok {
-         w = append(w, buf...)
-      }
-      pre, buf, ok := r.readUint16LengthPrefixed()
-      if ok {
-         w = append(w, pre...)
-         w = append(w, buf...)
-      }
-      hand, err := tls.ParseHandshake(w)
-      if err == nil {
-         return hand
-      }
-      b = b[low+1:]
-   }
+type buffer struct {
+   buf []byte
 }
 
-type reader struct {
-   b []byte
-}
-
-func newReader(b []byte) reader {
-   return reader{b}
-}
-
-func (r *reader) readN(n int) ([]byte, bool) {
-   if n < 0 || n > len(r.b) {
+// godocs.io/bytes#Buffer.Next
+func (b *buffer) next(n int) ([]byte, bool) {
+   if n < 0 || n > len(b.buf) {
       return nil, false
    }
-   buf := r.b[:n]
-   r.b = r.b[n:]
+   buf := b.buf[:n]
+   b.buf = b.buf[n:]
    return buf, true
 }
 
-func (r *reader) readUint16LengthPrefixed() ([]byte, []byte, bool) {
-   if len(r.b) < 2 {
+// godocs.io/bytes#Buffer.ReadBytes
+func (b *buffer) readBytes(delim byte) ([]byte, bool) {
+   cut := bytes.IndexByte(b.buf, delim) + 1
+   if cut == 0 {
+      return nil, false
+   }
+   buf := b.buf[:cut]
+   b.buf = b.buf[cut:]
+   return buf, true
+}
+
+// godocs.io/golang.org/x/crypto/cryptobyte#String.ReadUint16LengthPrefixed
+func (b *buffer) readUint16LengthPrefixed() ([]byte, []byte, bool) {
+   if len(b.buf) < 2 {
       return nil, nil, false
    }
-   high := 2 + binary.BigEndian.Uint16(r.b)
-   if len(r.b) < int(high) {
+   high := 2 + binary.BigEndian.Uint16(b.buf)
+   if len(b.buf) < int(high) {
       return nil, nil, false
    }
-   pre, buf := r.b[:2], r.b[2:high]
-   r.b = r.b[high:]
+   pre, buf := b.buf[:2], b.buf[2:high]
+   b.buf = b.buf[high:]
    return pre, buf, true
 }
