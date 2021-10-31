@@ -1,35 +1,42 @@
+// Simple translation between numbers and byte sequences.
+//
+// Why not use existing packages? These are not big-endian:
+//
+//  encoding/binary#Uvarint
+//  encoding/binary#Varint
+//
+// These read a fixed number of bytes:
+//
+//  encoding/binary#ByteOrder.Uint16
+//  encoding/binary#ByteOrder.Uint32
+//  encoding/binary#ByteOrder.Uint64
+//  x/crypto/cryptobyte#String.ReadUint8
+//  x/crypto/cryptobyte#String.ReadUint16
+//  x/crypto/cryptobyte#String.ReadUint32
 package binary
 
-func Int16(buf [2]byte) int16 {
-   var length int16
-   for _, b := range buf {
-      length <<= 8
-      length |= int16(b)
-   }
-   return length
-}
+import (
+   "encoding/binary"
+)
 
-func Uint16(buf [2]byte) uint16 {
-   var length uint16
-   for _, b := range buf {
-      length <<= 8
-      length |= uint16(b)
-   }
-   return length
-}
+var (
+   Uint16 = binary.BigEndian.Uint16
+   Uint32 = binary.BigEndian.Uint32
+   Uint64 = binary.BigEndian.Uint64
+)
 
-func Uvarint(buf []byte) uint64 {
+func UintN(buf []byte, n int) uint64 {
    var length uint64
-   for _, b := range buf {
+   for _, b := range buf[:n] {
       length <<= 8
       length |= uint64(b)
    }
    return length
 }
 
-func Varint(buf []byte) int64 {
+func IntN(buf []byte, n int) int64 {
    var length int64
-   for _, b := range buf {
+   for _, b := range buf[:n] {
       length <<= 8
       length |= int64(b)
    }

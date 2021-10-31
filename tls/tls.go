@@ -25,10 +25,10 @@ func Handshakes(data []byte) [][]byte {
       ver1 := rec1 + 1
       // start of length
       len1 := ver1 + 2
-      // end of length
-      len2 := len1 + 2
-      if len2 < len(data) {
-         recLen := binary.Varint(data[len1:len2])
+      if len1 < len(data) {
+         recLen := binary.Uint16(data[len1:])
+         // end of length
+         len2 := len1 + 2
          // end of record
          rec2 := len2 + int(recLen)
          if rec2 < len(data) {
@@ -63,24 +63,24 @@ func NewTransport(spec *tls.ClientHelloSpec) *http.Transport {
    }
 }
 
-func extensionType(ext tls.TLSExtension) (int64, error) {
+func extensionType(ext tls.TLSExtension) (uint16, error) {
    data, err := io.ReadAll(ext)
    if err != nil {
       return 0, err
    }
-   return binary.Varint(data[:2]), nil
+   return binary.Uint16(data), nil
 }
 
 type ClientHello struct {
    *tls.ClientHelloSpec
-   Version int64
+   Version uint16
 }
 
 func ParseHandshake(data []byte) (*ClientHello, error) {
    if len(data) < 3 {
       return nil, fmt.Errorf("%#v", data)
    }
-   version := binary.Varint(data[1:3])
+   version := binary.Uint16(data[1:])
    var fin tls.Fingerprinter
    spec, err := fin.FingerprintClientHello(data)
    if err != nil {
@@ -94,7 +94,7 @@ func ParseJA3(str string) (*ClientHello, error) {
    if len(tokens) != 5 {
       return nil, fmt.Errorf("%q", tokens)
    }
-   var version int64
+   var version uint16
    fmt.Sscan(tokens[0], &version)
    hello := ClientHello{
       new(tls.ClientHelloSpec), version,
