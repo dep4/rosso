@@ -1,9 +1,9 @@
 package tls
 
 import (
-   "bytes"
    "encoding/binary"
    "fmt"
+   "github.com/89z/parse/bytes"
    "github.com/refraction-networking/utls"
    "io"
    "net"
@@ -13,27 +13,30 @@ import (
 
 const Android = "769,49195-49196-52393-49199-49200-52392-158-159-49161-49162-49171-49172-51-57-156-157-47-53,65281-0-23-35-13-16-11-10,23,0"
 
-func Handshakes(data []byte) [][]byte {
+func Handshakes(pcap []byte) [][]byte {
    var hands [][]byte
    for {
-      // start of record
-      rec1 := bytes.IndexByte(data, 0x16)
-      if rec1 == -1 {
+      var hand []byte
+      buf := bytes.NewBuffer(pcap)
+      // Content Type
+      cut, ok := buf.ReadBytes(0x16)
+      if ! ok {
          return hands
       }
-      // start of version
-      ver1 := rec1 + 1
-      // start of length
-      len1 := ver1 + 2
-      recLen := binary.BigEndian.Uint16(data[len1:])
-      // end of length
-      len2 := len1 + 2
-      // end of record
-      rec2 := len2 + int(recLen)
-      if rec2 < len(data) {
-         hands = append(hands, data[rec1:rec2])
+      hand = append(hand, 0x16)
+      // Version
+      ver, ok := buf.Next(2)
+      if ok {
+         hand = append(hand, ver...)
       }
-      data = data[rec1+1:]
+      // Length, Handshake Protocol
+      pre, pro, ok := buf.ReadUint16LengthPrefixed()
+      if ok {
+         hand = append(hand, pre...)
+         hand = append(hand, pro...)
+         hands = append(hands, hand)
+      }
+      pcap = pcap[len(cut):]
    }
 }
 
