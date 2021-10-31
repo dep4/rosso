@@ -25,8 +25,8 @@ func Handshakes(data []byte) [][]byte {
       ver1 := rec1 + 1
       // start of length
       len1 := ver1 + 2
-      if len1 < len(data) {
-         recLen := binary.Uint16(data[len1:])
+      recLen, ok := binary.Uint16(data[len1:])
+      if ok {
          // end of length
          len2 := len1 + 2
          // end of record
@@ -68,7 +68,11 @@ func extensionType(ext tls.TLSExtension) (uint16, error) {
    if err != nil {
       return 0, err
    }
-   return binary.Uint16(data), nil
+   typ, ok := binary.Uint16(data)
+   if ! ok {
+      return 0, io.ErrShortBuffer
+   }
+   return typ, nil
 }
 
 type ClientHello struct {
@@ -77,10 +81,10 @@ type ClientHello struct {
 }
 
 func ParseHandshake(data []byte) (*ClientHello, error) {
-   if len(data) < 3 {
-      return nil, fmt.Errorf("%#v", data)
+   version, ok := binary.Uint16(data[1:])
+   if ! ok {
+      return nil, io.ErrShortBuffer
    }
-   version := binary.Uint16(data[1:])
    var fin tls.Fingerprinter
    spec, err := fin.FingerprintClientHello(data)
    if err != nil {

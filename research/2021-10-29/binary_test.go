@@ -23,6 +23,4 @@ func TestHandshakes(t *testing.T) {
    }
    hand := Handshake(data)
    fmt.Printf("Handshake %+v\n", hand)
-   hand = handshake(data)
-   fmt.Printf("handshake %+v\n", hand)
 }

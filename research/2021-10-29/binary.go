@@ -14,9 +14,8 @@ func Handshake(data []byte) *tls.ClientHello {
       }
       ver1 := rec1 + 1
       len1 := ver1 + 2
-      var recLen uint16
-      if len1 < len(data) {
-         recLen = binary.Uint16(data[len1:])
+      recLen, ok := binary.Uint16(data[len1:])
+      if ok {
          len2 := len1 + 2
          rec2 := len2 + int(recLen)
          if rec2 < len(data) {
