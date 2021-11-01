@@ -3,10 +3,10 @@ package main
 import (
    "flag"
    "fmt"
-   "github.com/89z/parse/http"
+   "github.com/89z/parse/net"
+   "net/http"
    "net/http/httputil"
    "os"
-   stdhttp "net/http"
 )
 
 func main() {
@@ -28,7 +28,7 @@ func main() {
       panic(err)
    }
    defer rd.Close()
-   req, err := http.ReadRequest(rd)
+   req, err := net.ReadRequest(rd)
    if err != nil {
       panic(err)
    }
@@ -37,7 +37,7 @@ func main() {
    } else {
       req.URL.Scheme = "http"
    }
-   res, err := new(stdhttp.Transport).RoundTrip(req)
+   res, err := new(http.Transport).RoundTrip(req)
    if err != nil {
       panic(err)
    }

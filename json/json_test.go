@@ -7,26 +7,14 @@ import (
 )
 
 func TestJSON(t *testing.T) {
-   data, err := os.ReadFile("ig.js")
+   buf, err := os.ReadFile("eD41U.json")
    if err != nil {
       t.Fatal(err)
    }
-   // array
-   var a []struct {
-      Src string
-   }
-   if err := UnmarshalArray(data, &a); err != nil {
-      t.Fatal(err)
-   }
-   fmt.Printf("%+v\n", a)
-   // object
-   var o struct {
-      Shortcode_Media struct {
-         ID string
-      }
-   }
-   if err := UnmarshalObject(data, &o); err != nil {
-      t.Fatal(err)
-   }
-   fmt.Printf("%+v\n", o)
+   var v []byte
+   dec := NewDecoder(buf)
+   ok := dec.DecodeArray(&v)
+   fmt.Println(ok, v)
+   ok = dec.DecodeArray(&v)
+   fmt.Println(ok, v)
 }

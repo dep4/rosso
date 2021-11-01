@@ -11,8 +11,6 @@ import (
    "strings"
 )
 
-const Android = "769,49195-49196-52393-49199-49200-52392-158-159-49161-49162-49171-49172-51-57-156-157-47-53,65281-0-23-35-13-16-11-10,23,0"
-
 func Handshakes(pcap []byte) [][]byte {
    var hands [][]byte
    for {
@@ -152,7 +150,10 @@ func ParseJA3(str string) (*ClientHello, error) {
       return nil, fmt.Errorf("%q", tokens)
    }
    var version uint16
-   fmt.Sscan(tokens[0], &version)
+   _, err := fmt.Sscan(tokens[0], &version)
+   if err != nil {
+      return nil, err
+   }
    hello := ClientHello{
       new(tls.ClientHelloSpec), version,
    }
@@ -160,7 +161,10 @@ func ParseJA3(str string) (*ClientHello, error) {
    cipherKeys := strings.Split(tokens[1], "-")
    for _, cipherKey := range cipherKeys {
       var cipher uint16
-      fmt.Sscan(cipherKey, &cipher)
+      _, err := fmt.Sscan(cipherKey, &cipher)
+      if err != nil {
+         return nil, err
+      }
       hello.CipherSuites = append(hello.CipherSuites, cipher)
    }
    // build extenions list
@@ -175,7 +179,10 @@ func ParseJA3(str string) (*ClientHello, error) {
          curveKeys := strings.Split(tokens[3], "-")
          for _, curveKey := range curveKeys {
             var curve tls.CurveID
-            fmt.Sscan(curveKey, &curve)
+            _, err := fmt.Sscan(curveKey, &curve)
+            if err != nil {
+               return nil, err
+            }
             curves = append(curves, curve)
          }
          ext = &tls.SupportedCurvesExtension{curves}
@@ -184,7 +191,10 @@ func ParseJA3(str string) (*ClientHello, error) {
          pointKeys := strings.Split(tokens[4], "-")
          for _, pointKey := range pointKeys {
             var point uint8
-            fmt.Sscan(pointKey, &point)
+            _, err := fmt.Sscan(pointKey, &point)
+            if err != nil {
+               return nil, err
+            }
             points = append(points, point)
          }
          ext = &tls.SupportedPointsExtension{points}

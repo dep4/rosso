@@ -3,39 +3,43 @@ package json
 import (
    "bytes"
    "encoding/json"
-   "fmt"
 )
 
-func UnmarshalArray(data []byte, v interface{}) error {
-   return unmarshal(data, v, '[')
+type Decoder struct {
+   buf []byte
 }
 
-func UnmarshalObject(data []byte, v interface{}) error {
-   return unmarshal(data, v, '{')
+func NewDecoder(buf []byte) *Decoder {
+   return &Decoder{buf}
 }
 
-func unmarshal(data []byte, v interface{}, c byte) error {
+func (d *Decoder) Decode(v interface{}, c byte) bool {
    for {
-      ind := bytes.IndexByte(data, c)
-      if ind == -1 {
-         return fmt.Errorf("%q not found", c)
+      off := bytes.IndexByte(d.buf, c)
+      if off == -1 {
+         return false
       }
-      data = data[ind:]
-      dec := json.NewDecoder(bytes.NewReader(data))
-      _, err := dec.Token()
-      if err == nil {
-         for {
-            _, err := dec.Token()
-            if err != nil {
-               off := dec.InputOffset()
-               err := json.Unmarshal(data[:off], v)
-               if err == nil {
-                  return nil
-               }
-               data = data[off:]
-               break
+      d.buf = d.buf[off:]
+      dec := json.NewDecoder(bytes.NewReader(d.buf))
+      for {
+         _, err := dec.Token()
+         if err != nil {
+            off := dec.InputOffset()
+            err := json.Unmarshal(d.buf[:off], v)
+            d.buf = d.buf[1:]
+            if err == nil {
+               return true
             }
+            break
          }
       }
    }
+}
+
+func (d *Decoder) DecodeArray(v interface{}) bool {
+   return d.Decode(v, '[')
+}
+
+func (d *Decoder) DecodeObject(v interface{}) bool {
+   return d.Decode(v, '{')
 }
