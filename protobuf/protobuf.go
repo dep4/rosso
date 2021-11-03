@@ -40,15 +40,15 @@ func Parse(data []byte) []Field {
    var flds []Field
    for len(data) > 0 {
       n, t, fLen := protowire.ConsumeField(data)
-      if fLen < 1 {
+      if fLen <= 0 {
          return nil
       }
       _, _, tLen := protowire.ConsumeTag(data[:fLen])
-      if tLen < 1 {
+      if tLen <= 0 {
          return nil
       }
       v, vLen := consume(n, t, data[tLen:fLen])
-      if vLen < 1 {
+      if vLen <= 0 {
          return nil
       }
       flds = append(flds, Field{n, t, v})

@@ -230,7 +230,7 @@ func (h ClientHello) FormatJA3() (string, error) {
    // Cipher Suites
    buf.WriteByte(',')
    for key, val := range h.CipherSuites {
-      if key > 0 {
+      if key >= 1 {
          buf.WriteByte('-')
       }
       fmt.Fprint(buf, val)
@@ -242,7 +242,7 @@ func (h ClientHello) FormatJA3() (string, error) {
       points []uint8
    )
    for key, val := range h.Extensions {
-      if key > 0 {
+      if key >= 1 {
          buf.WriteByte('-')
       }
       typ, err := extensionType(val)
@@ -260,7 +260,7 @@ func (h ClientHello) FormatJA3() (string, error) {
    // Elliptic curves
    buf.WriteByte(',')
    for key, val := range curves {
-      if key > 0 {
+      if key >= 1 {
          buf.WriteByte('-')
       }
       fmt.Fprint(buf, val)
@@ -268,7 +268,7 @@ func (h ClientHello) FormatJA3() (string, error) {
    // ECPF
    buf.WriteByte(',')
    for key, val := range points {
-      if key > 0 {
+      if key >= 1 {
          buf.WriteByte('-')
       }
       fmt.Fprint(buf, val)
