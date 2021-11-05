@@ -1,15 +1,12 @@
 package protobuf
 
 import (
-   "encoding/json"
+   "fmt"
    "google.golang.org/protobuf/encoding/protowire"
+   "strings"
 )
 
-// Its kind of silly to include a one line function, but I keep forgetting how
-// to indent the result of `Parse`.
-func Indent(v interface{}) ([]byte, error) {
-   return json.MarshalIndent(v, "", " ")
-}
+var indent int
 
 func consume(n protowire.Number, t protowire.Type, buf []byte) (interface{}, int) {
    switch t {
@@ -43,8 +40,10 @@ type Field struct {
    Value interface{}
 }
 
-func Parse(buf []byte) []Field {
-   var fields []Field
+type Fields []Field
+
+func Parse(buf []byte) Fields {
+   var fs Fields
    for len(buf) > 0 {
       n, t, fLen := protowire.ConsumeField(buf)
       if fLen <= 0 {
@@ -58,9 +57,31 @@ func Parse(buf []byte) []Field {
       if vLen <= 0 {
          return nil
       }
-      fields = append(fields, Field{n, t, v})
+      fs = append(fs, Field{n, t, v})
       buf = buf[fLen:]
    }
-   return fields
+   return fs
 }
 
+func (fs Fields) String() string {
+   var buf string
+   for k, v := range fs {
+      if k >= 1 {
+         buf += "\n"
+      }
+      buf += strings.Repeat("   ", indent)
+      _, ok := v.Value.(Fields)
+      if ok {
+         indent++
+      }
+      buf += fmt.Sprintf("number:%v type:%v value:", v.Number, v.Type)
+      if ok {
+         buf += "\n"
+      }
+      buf += fmt.Sprint(v.Value)
+   }
+   if indent >= 1 {
+      indent--
+   }
+   return buf
+}
