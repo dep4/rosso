@@ -70,13 +70,11 @@ func (fs Fields) String() string {
          buf += "\n"
       }
       buf += strings.Repeat("   ", indent)
+      buf += fmt.Sprintf("number:%v type:%v value:", v.Number, v.Type)
       _, ok := v.Value.(Fields)
       if ok {
-         indent++
-      }
-      buf += fmt.Sprintf("number:%v type:%v value:", v.Number, v.Type)
-      if ok {
          buf += "\n"
+         indent++
       }
       buf += fmt.Sprint(v.Value)
    }
