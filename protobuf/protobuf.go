@@ -1,14 +1,41 @@
 package protobuf
 
 import (
-   "fmt"
    "google.golang.org/protobuf/encoding/protowire"
-   "strings"
 )
 
-var indent int
+func Parse(buf []byte) map[protowire.Number]interface{} {
+   fs := make(map[protowire.Number]interface{})
+   for len(buf) > 0 {
+      k, t, fLen := protowire.ConsumeField(buf)
+      if fLen <= 0 {
+         return nil
+      }
+      _, _, tLen := protowire.ConsumeTag(buf[:fLen])
+      if tLen <= 0 {
+         return nil
+      }
+      v, vLen := consume(k, t, buf[tLen:fLen])
+      if vLen <= 0 {
+         return nil
+      }
+      alfa, ok := fs[k]
+      if ok {
+         bravo, ok := alfa.([]interface{})
+         if ok {
+            fs[k] = append(bravo, v)
+         } else {
+            fs[k] = []interface{}{alfa, v}
+         }
+      } else {
+         fs[k] = v
+      }
+      buf = buf[fLen:]
+   }
+   return fs
+}
 
-func consume(n protowire.Number, t protowire.Type, buf []byte) (interface{}, int) {
+func consume(k protowire.Number, t protowire.Type, buf []byte) (interface{}, int) {
    switch t {
    case protowire.VarintType:
       return protowire.ConsumeVarint(buf)
@@ -24,7 +51,7 @@ func consume(n protowire.Number, t protowire.Type, buf []byte) (interface{}, int
       }
       return string(v), vLen
    case protowire.StartGroupType:
-      v, vLen := protowire.ConsumeGroup(n, buf)
+      v, vLen := protowire.ConsumeGroup(k, buf)
       sub := Parse(v)
       if sub != nil {
          return sub, vLen
@@ -32,54 +59,4 @@ func consume(n protowire.Number, t protowire.Type, buf []byte) (interface{}, int
       return v, vLen
    }
    return nil, 0
-}
-
-type Field struct {
-   Number protowire.Number
-   Type protowire.Type
-   Value interface{}
-}
-
-type Fields []Field
-
-func Parse(buf []byte) Fields {
-   var fs Fields
-   for len(buf) > 0 {
-      n, t, fLen := protowire.ConsumeField(buf)
-      if fLen <= 0 {
-         return nil
-      }
-      _, _, tLen := protowire.ConsumeTag(buf[:fLen])
-      if tLen <= 0 {
-         return nil
-      }
-      v, vLen := consume(n, t, buf[tLen:fLen])
-      if vLen <= 0 {
-         return nil
-      }
-      fs = append(fs, Field{n, t, v})
-      buf = buf[fLen:]
-   }
-   return fs
-}
-
-func (fs Fields) String() string {
-   var buf string
-   for k, v := range fs {
-      if k >= 1 {
-         buf += "\n"
-      }
-      buf += strings.Repeat("   ", indent)
-      buf += fmt.Sprintf("number:%v type:%v value:", v.Number, v.Type)
-      _, ok := v.Value.(Fields)
-      if ok {
-         buf += "\n"
-         indent++
-      }
-      buf += fmt.Sprint(v.Value)
-   }
-   if indent >= 1 {
-      indent--
-   }
-   return buf
 }
