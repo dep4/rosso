@@ -2,8 +2,9 @@ package main
 
 import (
    "fmt"
-   "github.com/segmentio/encoding/proto"
 )
+
+type protoNew map[int32]interface{}
 
 var defaultConfig = protoNew{
    1: protoNew{
@@ -29,24 +30,6 @@ var defaultConfig = protoNew{
    },
 }
 
-type protoOld struct {
-   One string `protobuf:"bytes,1"`
-   Two string `protobuf:"bytes,2"`
-}
-
-type protoNew map[int32]interface{}
-
 func main() {
-   {
-      p := protoOld{One: "hello", Two: "world"}
-      b, err := proto.Marshal(p)
-      if err != nil {
-         panic(err)
-      }
-      fmt.Printf("%q\n", b)
-   }
-   {
-      p := protoNew{1: "hello", 2: "world"}
-      fmt.Println(p)
-   }
+   fmt.Println(defaultConfig)
 }
