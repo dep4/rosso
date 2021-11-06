@@ -6,41 +6,44 @@ import (
    "google.golang.org/protobuf/encoding/protowire"
 )
 
-type protoOld struct {
+type Message struct {
    One struct {
       Two string `protobuf:"bytes,2"`
    } `protobuf:"bytes,1"`
 }
 
-type protoNew map[protowire.Number]interface{}
+type message map[protowire.Number]interface{}
 
-func (p protoNew) marshal() []byte {
-   var b []byte
-   for k, v := range p {
-      s, ok := v.(string)
-      if ok {
-         b = protowire.AppendTag(b, k, protowire.BytesType)
-         b = protowire.AppendString(b, s)
+func (m message) marshal() []byte {
+   var out []byte
+   for key, val := range m {
+      switch v := val.(type) {
+      case message:
+         out = protowire.AppendTag(out, key, protowire.BytesType)
+         out = protowire.AppendBytes(out, v.marshal())
+      case string:
+         out = protowire.AppendTag(out, key, protowire.BytesType)
+         out = protowire.AppendString(out, v)
       }
    }
-   return b
+   return out
 }
 
 func main() {
    {
-      var p protoOld
-      p.One.Two = "hello"
-      b, err := proto.Marshal(p)
+      var m Message
+      m.One.Two = "hello"
+      b, err := proto.Marshal(m)
       if err != nil {
          panic(err)
       }
       fmt.Printf("%q\n", b)
    }
    {
-      p := protoNew{
-         1: protoNew{2: "hello"},
+      m := message{
+         1: message{2: "hello"},
       }
-      b := p.marshal()
+      b := m.marshal()
       fmt.Printf("%q\n", b)
    }
 }
