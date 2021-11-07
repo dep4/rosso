@@ -1,39 +1,41 @@
 package protobuf
 
 import (
+   "bytes"
+   "encoding/json"
    "google.golang.org/protobuf/encoding/protowire"
 )
 
 func appendField(out []byte, key protowire.Number, val interface{}) []byte {
    switch val := val.(type) {
-   case Array:
+   case Message:
+      out = protowire.AppendTag(out, key, protowire.BytesType)
+      out = protowire.AppendBytes(out, val.Marshal())
+   case Repeated:
       for _, v := range val {
          out = appendField(out, key, v)
       }
    case bool:
       out = protowire.AppendTag(out, key, protowire.VarintType)
       out = protowire.AppendVarint(out, protowire.EncodeBool(val))
-   case Object:
-      out = protowire.AppendTag(out, key, protowire.BytesType)
-      out = protowire.AppendBytes(out, val.Marshal())
+   case int32:
+      out = protowire.AppendTag(out, key, protowire.VarintType)
+      out = protowire.AppendVarint(out, uint64(val))
    case string:
       out = protowire.AppendTag(out, key, protowire.BytesType)
       out = protowire.AppendString(out, val)
-   case uint64:
-      out = protowire.AppendTag(out, key, protowire.VarintType)
-      out = protowire.AppendVarint(out, val)
    }
    return out
 }
 
 func consume(key protowire.Number, typ protowire.Type, buf []byte) (interface{}, int) {
    switch typ {
-   case protowire.VarintType:
-      return protowire.ConsumeVarint(buf)
    case protowire.Fixed32Type:
       return protowire.ConsumeFixed32(buf)
    case protowire.Fixed64Type:
       return protowire.ConsumeFixed64(buf)
+   case protowire.VarintType:
+      return protowire.ConsumeVarint(buf)
    case protowire.BytesType:
       v, vLen := protowire.ConsumeBytes(buf)
       sub := Parse(v)
@@ -52,12 +54,10 @@ func consume(key protowire.Number, typ protowire.Type, buf []byte) (interface{},
    return nil, 0
 }
 
-type Array []interface{}
+type Message map[protowire.Number]interface{}
 
-type Object map[protowire.Number]interface{}
-
-func Parse(buf []byte) Object {
-   fs := make(map[protowire.Number]interface{})
+func Parse(buf []byte) Message {
+   mes := make(Message)
    for len(buf) > 0 {
       key, typ, fLen := protowire.ConsumeField(buf)
       if fLen <= 0 {
@@ -71,26 +71,37 @@ func Parse(buf []byte) Object {
       if vLen <= 0 {
          return nil
       }
-      alfa, ok := fs[key]
+      iface, ok := mes[key]
       if ok {
-         bravo, ok := alfa.([]interface{})
+         rep, ok := iface.(Repeated)
          if ok {
-            fs[key] = append(bravo, v)
+            mes[key] = append(rep, v)
          } else {
-            fs[key] = []interface{}{alfa, v}
+            mes[key] = Repeated{iface, v}
          }
       } else {
-         fs[key] = v
+         mes[key] = v
       }
       buf = buf[fLen:]
    }
-   return fs
+   return mes
 }
 
-func (o Object) Marshal() []byte {
+func (m Message) Marshal() []byte {
    var out []byte
-   for key, val := range o {
+   for key, val := range m {
       out = appendField(out, key, val)
    }
    return out
 }
+
+func (m Message) Transcode(v interface{}) error {
+   buf := new(bytes.Buffer)
+   err := json.NewEncoder(buf).Encode(m)
+   if err != nil {
+      return err
+   }
+   return json.NewDecoder(buf).Decode(v)
+}
+
+type Repeated []interface{}
