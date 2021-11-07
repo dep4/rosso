@@ -4,39 +4,30 @@ import (
    "google.golang.org/protobuf/encoding/protowire"
 )
 
-func Parse(buf []byte) map[protowire.Number]interface{} {
-   fs := make(map[protowire.Number]interface{})
-   for len(buf) > 0 {
-      k, t, fLen := protowire.ConsumeField(buf)
-      if fLen <= 0 {
-         return nil
+func appendField(out []byte, key protowire.Number, val interface{}) []byte {
+   switch val := val.(type) {
+   case Array:
+      for _, v := range val {
+         out = appendField(out, key, v)
       }
-      _, _, tLen := protowire.ConsumeTag(buf[:fLen])
-      if tLen <= 0 {
-         return nil
-      }
-      v, vLen := consume(k, t, buf[tLen:fLen])
-      if vLen <= 0 {
-         return nil
-      }
-      alfa, ok := fs[k]
-      if ok {
-         bravo, ok := alfa.([]interface{})
-         if ok {
-            fs[k] = append(bravo, v)
-         } else {
-            fs[k] = []interface{}{alfa, v}
-         }
-      } else {
-         fs[k] = v
-      }
-      buf = buf[fLen:]
+   case bool:
+      out = protowire.AppendTag(out, key, protowire.VarintType)
+      out = protowire.AppendVarint(out, protowire.EncodeBool(val))
+   case Object:
+      out = protowire.AppendTag(out, key, protowire.BytesType)
+      out = protowire.AppendBytes(out, val.Marshal())
+   case string:
+      out = protowire.AppendTag(out, key, protowire.BytesType)
+      out = protowire.AppendString(out, val)
+   case uint64:
+      out = protowire.AppendTag(out, key, protowire.VarintType)
+      out = protowire.AppendVarint(out, val)
    }
-   return fs
+   return out
 }
 
-func consume(k protowire.Number, t protowire.Type, buf []byte) (interface{}, int) {
-   switch t {
+func consume(key protowire.Number, typ protowire.Type, buf []byte) (interface{}, int) {
+   switch typ {
    case protowire.VarintType:
       return protowire.ConsumeVarint(buf)
    case protowire.Fixed32Type:
@@ -51,7 +42,7 @@ func consume(k protowire.Number, t protowire.Type, buf []byte) (interface{}, int
       }
       return string(v), vLen
    case protowire.StartGroupType:
-      v, vLen := protowire.ConsumeGroup(k, buf)
+      v, vLen := protowire.ConsumeGroup(key, buf)
       sub := Parse(v)
       if sub != nil {
          return sub, vLen
@@ -59,4 +50,47 @@ func consume(k protowire.Number, t protowire.Type, buf []byte) (interface{}, int
       return v, vLen
    }
    return nil, 0
+}
+
+type Array []interface{}
+
+type Object map[protowire.Number]interface{}
+
+func Parse(buf []byte) Object {
+   fs := make(map[protowire.Number]interface{})
+   for len(buf) > 0 {
+      key, typ, fLen := protowire.ConsumeField(buf)
+      if fLen <= 0 {
+         return nil
+      }
+      _, _, tLen := protowire.ConsumeTag(buf[:fLen])
+      if tLen <= 0 {
+         return nil
+      }
+      v, vLen := consume(key, typ, buf[tLen:fLen])
+      if vLen <= 0 {
+         return nil
+      }
+      alfa, ok := fs[key]
+      if ok {
+         bravo, ok := alfa.([]interface{})
+         if ok {
+            fs[key] = append(bravo, v)
+         } else {
+            fs[key] = []interface{}{alfa, v}
+         }
+      } else {
+         fs[key] = v
+      }
+      buf = buf[fLen:]
+   }
+   return fs
+}
+
+func (o Object) Marshal() []byte {
+   var out []byte
+   for key, val := range o {
+      out = appendField(out, key, val)
+   }
+   return out
 }
