@@ -3,6 +3,7 @@ module research
 go 1.17
 
 require (
+	github.com/89z/parse v1.6.4
 	github.com/segmentio/encoding v0.2.23
 	google.golang.org/protobuf v1.27.1
 )

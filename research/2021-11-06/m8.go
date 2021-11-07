@@ -2,7 +2,7 @@ package main
 
 import (
    "fmt"
-   "github.com/segmentio/encoding/proto"
+   "github.com/89z/parse/protobuf"
    "google.golang.org/protobuf/encoding/protowire"
 )
 
@@ -64,57 +64,9 @@ var defaultConfig = object{
    },
 }
 
-type Config struct {
-   DeviceConfiguration DeviceConfiguration `protobuf:"bytes,1"`
-}
-
-type DeviceConfiguration struct {
-   TouchScreen            int32   `protobuf:"varint,1"`
-   Keyboard               int32   `protobuf:"varint,2"`
-   Navigation             int32   `protobuf:"varint,3"`
-   ScreenLayout           int32   `protobuf:"varint,4"`
-   HasHardKeyboard        bool    `protobuf:"varint,5"`
-   HasFiveWayNavigation   bool    `protobuf:"varint,6"`
-   ScreenDensity          int32   `protobuf:"varint,7"`
-   GlEsVersion            int32   `protobuf:"varint,8"`
-   SystemAvailableFeature []string `protobuf:"bytes,10"`
-   NativePlatform         []string `protobuf:"bytes,11"`
-}
-
-var DefaultConfig = Config{
-   DeviceConfiguration{
-      TouchScreen: 1,
-      Keyboard: 1,
-      Navigation: 1,
-      ScreenLayout: 1,
-      HasHardKeyboard: true,
-      HasFiveWayNavigation: true,
-      ScreenDensity: 1,
-      GlEsVersion: 0x0009_0000,
-      SystemAvailableFeature: []string{
-         "android.hardware.camera",
-         "android.hardware.faketouch",
-         "android.hardware.location",
-         "android.hardware.screen.portrait",
-         "android.hardware.touchscreen",
-         "android.hardware.wifi",
-      },
-      NativePlatform: []string{
-         "armeabi-v7a",
-      },
-   },
-}
-
 func main() {
-   {
-      buf, err := proto.Marshal(DefaultConfig)
-      if err != nil {
-         panic(err)
-      }
-      fmt.Printf("%q\n", buf)
-   }
-   {
-      buf := defaultConfig.marshal()
-      fmt.Printf("%q\n", buf)
-   }
+   buf := defaultConfig.marshal()
+   fmt.Printf("%q\n", buf)
+   obj := protobuf.Parse(buf)
+   fmt.Println(obj)
 }
