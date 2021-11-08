@@ -65,3 +65,14 @@ func TestMarshal(t *testing.T) {
    buf := defaultConfig.Marshal()
    fmt.Printf("%q\n", buf)
 }
+
+func TestProto(t *testing.T) {
+   mj := mapJSON{
+      "1": mapJSON{"2": 3},
+   }
+   mp, err := newMapProto(mj)
+   if err != nil {
+      t.Fatal(err)
+   }
+   fmt.Printf("%#v\n", mp)
+}
