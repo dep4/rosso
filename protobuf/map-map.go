@@ -5,32 +5,28 @@ import (
    "strconv"
 )
 
-type mapJSON = map[string]interface{}
-
-type mapProto map[protowire.Number]interface{}
-
-func newMapProto(m mapJSON) (mapProto, error) {
-   pMap := make(mapProto)
+func newMessage(m map[string]interface{}) (Message, error) {
+   mes := make(Message)
    for str, val := range m {
       num, err := strconv.Atoi(str)
       if err != nil {
          return nil, err
       }
-      if err := pMap.set(protowire.Number(num), val); err != nil {
+      if err := mes.set(protowire.Number(num), val); err != nil {
          return nil, err
       }
    }
-   return pMap, nil
+   return mes, nil
 }
 
-func (m mapProto) set(num protowire.Number, any interface{}) error {
+func (m Message) set(num protowire.Number, any interface{}) error {
    switch val := any.(type) {
    case map[string]interface{}:
-      pMap, err := newMapProto(val)
+      mes, err := newMessage(val)
       if err != nil {
          return err
       }
-      m[num] = pMap
+      m[num] = mes
    case []interface{}:
       for _, any := range val {
          err := m.set(num, any)
