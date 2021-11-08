@@ -7,27 +7,26 @@
 - https://stackoverflow.com/questions/26744873/converting-map-to-struct
 - https://stackoverflow.com/questions/41348512/protobuf-unmarshal-unknown
 
-## protobuf bytes to struct
-
-1. protobuf `[]byte`
-2. `map[protowire.Number]interface{}` DONE
-3. JSON `[]byte` DONE
-4. `struct` DONE
-
-## struct to protobuf bytes
-
-1. `struct`
-2. JSON `[]byte` DONE
-3. `map[string]interface{}` DONE
-
-Then from three can do this:
+done:
 
 ~~~
-map[protowire.Number]interface{} DONE
+map[string]interface{}
+to
+protobuf []byte
 ~~~
 
-or can we go straight to this:
+done:
 
 ~~~
 protobuf []byte
+to
+map[protowire.Number]interface{}
+~~~
+
+to do:
+
+~~~
+protobuf []byte
+to
+map[string]interface{}
 ~~~
