@@ -15,14 +15,14 @@ func consume(num protowire.Number, typ protowire.Type, buf []byte) (interface{},
       return protowire.ConsumeVarint(buf)
    case protowire.BytesType:
       val, vLen := protowire.ConsumeBytes(buf)
-      sub := newDecoder(val)
+      sub := NewDecoder(val)
       if sub != nil {
          return sub, vLen
       }
       return string(val), vLen
    case protowire.StartGroupType:
       val, vLen := protowire.ConsumeGroup(num, buf)
-      sub := newDecoder(val)
+      sub := NewDecoder(val)
       if sub != nil {
          return sub, vLen
       }
@@ -31,18 +31,10 @@ func consume(num protowire.Number, typ protowire.Type, buf []byte) (interface{},
    return nil, 0
 }
 
-func decode(dec decoder, val interface{}) error {
-   buf, err := json.Marshal(dec)
-   if err != nil {
-      return err
-   }
-   return json.Unmarshal(buf, val)
-}
+type Decoder map[protowire.Number]interface{}
 
-type decoder = map[protowire.Number]interface{}
-
-func newDecoder(buf []byte) decoder {
-   dec := make(decoder)
+func NewDecoder(buf []byte) Decoder {
+   dec := make(Decoder)
    for len(buf) > 0 {
       num, typ, fLen := protowire.ConsumeField(buf)
       if fLen <= 0 {
@@ -70,4 +62,12 @@ func newDecoder(buf []byte) decoder {
       buf = buf[fLen:]
    }
    return dec
+}
+
+func (d Decoder) Decode(val interface{}) error {
+   buf, err := json.Marshal(d)
+   if err != nil {
+      return err
+   }
+   return json.Unmarshal(buf, val)
 }

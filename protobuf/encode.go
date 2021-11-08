@@ -27,7 +27,7 @@ func appendField(buf []byte, num protowire.Number, val interface{}) ([]byte, err
       }
    case map[string]interface{}:
       buf = protowire.AppendTag(buf, num, protowire.BytesType)
-      eBuf, err := encode(val)
+      eBuf, err := Encoder.Encode(val)
       if err != nil {
          return nil, err
       }
@@ -36,9 +36,23 @@ func appendField(buf []byte, num protowire.Number, val interface{}) ([]byte, err
    return buf, nil
 }
 
-func encode(enc encoder) ([]byte, error) {
+type Encoder map[string]interface{}
+
+func NewEncoder(val interface{}) (Encoder, error) {
+   buf, err := json.Marshal(val)
+   if err != nil {
+      return nil, err
+   }
+   var enc Encoder
+   if err := json.Unmarshal(buf, &enc); err != nil {
+      return nil, err
+   }
+   return enc, nil
+}
+
+func (e Encoder) Encode() ([]byte, error) {
    var buf []byte
-   for str, val := range enc {
+   for str, val := range e {
       num, err := strconv.Atoi(str)
       if err != nil {
          return nil, err
@@ -49,18 +63,4 @@ func encode(enc encoder) ([]byte, error) {
       }
    }
    return buf, nil
-}
-
-type encoder = map[string]interface{}
-
-func newEncoder(val interface{}) (encoder, error) {
-   buf, err := json.Marshal(val)
-   if err != nil {
-      return nil, err
-   }
-   var enc encoder
-   if err := json.Unmarshal(buf, &enc); err != nil {
-      return nil, err
-   }
-   return enc, nil
 }
