@@ -5,7 +5,7 @@ import (
    "google.golang.org/protobuf/encoding/protowire"
 )
 
-func consume(key protowire.Number, typ protowire.Type, buf []byte) (interface{}, int) {
+func consume(num protowire.Number, typ protowire.Type, buf []byte) (interface{}, int) {
    switch typ {
    case protowire.Fixed32Type:
       return protowire.ConsumeFixed32(buf)
@@ -14,27 +14,37 @@ func consume(key protowire.Number, typ protowire.Type, buf []byte) (interface{},
    case protowire.VarintType:
       return protowire.ConsumeVarint(buf)
    case protowire.BytesType:
-      v, vLen := protowire.ConsumeBytes(buf)
-      sub := Parse(v)
+      val, vLen := protowire.ConsumeBytes(buf)
+      sub := newDecoder(val)
       if sub != nil {
          return sub, vLen
       }
-      return string(v), vLen
+      return string(val), vLen
    case protowire.StartGroupType:
-      v, vLen := protowire.ConsumeGroup(key, buf)
-      sub := Parse(v)
+      val, vLen := protowire.ConsumeGroup(num, buf)
+      sub := newDecoder(val)
       if sub != nil {
          return sub, vLen
       }
-      return v, vLen
+      return val, vLen
    }
    return nil, 0
 }
 
-func alfa(buf []byte) map[protowire.Number]interface{} {
-   mes := make(Message)
+func decode(dec decoder, val interface{}) error {
+   buf, err := json.Marshal(dec)
+   if err != nil {
+      return err
+   }
+   return json.Unmarshal(buf, val)
+}
+
+type decoder = map[protowire.Number]interface{}
+
+func newDecoder(buf []byte) decoder {
+   dec := make(decoder)
    for len(buf) > 0 {
-      key, typ, fLen := protowire.ConsumeField(buf)
+      num, typ, fLen := protowire.ConsumeField(buf)
       if fLen <= 0 {
          return nil
       }
@@ -42,30 +52,22 @@ func alfa(buf []byte) map[protowire.Number]interface{} {
       if tLen <= 0 {
          return nil
       }
-      v, vLen := consume(key, typ, buf[tLen:fLen])
+      val, vLen := consume(num, typ, buf[tLen:fLen])
       if vLen <= 0 {
          return nil
       }
-      iface, ok := mes[key]
+      dVal, ok := dec[num]
       if ok {
-         rep, ok := iface.(Repeated)
+         sVal, ok := dVal.([]interface{})
          if ok {
-            mes[key] = append(rep, v)
+            dec[num] = append(sVal, val)
          } else {
-            mes[key] = Repeated{iface, v}
+            dec[num] = []interface{}{dVal, val}
          }
       } else {
-         mes[key] = v
+         dec[num] = val
       }
       buf = buf[fLen:]
    }
-   return mes
-}
-
-func bravo(m map[]interface{}, v interface{}) error {
-   buf, err := json.Marshal(m)
-   if err != nil {
-      return err
-   }
-   return json.Unmarshal(buf, any)
+   return dec
 }

@@ -1,62 +1,44 @@
 package protobuf
 
 import (
+   "encoding/json"
    "google.golang.org/protobuf/encoding/protowire"
    "strconv"
 )
 
-func appendOld(buf []byte, num protowire.Number, val interface{}) []byte {
+func appendField(buf []byte, num protowire.Number, val interface{}) ([]byte, error) {
    switch val := val.(type) {
-   case Message:
-      buf = protowire.AppendTag(buf, num, protowire.BytesType)
-      buf = protowire.AppendBytes(buf, val.Marshal())
-   case Repeated:
-      for _, v := range val {
-         buf = appendField(buf, num, v)
-      }
    case bool:
       buf = protowire.AppendTag(buf, num, protowire.VarintType)
       buf = protowire.AppendVarint(buf, protowire.EncodeBool(val))
-   case int32:
+   case float64:
       buf = protowire.AppendTag(buf, num, protowire.VarintType)
       buf = protowire.AppendVarint(buf, uint64(val))
    case string:
       buf = protowire.AppendTag(buf, num, protowire.BytesType)
       buf = protowire.AppendString(buf, val)
-   }
-   return buf
-}
-
-func appendNew(buf []byte, num protowire.Number, val interface{}) ([]byte, error) {
-   buf = protowire.AppendTag(buf, num, protowire.BytesType)
-   switch val := val.(type) {
+   case []interface{}:
+      for _, elem := range val {
+         aBuf, err := appendField(buf, num, elem)
+         if err != nil {
+            return nil, err
+         }
+         buf = aBuf
+      }
    case map[string]interface{}:
-      mar, err := marshal(val)
+      buf = protowire.AppendTag(buf, num, protowire.BytesType)
+      eBuf, err := encode(val)
       if err != nil {
          return nil, err
       }
-      buf = protowire.AppendBytes(buf, mar)
-   case string:
-      buf = protowire.AppendString(buf, val)
+      buf = protowire.AppendBytes(buf, eBuf)
    }
    return buf, nil
 }
 
-func alfa(any interface{}) (map[string]interface{}, error) {
-   buf, err := json.Marshal(any)
-   if err != nil {
-      return nil, err
-   }
-   var mJSON map[string]interface{}
-   if err := json.Unmarshal(buf, &mJSON); err != nil {
-      return nil, err
-   }
-   return mJSON, nil
-}
-
-func bravo(m map[string]interface{}) ([]byte, error) {
+func encode(enc encoder) ([]byte, error) {
    var buf []byte
-   for str, val := range m {
+   for str, val := range enc {
       num, err := strconv.Atoi(str)
       if err != nil {
          return nil, err
@@ -67,4 +49,18 @@ func bravo(m map[string]interface{}) ([]byte, error) {
       }
    }
    return buf, nil
+}
+
+type encoder = map[string]interface{}
+
+func newEncoder(val interface{}) (encoder, error) {
+   buf, err := json.Marshal(val)
+   if err != nil {
+      return nil, err
+   }
+   var enc encoder
+   if err := json.Unmarshal(buf, &enc); err != nil {
+      return nil, err
+   }
+   return enc, nil
 }
