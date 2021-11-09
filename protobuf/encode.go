@@ -38,6 +38,7 @@ func appendField(buf []byte, num protowire.Number, val interface{}) ([]byte, err
 
 type Encoder map[string]interface{}
 
+// Convert struct to map
 func NewEncoder(val interface{}) (Encoder, error) {
    buf, err := json.Marshal(val)
    if err != nil {
@@ -50,6 +51,7 @@ func NewEncoder(val interface{}) (Encoder, error) {
    return enc, nil
 }
 
+// Convert map to byte slice
 func (e Encoder) Encode() ([]byte, error) {
    var buf []byte
    for str, val := range e {

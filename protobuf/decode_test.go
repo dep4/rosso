@@ -24,7 +24,9 @@ type responseWrapper struct {
 
 func TestDecode(t *testing.T) {
    var res responseWrapper
-   err := NewDecoder(youtube).Decode(&res)
+   dec := NewDecoder(youtube)
+   fmt.Printf("%#v\n", dec)
+   err := dec.Decode(&res)
    if err != nil {
       t.Fatal(err)
    }

@@ -50,6 +50,7 @@ func TestEncode(t *testing.T) {
    if err != nil {
       t.Fatal(err)
    }
+   fmt.Printf("%#v\n", enc)
    buf, err := enc.Encode()
    if err != nil {
       t.Fatal(err)

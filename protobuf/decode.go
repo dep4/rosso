@@ -3,6 +3,7 @@ package protobuf
 import (
    "encoding/json"
    "google.golang.org/protobuf/encoding/protowire"
+   "unicode/utf8"
 )
 
 func consume(num protowire.Number, typ protowire.Type, buf []byte) (interface{}, int) {
@@ -13,15 +14,18 @@ func consume(num protowire.Number, typ protowire.Type, buf []byte) (interface{},
       return protowire.ConsumeFixed64(buf)
    case protowire.VarintType:
       return protowire.ConsumeVarint(buf)
-   case protowire.BytesType:
-      val, vLen := protowire.ConsumeBytes(buf)
+   case protowire.StartGroupType:
+      val, vLen := protowire.ConsumeGroup(num, buf)
       sub := NewDecoder(val)
       if sub != nil {
          return sub, vLen
       }
-      return string(val), vLen
-   case protowire.StartGroupType:
-      val, vLen := protowire.ConsumeGroup(num, buf)
+      return val, vLen
+   case protowire.BytesType:
+      val, vLen := protowire.ConsumeBytes(buf)
+      if utf8.Valid(val) {
+         return string(val), vLen
+      }
       sub := NewDecoder(val)
       if sub != nil {
          return sub, vLen
@@ -33,6 +37,7 @@ func consume(num protowire.Number, typ protowire.Type, buf []byte) (interface{},
 
 type Decoder map[protowire.Number]interface{}
 
+// Convert byte slice to map
 func NewDecoder(buf []byte) Decoder {
    dec := make(Decoder)
    for len(buf) > 0 {
@@ -64,6 +69,7 @@ func NewDecoder(buf []byte) Decoder {
    return dec
 }
 
+// Convert map to struct
 func (d Decoder) Decode(val interface{}) error {
    buf, err := json.Marshal(d)
    if err != nil {
