@@ -3,7 +3,6 @@ package protobuf
 import (
    "encoding/json"
    "google.golang.org/protobuf/encoding/protowire"
-   "unicode/utf8"
 )
 
 func consume(num protowire.Number, typ protowire.Type, buf []byte) (interface{}, int) {
@@ -15,24 +14,38 @@ func consume(num protowire.Number, typ protowire.Type, buf []byte) (interface{},
    case protowire.VarintType:
       return protowire.ConsumeVarint(buf)
    case protowire.StartGroupType:
-      val, vLen := protowire.ConsumeGroup(num, buf)
-      sub := NewDecoder(val)
-      if sub != nil {
-         return sub, vLen
+      buf, vLen := protowire.ConsumeGroup(num, buf)
+      dec := NewDecoder(buf)
+      if dec != nil {
+         return dec, vLen
       }
-      return val, vLen
+      return buf, vLen
    case protowire.BytesType:
-      val, vLen := protowire.ConsumeBytes(buf)
-      if utf8.Valid(val) {
-         return string(val), vLen
+      buf, vLen := protowire.ConsumeBytes(buf)
+      if isText(buf) {
+         return string(buf), vLen
       }
-      sub := NewDecoder(val)
-      if sub != nil {
-         return sub, vLen
+      dec := NewDecoder(buf)
+      if dec != nil {
+         return dec, vLen
       }
-      return val, vLen
+      return buf, vLen
    }
    return nil, 0
+}
+
+// github.com/golang/go/blob/go1.17.3/src/net/http/sniff.go#L297-L309
+func isText(buf []byte) bool {
+   for _, b := range buf {
+      switch {
+      case b <= 0x08,
+      b == 0x0B,
+      0x0E <= b && b <= 0x1A,
+      0x1C <= b && b <= 0x1F:
+         return false
+      }
+   }
+   return true
 }
 
 type Decoder map[protowire.Number]interface{}
