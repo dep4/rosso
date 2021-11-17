@@ -6,16 +6,16 @@ import (
    "strings"
 )
 
-type playlist map[string][]string
+type playlist map[string]string
 
 func newPlaylist(r io.Reader) playlist {
    list := make(playlist)
    buf := bufio.NewScanner(r)
    for buf.Scan() {
       kv := strings.SplitN(buf.Text(), ":", 2)
-      if strings.HasPrefix(key, "stream") {
+      if strings.HasPrefix(kv[0], "stream") {
          buf.Scan()
-         list[strings.TrimPrefix(key, "stream")] = buf.Text()
+         list[strings.TrimPrefix(buf.Text(), "stream")] = buf.Text()
       }
    }
    return list
