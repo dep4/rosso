@@ -1,5 +1,10 @@
 package m3u
 
+type (
+   array []interface{}
+   object map[string]interface{}
+)
+
 var hls540 = object{
    "#EXT-X-PLAYLIST-TYPE": "VOD",
    "#EXT-X-TARGETDURATION": 5,
