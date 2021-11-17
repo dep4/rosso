@@ -1,6 +1,7 @@
 package main
 
 import (
+   "bytes"
    "encoding/json"
    "flag"
    "fmt"
@@ -12,13 +13,27 @@ import (
    "os"
 )
 
-func encode(r io.Reader, w io.Writer, proto bool) error {
-   if proto {
-      buf, err := io.ReadAll(r)
+func encode(r io.Reader, w io.Writer, iJSON, iProto bool) error {
+   switch {
+   case iJSON:
+      src, err := io.ReadAll(r)
       if err != nil {
          return err
       }
-      dec := protobuf.NewDecoder(buf)
+      dst := new(bytes.Buffer)
+      if err := json.Indent(dst, src, "", " "); err != nil {
+         return err
+      }
+      if _, err := io.Copy(w, dst); err != nil {
+         return err
+      }
+      return nil
+   case iProto:
+      src, err := io.ReadAll(r)
+      if err != nil {
+         return err
+      }
+      dec := protobuf.NewDecoder(src)
       enc := json.NewEncoder(w)
       enc.SetIndent("", " ")
       return enc.Encode(dec)
@@ -39,11 +54,12 @@ func file(output string) (*os.File, error) {
 
 func main() {
    var (
-      https, proto bool
+      https, iJSON, iProto bool
       output string
    )
    flag.BoolVar(&https, "s", false, "HTTPS")
-   flag.BoolVar(&proto, "p", false, "Protocol Buffer")
+   flag.BoolVar(&iJSON, "j", false, "indent JSON")
+   flag.BoolVar(&iProto, "p", false, "indent Protocol Buffer")
    flag.StringVar(&output, "o", "", "output file")
    flag.Parse()
    if flag.NArg() != 1 {
@@ -83,7 +99,7 @@ func main() {
       panic(err)
    }
    defer write.Close()
-   if err := encode(res.Body, write, proto); err != nil {
+   if err := encode(res.Body, write, iJSON, iProto); err != nil {
       panic(err)
    }
 }
