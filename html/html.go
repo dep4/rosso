@@ -22,52 +22,54 @@ package html
 
 import (
    "bytes"
+   "encoding/json"
    "github.com/tdewolff/parse/v2"
    "github.com/tdewolff/parse/v2/html"
    "io"
 )
 
-type Lexer struct {
-   *html.Lexer
+func attrVal(lex *html.Lexer) string {
+   attr := lex.AttrVal()
+   trim := bytes.Trim(attr, `"`)
+   return string(trim)
 }
 
-func NewLexer(r io.Reader) Lexer {
-   inp := parse.NewInput(r)
-   return Lexer{
-      html.NewLexer(inp),
-   }
+func text(lex *html.Lexer) string {
+   tex := lex.Text()
+   return string(tex)
 }
 
-func (l Lexer) AttrVal() []byte {
-   val := l.Lexer.AttrVal()
-   return bytes.Trim(val, `'"`)
-}
+type Map map[string]string
 
-// Keep going until we reach "Text", "EndTag" (</script>), "StartTagVoid" (/>)
-// or "StartTag" (<script>). Typically this method would not be used with void
-// elements, as they have no children. However if used with a void element, and
-// a text node immediately follows, it will be returned. Ideally "nil" would be
-// returned, but that would require maintaining a list of all void elements.
-func (l Lexer) Bytes() []byte {
+func NewMap(r io.Reader) Map {
+   dec := make(Map)
+   lex := html.NewLexer(parse.NewInput(r))
    for {
-      switch tt, data := l.Next(); tt {
-      case html.ErrorToken, html.EndTagToken:
-         return nil
-      case html.TextToken, html.StartTagVoidToken, html.StartTagToken:
-         return data
+      tt, _ := lex.Next()
+      if tt == html.ErrorToken {
+         return dec
       }
-   }
-}
-
-func (l Lexer) NextAttr(key, val string) bool {
-   for {
-      switch tt, _ := l.Next(); tt {
-      case html.ErrorToken:
-         return false
-      case html.AttributeToken:
-         if string(l.Text()) == key && string(l.AttrVal()) == val {
-            return true
+      if text(lex) == "meta" {
+         meta := make(Map)
+         for {
+            tt, _ := lex.Next()
+            if tt == html.StartTagCloseToken || tt == html.StartTagVoidToken {
+               break
+            }
+            meta[text(lex)] = attrVal(lex)
+         }
+         prop, ok := meta["property"]
+         if ok {
+            dec[prop] = meta["content"]
          }
       }
    }
+}
+
+func (m Map) Struct(val interface{}) error {
+   buf, err := json.Marshal(m)
+   if err != nil {
+      return err
+   }
+   return json.Unmarshal(buf, val)
 }

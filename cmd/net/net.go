@@ -54,12 +54,13 @@ func file(output string) (*os.File, error) {
 
 func main() {
    var (
-      https, iJSON, iProto bool
+      https, iJSON, iProto, noBody bool
       output string
    )
    flag.BoolVar(&https, "s", false, "HTTPS")
    flag.BoolVar(&iJSON, "j", false, "indent JSON")
    flag.BoolVar(&iProto, "p", false, "indent Protocol Buffer")
+   flag.BoolVar(&noBody, "n", false, "no body")
    flag.StringVar(&output, "o", "", "output file")
    flag.Parse()
    if flag.NArg() != 1 {
@@ -94,6 +95,9 @@ func main() {
    }
    os.Stdout.Write(buf)
    // body
+   if noBody {
+      return
+   }
    write, err := file(output)
    if err != nil {
       panic(err)

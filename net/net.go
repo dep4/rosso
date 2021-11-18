@@ -16,11 +16,11 @@ func ParseQuery(query []byte) url.Values {
    res := make(url.Values)
    lines := bytes.Split(query, []byte{'\n'})
    for _, line := range lines {
-      kv := bytes.SplitN(line, []byte{'='}, 2)
-      if len(kv) != 2 {
+      key, val, ok := keyVal(line)
+      if ! ok {
          return nil
       }
-      res.Add(string(kv[0]), string(kv[1]))
+      res.Add(string(key), string(val))
    }
    return res
 }
@@ -47,4 +47,12 @@ func ReadRequest(r io.Reader) (*http.Request, error) {
       Method: f[0],
       URL: p,
    }, nil
+}
+
+func keyVal(kv []byte) ([]byte, []byte, bool) {
+   i := bytes.IndexByte(kv, '=')
+   if i == -1 {
+      return kv, nil, false
+   }
+   return kv[:i], kv[i+1:], true
 }
