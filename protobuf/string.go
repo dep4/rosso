@@ -27,7 +27,7 @@ func appendField(buf []byte, num protowire.Number, val interface{}) ([]byte, err
       }
    case map[string]interface{}:
       buf = protowire.AppendTag(buf, num, protowire.BytesType)
-      eBuf, err := Encoder.Encode(val)
+      eBuf, err := StringMap.Bytes(val)
       if err != nil {
          return nil, err
       }
@@ -36,25 +36,25 @@ func appendField(buf []byte, num protowire.Number, val interface{}) ([]byte, err
    return buf, nil
 }
 
-type Encoder map[string]interface{}
+type StringMap map[string]interface{}
 
 // Convert struct to map
-func NewEncoder(val interface{}) (Encoder, error) {
+func NewStringMap(val interface{}) (StringMap, error) {
    buf, err := json.Marshal(val)
    if err != nil {
       return nil, err
    }
-   var enc Encoder
-   if err := json.Unmarshal(buf, &enc); err != nil {
+   var smap StringMap
+   if err := json.Unmarshal(buf, &smap); err != nil {
       return nil, err
    }
-   return enc, nil
+   return smap, nil
 }
 
 // Convert map to byte slice
-func (e Encoder) Encode() ([]byte, error) {
+func (s StringMap) Bytes() ([]byte, error) {
    var buf []byte
-   for str, val := range e {
+   for str, val := range s {
       num, err := strconv.Atoi(str)
       if err != nil {
          return nil, err

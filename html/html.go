@@ -39,18 +39,18 @@ func text(lex *html.Lexer) string {
    return string(tex)
 }
 
-type Map map[string]string
+type StringMap map[string]string
 
-func NewMap(r io.Reader) Map {
-   dec := make(Map)
+func NewStringMap(r io.Reader) StringMap {
+   metas := make(StringMap)
    lex := html.NewLexer(parse.NewInput(r))
    for {
       tt, _ := lex.Next()
       if tt == html.ErrorToken {
-         return dec
+         return metas
       }
       if text(lex) == "meta" {
-         meta := make(Map)
+         meta := make(StringMap)
          for {
             tt, _ := lex.Next()
             if tt == html.StartTagCloseToken || tt == html.StartTagVoidToken {
@@ -60,14 +60,14 @@ func NewMap(r io.Reader) Map {
          }
          prop, ok := meta["property"]
          if ok {
-            dec[prop] = meta["content"]
+            metas[prop] = meta["content"]
          }
       }
    }
 }
 
-func (m Map) Struct(val interface{}) error {
-   buf, err := json.Marshal(m)
+func (s StringMap) Struct(val interface{}) error {
+   buf, err := json.Marshal(s)
    if err != nil {
       return err
    }

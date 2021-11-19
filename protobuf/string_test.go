@@ -22,7 +22,7 @@ type deviceConfigurationProto struct {
    NativePlatform []string `json:"11"`
 }
 
-func TestEncode(t *testing.T) {
+func TestString(t *testing.T) {
    defaultConfig := uploadDeviceConfigRequest{
       DeviceConfiguration: deviceConfigurationProto{
          TouchScreen: 1,
@@ -46,12 +46,11 @@ func TestEncode(t *testing.T) {
          },
       },
    }
-   enc, err := NewEncoder(defaultConfig)
+   smap, err := NewStringMap(defaultConfig)
    if err != nil {
       t.Fatal(err)
    }
-   fmt.Printf("%#v\n", enc)
-   buf, err := enc.Encode()
+   buf, err := smap.Bytes()
    if err != nil {
       t.Fatal(err)
    }

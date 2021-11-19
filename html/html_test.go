@@ -18,7 +18,7 @@ func TestHTML(t *testing.T) {
    }
    defer f.Close()
    var rel release
-   if err := NewMap(f).Struct(&rel); err != nil {
+   if err := NewStringMap(f).Struct(&rel); err != nil {
       t.Fatal(err)
    }
    fmt.Printf("%+v\n", rel)

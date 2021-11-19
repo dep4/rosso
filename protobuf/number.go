@@ -15,9 +15,9 @@ func consume(num protowire.Number, typ protowire.Type, buf []byte) (interface{},
       return protowire.ConsumeVarint(buf)
    case protowire.StartGroupType:
       buf, vLen := protowire.ConsumeGroup(num, buf)
-      dec := NewDecoder(buf)
-      if dec != nil {
-         return dec, vLen
+      nmap := NewNumberMap(buf)
+      if nmap != nil {
+         return nmap, vLen
       }
       return buf, vLen
    case protowire.BytesType:
@@ -25,9 +25,9 @@ func consume(num protowire.Number, typ protowire.Type, buf []byte) (interface{},
       if isText(buf) {
          return string(buf), vLen
       }
-      dec := NewDecoder(buf)
-      if dec != nil {
-         return dec, vLen
+      nmap := NewNumberMap(buf)
+      if nmap != nil {
+         return nmap, vLen
       }
       return buf, vLen
    }
@@ -48,11 +48,11 @@ func isText(buf []byte) bool {
    return true
 }
 
-type Decoder map[protowire.Number]interface{}
+type NumberMap map[protowire.Number]interface{}
 
 // Convert byte slice to map
-func NewDecoder(buf []byte) Decoder {
-   dec := make(Decoder)
+func NewNumberMap(buf []byte) NumberMap {
+   nmap := make(NumberMap)
    for len(buf) > 0 {
       num, typ, fLen := protowire.ConsumeField(buf)
       if fLen <= 0 {
@@ -66,25 +66,25 @@ func NewDecoder(buf []byte) Decoder {
       if vLen <= 0 {
          return nil
       }
-      dVal, ok := dec[num]
+      dVal, ok := nmap[num]
       if ok {
          sVal, ok := dVal.([]interface{})
          if ok {
-            dec[num] = append(sVal, val)
+            nmap[num] = append(sVal, val)
          } else {
-            dec[num] = []interface{}{dVal, val}
+            nmap[num] = []interface{}{dVal, val}
          }
       } else {
-         dec[num] = val
+         nmap[num] = val
       }
       buf = buf[fLen:]
    }
-   return dec
+   return nmap
 }
 
 // Convert map to struct
-func (d Decoder) Decode(val interface{}) error {
-   buf, err := json.Marshal(d)
+func (n NumberMap) Struct(val interface{}) error {
+   buf, err := json.Marshal(n)
    if err != nil {
       return err
    }

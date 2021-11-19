@@ -33,10 +33,10 @@ func encode(r io.Reader, w io.Writer, iJSON, iProto bool) error {
       if err != nil {
          return err
       }
-      dec := protobuf.NewDecoder(src)
+      nmap := protobuf.NewNumberMap(src)
       enc := json.NewEncoder(w)
       enc.SetIndent("", " ")
-      return enc.Encode(dec)
+      return enc.Encode(nmap)
    }
    _, err := io.Copy(w, r)
    if err != nil {
