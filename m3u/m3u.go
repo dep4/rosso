@@ -2,24 +2,14 @@ package m3u
 
 import (
    "bufio"
-   "encoding/csv"
    "io"
    "strconv"
    "strings"
 )
 
-func cutByte(s string, sep byte) (string, string, bool) {
-   i := strings.IndexByte(s, sep)
-   if i == -1 {
-      return s, "", false
-   }
-   return s[:i], s[i+1:], true
-}
-
-// #EXT-X-STREAM-INF
 type Playlist map[string]map[string]string
 
-func NewPlaylist(src io.Reader, prefix string) (Playlist, error) {
+func NewPlaylist(src io.Reader, prefix string) Playlist {
    list := make(Playlist)
    var val string
    buf := bufio.NewScanner(src)
@@ -27,34 +17,28 @@ func NewPlaylist(src io.Reader, prefix string) (Playlist, error) {
       if strings.HasPrefix(buf.Text(), "#") {
          val = buf.Text()
       } else {
-         _, sPar, ok := cutByte(val, ':')
-         if ok {
-            rCSV := csv.NewReader(strings.NewReader(sPar))
-            rCSV.LazyQuotes = true
-            aPar, err := rCSV.Read()
+         str := reader{val}
+         str.readString(':', '"')
+         param := make(map[string]string)
+         for {
+            key := str.readString('=', '"')
+            if key == "" {
+               break
+            }
+            val := str.readString(',', '"')
+            unq, err := strconv.Unquote(val)
             if err != nil {
-               return nil, err
+               param[key] = val
+            } else {
+               param[key] = unq
             }
-            mPar := make(map[string]string)
-            for _, par := range aPar {
-               key, val, ok := cutByte(par, '=')
-               if ok {
-                  unq, err := strconv.Unquote(val)
-                  if err != nil {
-                     mPar[key] = val
-                  } else {
-                     mPar[key] = unq
-                  }
-               }
-            }
-            list[prefix + buf.Text()] = mPar
          }
+         list[prefix + buf.Text()] = param
       }
    }
-   return list, nil
+   return list
 }
 
-// #EXT-X-BYTERANGE
 type Stream map[string][]string
 
 func NewStream(src io.Reader, prefix string) Stream {
@@ -65,17 +49,37 @@ func NewStream(src io.Reader, prefix string) Stream {
       if strings.HasPrefix(buf.Text(), "#") {
          val = buf.Text()
       } else {
-         _, param, ok := cutByte(val, ':')
+         param := reader{val}
+         param.readString(':', '"')
+         text := prefix + buf.Text()
+         params, ok := str[text]
          if ok {
-            text := prefix + buf.Text()
-            params, ok := str[text]
-            if ok {
-               str[text] = append(params, param)
-            } else {
-               str[text] = []string{param}
-            }
+            str[text] = append(params, param.str)
+         } else {
+            str[text] = []string{param.str}
          }
       }
    }
+   return str
+}
+
+type reader struct {
+   str string
+}
+
+func (r *reader) readString(sep, enc rune) string {
+   out := true
+   for k, v := range r.str {
+      if v == enc {
+         out = !out
+      }
+      if out && v == sep {
+         str := r.str[:k]
+         r.str = r.str[k+1:]
+         return str
+      }
+   }
+   str := r.str
+   r.str = ""
    return str
 }

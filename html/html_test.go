@@ -6,20 +6,17 @@ import (
    "testing"
 )
 
-type release struct {
-   Image string `json:"og:image"`
-   Release_Date string `json:"music:release_date"`
-}
+var tests = []string{"meta", "script"}
 
-func TestHTML(t *testing.T) {
-   f, err := os.Open("bleep.html")
-   if err != nil {
-      t.Fatal(err)
+func TestMeta(t *testing.T) {
+   for _, test := range tests {
+      f, err := os.Open("bleep.html")
+      if err != nil {
+         t.Fatal(err)
+      }
+      defer f.Close()
+      for _, node := range Parse(f, test) {
+         fmt.Printf("%+v\n", node)
+      }
    }
-   defer f.Close()
-   var rel release
-   if err := NewStringMap(f).Struct(&rel); err != nil {
-      t.Fatal(err)
-   }
-   fmt.Printf("%+v\n", rel)
 }

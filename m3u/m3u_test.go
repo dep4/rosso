@@ -6,7 +6,7 @@ import (
    "testing"
 )
 
-const prefix = "http://v.redd.it/16cqbkev2ci51/"
+const prefix = "http://v.redd.it/pu8r27nbhhl41/"
 
 func TestPlaylist(t *testing.T) {
    f, err := os.Open("HLSPlaylist.m3u8")
@@ -14,17 +14,13 @@ func TestPlaylist(t *testing.T) {
       t.Fatal(err)
    }
    defer f.Close()
-   p, err := NewPlaylist(f, prefix)
-   if err != nil {
-      t.Fatal(err)
-   }
-   for key, val := range p {
+   for key, val := range NewPlaylist(f, prefix) {
       fmt.Print(key, "\n", val, "\n")
    }
 }
 
 func TestStream(t *testing.T) {
-   f, err := os.Open("HLS_540.m3u8")
+   f, err := os.Open("HLS_540_v4.m3u8")
    if err != nil {
       t.Fatal(err)
    }

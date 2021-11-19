@@ -22,7 +22,6 @@ package html
 
 import (
    "bytes"
-   "encoding/json"
    "github.com/tdewolff/parse/v2"
    "github.com/tdewolff/parse/v2/html"
    "io"
@@ -35,41 +34,48 @@ func attrVal(lex *html.Lexer) string {
 }
 
 func text(lex *html.Lexer) string {
-   tex := lex.Text()
-   return string(tex)
+   text := lex.Text()
+   return string(text)
 }
 
-type StringMap map[string]string
+type Node struct {
+   Attr map[string]string
+   Data Text
+}
 
-func NewStringMap(r io.Reader) StringMap {
-   metas := make(StringMap)
-   lex := html.NewLexer(parse.NewInput(r))
+func Parse(src io.Reader, tag string) []Node {
+   lex := html.NewLexer(parse.NewInput(src))
+   var nodes []Node
    for {
       tt, _ := lex.Next()
       if tt == html.ErrorToken {
-         return metas
+         return nodes
       }
-      if text(lex) == "meta" {
-         meta := make(StringMap)
+      if tt == html.StartTagToken && text(lex) == tag {
+         attrs := make(map[string]string)
          for {
             tt, _ := lex.Next()
-            if tt == html.StartTagCloseToken || tt == html.StartTagVoidToken {
+            if tt == html.StartTagCloseToken {
+               lex.Next()
                break
             }
-            meta[text(lex)] = attrVal(lex)
+            if tt == html.StartTagVoidToken {
+               break
+            }
+            if tt == html.TextToken {
+               break
+            }
+            attrs[text(lex)] = attrVal(lex)
          }
-         prop, ok := meta["property"]
-         if ok {
-            metas[prop] = meta["content"]
-         }
+         nodes = append(nodes, Node{
+            attrs, bytes.TrimSpace(lex.Text()),
+         })
       }
    }
 }
 
-func (s StringMap) Struct(val interface{}) error {
-   buf, err := json.Marshal(s)
-   if err != nil {
-      return err
-   }
-   return json.Unmarshal(buf, val)
+type Text []byte
+
+func (t Text) String() string {
+   return string(t)
 }
