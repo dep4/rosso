@@ -17,7 +17,7 @@ func Handshakes(pcap []byte) [][]byte {
       var hand []byte
       buf := NewBuffer(pcap)
       // Content Type
-      cut, ok := buf.ReadBytes(0x16)
+      junk, ok := buf.ReadBytes(0x16)
       if ! ok {
          return hands
       }
@@ -34,7 +34,7 @@ func Handshakes(pcap []byte) [][]byte {
          hand = append(hand, pro...)
          hands = append(hands, hand)
       }
-      pcap = pcap[len(cut):]
+      pcap = pcap[len(junk):]
    }
 }
 
@@ -90,12 +90,12 @@ func (b *Buffer) Next(n int) ([]byte, bool) {
 
 // godocs.io/bytes#Buffer.ReadBytes
 func (b *Buffer) ReadBytes(delim byte) ([]byte, bool) {
-   cut := bytes.IndexByte(b.buf, delim) + 1
-   if cut == 0 {
+   i := bytes.IndexByte(b.buf, delim)
+   if i == -1 {
       return nil, false
    }
-   buf := b.buf[:cut]
-   b.buf = b.buf[cut:]
+   buf := b.buf[:i+1]
+   b.buf = b.buf[i+1:]
    return buf, true
 }
 

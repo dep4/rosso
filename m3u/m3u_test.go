@@ -8,18 +8,27 @@ import (
 
 const prefix = "http://v.redd.it/16cqbkev2ci51/"
 
-var tests = []string{"HLSPlaylist.m3u8", "HLS_540.m3u8"}
-
-func TestM3U(t *testing.T) {
-   for _, test := range tests {
-      file, err := os.Open(test)
-      if err != nil {
-         t.Fatal(err)
-      }
-      defer file.Close()
-      for key, val := range Parse(file, prefix) {
-         fmt.Println(key)
-         fmt.Println(val)
-      }
+func TestPlaylist(t *testing.T) {
+   f, err := os.Open("HLSPlaylist.m3u8")
+   if err != nil {
+      t.Fatal(err)
    }
+   defer f.Close()
+   p, err := NewPlaylist(f, prefix)
+   if err != nil {
+      t.Fatal(err)
+   }
+   for key, val := range p {
+      fmt.Print(key, "\n", val, "\n")
+   }
+}
+
+func TestStream(t *testing.T) {
+   f, err := os.Open("HLS_540.m3u8")
+   if err != nil {
+      t.Fatal(err)
+   }
+   defer f.Close()
+   s := NewStream(f, prefix)
+   fmt.Println(s)
 }
