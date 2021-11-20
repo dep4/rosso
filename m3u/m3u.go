@@ -33,33 +33,16 @@ func NewByteRange(src io.Reader, prefix string) ByteRange {
    return str
 }
 
-type Stream map[string]string
+type Directive map[string]string
 
-func Streams(src io.Reader, prefix string) []Stream {
-   var dirs []Stream
-   buf := bufio.NewScanner(src)
-   for buf.Scan() {
-      text := buf.Text()
-      if strings.HasPrefix(text, "#") {
-         dir := newStream(text, prefix)
-         if len(dir) >= 1 {
-            dirs = append(dirs, dir)
-         }
-      } else if len(dirs) >= 1 {
-         dirs[len(dirs)-1]["URI"] = prefix + text
-      }
-   }
-   return dirs
-}
-
-func newStream(src, prefix string) Stream {
+func newDirective(src, prefix string) Directive {
    str := reader{src}
    str.readString(':', '"')
-   param := make(Stream)
+   dir := make(Directive)
    for {
       key := str.readString('=', '"')
       if key == "" {
-         return param
+         return dir
       }
       val := str.readString(',', '"')
       unq, err := strconv.Unquote(val)
@@ -69,16 +52,40 @@ func newStream(src, prefix string) Stream {
       if key == "URI" {
          val = prefix + val
       }
-      param[key] = val
+      dir[key] = val
    }
 }
 
-func (s Stream) Struct(val interface{}) error {
-   buf, err := json.Marshal(s)
+func (d Directive) Struct(val interface{}) error {
+   buf, err := json.Marshal(d)
    if err != nil {
       return err
    }
    return json.Unmarshal(buf, val)
+}
+
+type Playlist map[string]Directive
+
+func NewPlaylist(src io.Reader, prefix string) Playlist {
+   list := make(Playlist)
+   var val Directive
+   buf := bufio.NewScanner(src)
+   for buf.Scan() {
+      text := buf.Text()
+      if strings.HasPrefix(text, "#") {
+         dir := newDirective(text, prefix)
+         uri, ok := dir["URI"]
+         if ok {
+            delete(dir, "URI")
+            list[uri] = dir
+         } else {
+            val = dir
+         }
+      } else {
+         list[prefix + text] = val
+      }
+   }
+   return list
 }
 
 type reader struct {

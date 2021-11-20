@@ -3,90 +3,64 @@ package protobuf
 import (
    "encoding/json"
    "google.golang.org/protobuf/encoding/protowire"
+   "strconv"
 )
 
-func consume(num protowire.Number, typ protowire.Type, buf []byte) (interface{}, int) {
-   switch typ {
-   case protowire.Fixed32Type:
-      return protowire.ConsumeFixed32(buf)
-   case protowire.Fixed64Type:
-      return protowire.ConsumeFixed64(buf)
-   case protowire.VarintType:
-      return protowire.ConsumeVarint(buf)
-   case protowire.StartGroupType:
-      buf, vLen := protowire.ConsumeGroup(num, buf)
-      nmap := NewFields(buf)
-      if nmap != nil {
-         return nmap, vLen
-      }
-      return buf, vLen
-   case protowire.BytesType:
-      buf, vLen := protowire.ConsumeBytes(buf)
-      if isText(buf) {
-         return string(buf), vLen
-      }
-      nmap := NewFields(buf)
-      if nmap != nil {
-         return nmap, vLen
-      }
-      return buf, vLen
-   }
-   return nil, 0
-}
-
-// github.com/golang/go/blob/go1.17.3/src/net/http/sniff.go#L297-L309
-func isText(buf []byte) bool {
-   for _, b := range buf {
-      switch {
-      case b <= 0x08,
-      b == 0x0B,
-      0x0E <= b && b <= 0x1A,
-      0x1C <= b && b <= 0x1F:
-         return false
-      }
-   }
-   return true
-}
-
-type Fields map[protowire.Number]interface{}
-
-// Convert byte slice to map
-func NewFields(buf []byte) Fields {
-   nmap := make(Fields)
-   for len(buf) > 0 {
-      num, typ, fLen := protowire.ConsumeField(buf)
-      if fLen <= 0 {
-         return nil
-      }
-      _, _, tLen := protowire.ConsumeTag(buf[:fLen])
-      if tLen <= 0 {
-         return nil
-      }
-      val, vLen := consume(num, typ, buf[tLen:fLen])
-      if vLen <= 0 {
-         return nil
-      }
-      dVal, ok := nmap[num]
-      if ok {
-         sVal, ok := dVal.([]interface{})
-         if ok {
-            nmap[num] = append(sVal, val)
-         } else {
-            nmap[num] = []interface{}{dVal, val}
+func appendField(buf []byte, num protowire.Number, val interface{}) ([]byte, error) {
+   switch val := val.(type) {
+   case bool:
+      buf = protowire.AppendTag(buf, num, protowire.VarintType)
+      buf = protowire.AppendVarint(buf, protowire.EncodeBool(val))
+   case float64:
+      buf = protowire.AppendTag(buf, num, protowire.VarintType)
+      buf = protowire.AppendVarint(buf, uint64(val))
+   case string:
+      buf = protowire.AppendTag(buf, num, protowire.BytesType)
+      buf = protowire.AppendString(buf, val)
+   case []interface{}:
+      for _, elem := range val {
+         aBuf, err := appendField(buf, num, elem)
+         if err != nil {
+            return nil, err
          }
-      } else {
-         nmap[num] = val
+         buf = aBuf
       }
-      buf = buf[fLen:]
+   case map[string]interface{}:
+      buf = protowire.AppendTag(buf, num, protowire.BytesType)
+      eBuf, err := Fields.Bytes(val)
+      if err != nil {
+         return nil, err
+      }
+      buf = protowire.AppendBytes(buf, eBuf)
    }
-   return nmap
+   return buf, nil
 }
 
-// Convert map to struct
-func (f Fields) Struct(val interface{}) error {
-   buf, err := json.Marshal(f)
+type Fields map[string]interface{}
+
+func Struct(val interface{}) (Fields, error) {
+   buf, err := json.Marshal(val)
    if err != nil {
-      return err
+      return nil, err
    }
-   return json.Unmarshal(buf, val)
+   var field Fields
+   if err := json.Unmarshal(buf, &field); err != nil {
+      return nil, err
+   }
+   return field, nil
+}
+
+func (f Fields) Bytes() ([]byte, error) {
+   var buf []byte
+   for str, val := range f {
+      num, err := strconv.Atoi(str)
+      if err != nil {
+         return nil, err
+      }
+      buf, err = appendField(buf, protowire.Number(num), val)
+      if err != nil {
+         return nil, err
+      }
+   }
+   return buf, nil
 }
