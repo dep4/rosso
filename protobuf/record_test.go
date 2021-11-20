@@ -46,11 +46,11 @@ func TestString(t *testing.T) {
          },
       },
    }
-   smap, err := NewStringMap(defaultConfig)
+   rec, err := NewRecords(defaultConfig)
    if err != nil {
       t.Fatal(err)
    }
-   buf, err := smap.Bytes()
+   buf, err := rec.Bytes()
    if err != nil {
       t.Fatal(err)
    }

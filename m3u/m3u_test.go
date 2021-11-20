@@ -6,25 +6,29 @@ import (
    "testing"
 )
 
-const prefix = "http://v.redd.it/pu8r27nbhhl41/"
+const (
+   byteRange = "iduchl/HLS_540.m3u8"
+   prefix = "http://v.redd.it/pu8r27nbhhl41/"
+   stream = "fffrnw/HLSPlaylist.m3u8"
+)
 
-func TestPlaylist(t *testing.T) {
-   f, err := os.Open("HLSPlaylist.m3u8")
+func TestRange(t *testing.T) {
+   f, err := os.Open(byteRange)
    if err != nil {
       t.Fatal(err)
    }
    defer f.Close()
-   for key, val := range NewPlaylist(f, prefix) {
-      fmt.Print(key, "\n", val, "\n")
-   }
+   b := NewByteRange(f, prefix)
+   fmt.Println(b)
 }
 
 func TestStream(t *testing.T) {
-   f, err := os.Open("HLS_540_v4.m3u8")
+   f, err := os.Open(stream)
    if err != nil {
       t.Fatal(err)
    }
    defer f.Close()
-   s := NewStream(f, prefix)
-   fmt.Println(s)
+   for _, dir := range Streams(f, prefix) {
+      fmt.Println(dir)
+   }
 }

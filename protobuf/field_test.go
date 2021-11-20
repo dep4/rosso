@@ -24,7 +24,7 @@ type responseWrapper struct {
 
 func TestNumber(t *testing.T) {
    var res responseWrapper
-   err := NewNumberMap(youtube).Struct(&res)
+   err := NewFields(youtube).Struct(&res)
    if err != nil {
       t.Fatal(err)
    }

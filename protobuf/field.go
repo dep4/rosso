@@ -15,7 +15,7 @@ func consume(num protowire.Number, typ protowire.Type, buf []byte) (interface{},
       return protowire.ConsumeVarint(buf)
    case protowire.StartGroupType:
       buf, vLen := protowire.ConsumeGroup(num, buf)
-      nmap := NewNumberMap(buf)
+      nmap := NewFields(buf)
       if nmap != nil {
          return nmap, vLen
       }
@@ -25,7 +25,7 @@ func consume(num protowire.Number, typ protowire.Type, buf []byte) (interface{},
       if isText(buf) {
          return string(buf), vLen
       }
-      nmap := NewNumberMap(buf)
+      nmap := NewFields(buf)
       if nmap != nil {
          return nmap, vLen
       }
@@ -48,11 +48,11 @@ func isText(buf []byte) bool {
    return true
 }
 
-type NumberMap map[protowire.Number]interface{}
+type Fields map[protowire.Number]interface{}
 
 // Convert byte slice to map
-func NewNumberMap(buf []byte) NumberMap {
-   nmap := make(NumberMap)
+func NewFields(buf []byte) Fields {
+   nmap := make(Fields)
    for len(buf) > 0 {
       num, typ, fLen := protowire.ConsumeField(buf)
       if fLen <= 0 {
@@ -83,8 +83,8 @@ func NewNumberMap(buf []byte) NumberMap {
 }
 
 // Convert map to struct
-func (n NumberMap) Struct(val interface{}) error {
-   buf, err := json.Marshal(n)
+func (f Fields) Struct(val interface{}) error {
+   buf, err := json.Marshal(f)
    if err != nil {
       return err
    }

@@ -27,7 +27,7 @@ func appendField(buf []byte, num protowire.Number, val interface{}) ([]byte, err
       }
    case map[string]interface{}:
       buf = protowire.AppendTag(buf, num, protowire.BytesType)
-      eBuf, err := StringMap.Bytes(val)
+      eBuf, err := Records.Bytes(val)
       if err != nil {
          return nil, err
       }
@@ -36,15 +36,15 @@ func appendField(buf []byte, num protowire.Number, val interface{}) ([]byte, err
    return buf, nil
 }
 
-type StringMap map[string]interface{}
+type Records map[string]interface{}
 
 // Convert struct to map
-func NewStringMap(val interface{}) (StringMap, error) {
+func NewRecords(val interface{}) (Records, error) {
    buf, err := json.Marshal(val)
    if err != nil {
       return nil, err
    }
-   var smap StringMap
+   var smap Records
    if err := json.Unmarshal(buf, &smap); err != nil {
       return nil, err
    }
@@ -52,9 +52,9 @@ func NewStringMap(val interface{}) (StringMap, error) {
 }
 
 // Convert map to byte slice
-func (s StringMap) Bytes() ([]byte, error) {
+func (r Records) Bytes() ([]byte, error) {
    var buf []byte
-   for str, val := range s {
+   for str, val := range r {
       num, err := strconv.Atoi(str)
       if err != nil {
          return nil, err
