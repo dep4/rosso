@@ -9,7 +9,6 @@ import (
 const (
    byteRange = "iduchl/HLS_540.m3u8"
    playlist = "fffrnw/HLSPlaylist.m3u8"
-   prefix = "http://v.redd.it/pu8r27nbhhl41/"
 )
 
 func TestPlaylist(t *testing.T) {
@@ -18,7 +17,7 @@ func TestPlaylist(t *testing.T) {
       t.Fatal(err)
    }
    defer f.Close()
-   for key, val := range NewPlaylist(f, prefix) {
+   for key, val := range NewPlaylist(f) {
       fmt.Print(key, "\n", val, "\n")
    }
 }
@@ -29,6 +28,6 @@ func TestRange(t *testing.T) {
       t.Fatal(err)
    }
    defer f.Close()
-   b := NewByteRange(f, prefix)
+   b := NewByteRange(f)
    fmt.Println(b)
 }
