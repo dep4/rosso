@@ -35,6 +35,7 @@ func encode(r io.Reader, w io.Writer, iJSON, iProto bool) error {
       }
       recs := protobuf.Bytes(src)
       enc := json.NewEncoder(w)
+      enc.SetEscapeHTML(false)
       enc.SetIndent("", " ")
       return enc.Encode(recs)
    }
