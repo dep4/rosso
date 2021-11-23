@@ -6,15 +6,22 @@ import (
    "testing"
 )
 
+type sigiData struct {
+   ItemModule map[int]struct {
+      Author string
+      ID string
+      Video struct {
+         PlayAddr string
+      }
+   }
+}
+
 func TestJSON(t *testing.T) {
-   buf, err := os.ReadFile("eD41U.json")
+   buf, err := os.ReadFile("tiktok.js")
    if err != nil {
       t.Fatal(err)
    }
-   var v []byte
-   dec := NewDecoder(buf)
-   ok := dec.DecodeArray(&v)
-   fmt.Println(ok, v)
-   ok = dec.DecodeArray(&v)
-   fmt.Println(ok, v)
+   var data sigiData
+   ok := NewDecoder(buf).Object(&data)
+   fmt.Printf("%+v %v\n", data, ok)
 }

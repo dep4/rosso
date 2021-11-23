@@ -13,7 +13,7 @@ func NewDecoder(buf []byte) *Decoder {
    return &Decoder{buf}
 }
 
-func (d *Decoder) Decode(v interface{}, c byte) bool {
+func (d *Decoder) Decode(val interface{}, c byte) bool {
    for {
       off := bytes.IndexByte(d.buf, c)
       if off == -1 {
@@ -25,7 +25,7 @@ func (d *Decoder) Decode(v interface{}, c byte) bool {
          _, err := dec.Token()
          if err != nil {
             off := dec.InputOffset()
-            err := json.Unmarshal(d.buf[:off], v)
+            err := json.Unmarshal(d.buf[:off], val)
             d.buf = d.buf[1:]
             if err == nil {
                return true
@@ -36,10 +36,6 @@ func (d *Decoder) Decode(v interface{}, c byte) bool {
    }
 }
 
-func (d *Decoder) DecodeArray(v interface{}) bool {
-   return d.Decode(v, '[')
-}
-
-func (d *Decoder) DecodeObject(v interface{}) bool {
-   return d.Decode(v, '{')
+func (d *Decoder) Object(val interface{}) bool {
+   return d.Decode(val, '{')
 }
