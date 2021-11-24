@@ -1,9 +1,30 @@
 package protobuf
 
 import (
-   "encoding/json"
    "google.golang.org/protobuf/encoding/protowire"
 )
+
+func appendField(buf []byte, num protowire.Number, val interface{}) []byte {
+   switch val := val.(type) {
+   case bool:
+      buf = protowire.AppendTag(buf, num, protowire.VarintType)
+      buf = protowire.AppendVarint(buf, protowire.EncodeBool(val))
+   case float64:
+      buf = protowire.AppendTag(buf, num, protowire.VarintType)
+      buf = protowire.AppendVarint(buf, uint64(val))
+   case string:
+      buf = protowire.AppendTag(buf, num, protowire.BytesType)
+      buf = protowire.AppendString(buf, val)
+   case []interface{}:
+      for _, elem := range val {
+         buf = appendField(buf, num, elem)
+      }
+   case map[protowire.Number]interface{}:
+      buf = protowire.AppendTag(buf, num, protowire.BytesType)
+      buf = protowire.AppendBytes(buf, Message.Marshal(val))
+   }
+   return buf
+}
 
 func consume(num protowire.Number, typ protowire.Type, buf []byte) (interface{}, int) {
    switch typ {
@@ -15,17 +36,17 @@ func consume(num protowire.Number, typ protowire.Type, buf []byte) (interface{},
       return protowire.ConsumeVarint(buf)
    case protowire.StartGroupType:
       buf, vLen := protowire.ConsumeGroup(num, buf)
-      recs := Bytes(buf)
+      recs := NewMessage(buf)
       if recs != nil {
          return recs, vLen
       }
       return buf, vLen
    case protowire.BytesType:
       buf, vLen := protowire.ConsumeBytes(buf)
-      if ! isBinary(buf) {
+      if !isBinary(buf) {
          return string(buf), vLen
       }
-      recs := Bytes(buf)
+      recs := NewMessage(buf)
       if recs != nil {
          return recs, vLen
       }
@@ -48,10 +69,10 @@ func isBinary(buf []byte) bool {
    return false
 }
 
-type Records map[protowire.Number]interface{}
+type Message map[protowire.Number]interface{}
 
-func Bytes(buf []byte) Records {
-   recs := make(Records)
+func NewMessage(buf []byte) Message {
+   mes := make(Message)
    for len(buf) > 0 {
       num, typ, fLen := protowire.ConsumeField(buf)
       if fLen <= 0 {
@@ -65,26 +86,36 @@ func Bytes(buf []byte) Records {
       if vLen <= 0 {
          return nil
       }
-      dVal, ok := recs[num]
+      dVal, ok := mes[num]
       if ok {
          sVal, ok := dVal.([]interface{})
          if ok {
-            recs[num] = append(sVal, val)
+            mes[num] = append(sVal, val)
          } else {
-            recs[num] = []interface{}{dVal, val}
+            mes[num] = []interface{}{dVal, val}
          }
       } else {
-         recs[num] = val
+         mes[num] = val
       }
       buf = buf[fLen:]
    }
-   return recs
+   return mes
 }
 
-func (r Records) Struct(val interface{}) error {
-   buf, err := json.Marshal(r)
-   if err != nil {
-      return err
+func (m Message) Marshal() []byte {
+   var buf []byte
+   for key, val := range m {
+      buf = appendField(buf, key, val)
    }
-   return json.Unmarshal(buf, val)
+   return buf
+}
+
+func (Message) Tokens() Tokens {
+   return nil
+}
+
+type Tokens map[string]interface{}
+
+func (Tokens) Message() Message {
+   return nil
 }
