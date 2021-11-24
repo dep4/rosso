@@ -22,7 +22,7 @@ func consume(num protowire.Number, typ protowire.Type, buf []byte) (interface{},
       return buf, vLen
    case protowire.BytesType:
       buf, vLen := protowire.ConsumeBytes(buf)
-      if isText(buf) {
+      if ! isBinary(buf) {
          return string(buf), vLen
       }
       recs := Bytes(buf)
@@ -34,18 +34,18 @@ func consume(num protowire.Number, typ protowire.Type, buf []byte) (interface{},
    return nil, 0
 }
 
-// github.com/golang/go/blob/go1.17.3/src/net/http/sniff.go#L297-L309
-func isText(buf []byte) bool {
+// mimesniff.spec.whatwg.org#binary-data-byte
+func isBinary(buf []byte) bool {
    for _, b := range buf {
       switch {
       case b <= 0x08,
       b == 0x0B,
       0x0E <= b && b <= 0x1A,
       0x1C <= b && b <= 0x1F:
-         return false
+         return true
       }
    }
-   return true
+   return false
 }
 
 type Records map[protowire.Number]interface{}
