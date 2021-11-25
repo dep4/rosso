@@ -1,6 +1,7 @@
 package protobuf
 
 import (
+   "encoding/json"
    "google.golang.org/protobuf/encoding/protowire"
 )
 
@@ -69,6 +70,39 @@ func isBinary(buf []byte) bool {
    return false
 }
 
+func unmarshal(buf []byte) (interface{}, error) {
+   if buf[0] == '{' {
+      mes := make(Message)
+      err := json.Unmarshal(buf, &mes)
+      if err != nil {
+         return nil, err
+      }
+      return mes, nil
+   }
+   if buf[0] == '[' {
+      var raw []json.RawMessage
+      err := json.Unmarshal(buf, &raw)
+      if err != nil {
+         return nil, err
+      }
+      var arr []interface{}
+      for _, val := range raw {
+         any, err := unmarshal(val)
+         if err != nil {
+            return nil, err
+         }
+         arr = append(arr, any)
+      }
+      return arr, nil
+   }
+   var any interface{}
+   err := json.Unmarshal(buf, &any)
+   if err != nil {
+      return nil, err
+   }
+   return any, nil
+}
+
 type Message map[protowire.Number]interface{}
 
 func NewMessage(buf []byte) Message {
@@ -110,12 +144,20 @@ func (m Message) Marshal() []byte {
    return buf
 }
 
-func (Message) Tokens() Tokens {
+func (m *Message) UnmarshalJSON(buf []byte) error {
+   var raw map[protowire.Number]json.RawMessage
+   err := json.Unmarshal(buf, &raw)
+   if err != nil {
+      return err
+   }
+   for key, val := range raw {
+      any, err := unmarshal(val)
+      if err != nil {
+         return err
+      }
+      (*m)[key] = any
+   }
    return nil
 }
 
-type Tokens map[string]interface{}
 
-func (Tokens) Message() Message {
-   return nil
-}

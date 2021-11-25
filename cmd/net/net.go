@@ -29,15 +29,15 @@ func encode(r io.Reader, w io.Writer, iJSON, iProto bool) error {
       }
       return nil
    case iProto:
-      src, err := io.ReadAll(r)
+      buf, err := io.ReadAll(r)
       if err != nil {
          return err
       }
-      recs := protobuf.Bytes(src)
+      mes := protobuf.NewMessage(buf)
       enc := json.NewEncoder(w)
       enc.SetEscapeHTML(false)
       enc.SetIndent("", " ")
-      return enc.Encode(recs)
+      return enc.Encode(mes)
    }
    _, err := io.Copy(w, r)
    if err != nil {
