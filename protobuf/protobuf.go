@@ -1,7 +1,10 @@
 package protobuf
 
 import (
+   "bytes"
+   "encoding/json"
    "google.golang.org/protobuf/encoding/protowire"
+   "io"
 )
 
 func appendField(buf []byte, num protowire.Number, val interface{}) []byte {
@@ -36,7 +39,7 @@ func consume(num protowire.Number, typ protowire.Type, buf []byte) (interface{},
       return protowire.ConsumeVarint(buf)
    case protowire.StartGroupType:
       buf, vLen := protowire.ConsumeGroup(num, buf)
-      recs := NewMessage(buf)
+      recs := Unmarshal(buf)
       if recs != nil {
          return recs, vLen
       }
@@ -46,7 +49,7 @@ func consume(num protowire.Number, typ protowire.Type, buf []byte) (interface{},
       if !isBinary(buf) {
          return string(buf), vLen
       }
-      recs := NewMessage(buf)
+      recs := Unmarshal(buf)
       if recs != nil {
          return recs, vLen
       }
@@ -69,9 +72,50 @@ func isBinary(buf []byte) bool {
    return false
 }
 
+func unmarshal(buf []byte) (interface{}, error) {
+   if buf[0] == '{' {
+      mes := make(Message)
+      err := json.Unmarshal(buf, &mes)
+      if err != nil {
+         return nil, err
+      }
+      return mes, nil
+   }
+   if buf[0] == '[' {
+      var raw []json.RawMessage
+      err := json.Unmarshal(buf, &raw)
+      if err != nil {
+         return nil, err
+      }
+      var arr []interface{}
+      for _, val := range raw {
+         any, err := unmarshal(val)
+         if err != nil {
+            return nil, err
+         }
+         arr = append(arr, any)
+      }
+      return arr, nil
+   }
+   var any interface{}
+   err := json.Unmarshal(buf, &any)
+   if err != nil {
+      return nil, err
+   }
+   return any, nil
+}
+
 type Message map[protowire.Number]interface{}
 
-func NewMessage(buf []byte) Message {
+func Decode(src io.Reader) (Message, error) {
+   buf, err := io.ReadAll(src)
+   if err != nil {
+      return nil, err
+   }
+   return Unmarshal(buf), nil
+}
+
+func Unmarshal(buf []byte) Message {
    mes := make(Message)
    for len(buf) > 0 {
       num, typ, fLen := protowire.ConsumeField(buf)
@@ -102,6 +146,11 @@ func NewMessage(buf []byte) Message {
    return mes
 }
 
+func (m Message) Encode() io.Reader {
+   buf := m.Marshal()
+   return bytes.NewReader(buf)
+}
+
 func (m Message) Marshal() []byte {
    var buf []byte
    for key, val := range m {
@@ -110,12 +159,23 @@ func (m Message) Marshal() []byte {
    return buf
 }
 
-func (Message) Tokens() Tokens {
-   return nil
+func (m Message) MarshalJSON() ([]byte, error) {
+   mes := map[protowire.Number]interface{}(m)
+   return json.Marshal(mes)
 }
 
-type Tokens map[string]interface{}
-
-func (Tokens) Message() Message {
+func (m *Message) UnmarshalJSON(buf []byte) error {
+   var raw map[protowire.Number]json.RawMessage
+   err := json.Unmarshal(buf, &raw)
+   if err != nil {
+      return err
+   }
+   for key, val := range raw {
+      any, err := unmarshal(val)
+      if err != nil {
+         return err
+      }
+      (*m)[key] = any
+   }
    return nil
 }

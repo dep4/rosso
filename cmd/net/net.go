@@ -1,50 +1,14 @@
 package main
 
 import (
-   "bytes"
-   "encoding/json"
    "flag"
    "fmt"
    "github.com/89z/parse/net"
    "github.com/89z/parse/protobuf"
-   "io"
    "net/http"
    "net/http/httputil"
    "os"
 )
-
-func encode(r io.Reader, w io.Writer, iJSON, iProto bool) error {
-   switch {
-   case iJSON:
-      src, err := io.ReadAll(r)
-      if err != nil {
-         return err
-      }
-      dst := new(bytes.Buffer)
-      if err := json.Indent(dst, src, "", " "); err != nil {
-         return err
-      }
-      if _, err := io.Copy(w, dst); err != nil {
-         return err
-      }
-      return nil
-   case iProto:
-      src, err := io.ReadAll(r)
-      if err != nil {
-         return err
-      }
-      recs := protobuf.Bytes(src)
-      enc := json.NewEncoder(w)
-      enc.SetEscapeHTML(false)
-      enc.SetIndent("", " ")
-      return enc.Encode(recs)
-   }
-   _, err := io.Copy(w, r)
-   if err != nil {
-      return err
-   }
-   return nil
-}
 
 func file(output string) (*os.File, error) {
    if output != "" {
@@ -55,13 +19,12 @@ func file(output string) (*os.File, error) {
 
 func main() {
    var (
-      https, iJSON, iProto, noBody bool
+      https, proto, noBody bool
       output string
    )
    flag.BoolVar(&https, "s", false, "HTTPS")
-   flag.BoolVar(&iJSON, "j", false, "indent JSON")
-   flag.BoolVar(&iProto, "p", false, "indent Protocol Buffer")
    flag.BoolVar(&noBody, "n", false, "no body")
+   flag.BoolVar(&proto, "p", false, "Protocol Buffer")
    flag.StringVar(&output, "o", "", "output file")
    flag.Parse()
    if flag.NArg() != 1 {
@@ -104,7 +67,19 @@ func main() {
       panic(err)
    }
    defer write.Close()
-   if err := encode(res.Body, write, iJSON, iProto); err != nil {
-      panic(err)
+   if proto {
+      mes, err := protobuf.Decode(res.Body)
+      if err != nil {
+         panic(err)
+      }
+      read := mes.Encode()
+      if _, err := write.ReadFrom(read); err != nil {
+         panic(err)
+      }
+   } else {
+      _, err := write.ReadFrom(res.Body)
+      if err != nil {
+         panic(err)
+      }
    }
 }
