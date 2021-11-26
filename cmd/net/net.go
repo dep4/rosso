@@ -1,6 +1,7 @@
 package main
 
 import (
+   "bytes"
    "flag"
    "fmt"
    "github.com/89z/parse/net"
@@ -72,8 +73,11 @@ func main() {
       if err != nil {
          panic(err)
       }
-      read := mes.Encode()
-      if _, err := write.ReadFrom(read); err != nil {
+      buf, err := mes.MarshalJSON()
+      if err != nil {
+         panic(err)
+      }
+      if _, err := write.ReadFrom(bytes.NewReader(buf)); err != nil {
          panic(err)
       }
    } else {
