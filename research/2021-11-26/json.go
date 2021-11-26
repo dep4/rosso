@@ -5,8 +5,9 @@ import (
    "google.golang.org/protobuf/encoding/protowire"
 )
 
-func consumeJSON(buf []byte) (token, error) {
-   return token{}, nil
+func (m message) MarshalJSON() ([]byte, error) {
+   mes := map[protowire.Number]interface{}(m)
+   return json.Marshal(mes)
 }
 
 func (m *message) UnmarshalJSON(buf []byte) error {
@@ -15,17 +16,36 @@ func (m *message) UnmarshalJSON(buf []byte) error {
    if err != nil {
       return err
    }
-   for num, val := range raw {
-      any, err := consumeJSON(val)
+   for _, buf := range raw {
+      var raw struct {
+         Type protowire.Type
+         Value json.RawMessage
+      }
+      err := json.Unmarshal(buf, &raw)
       if err != nil {
          return err
       }
-      (*m)[num] = any
+      switch raw.Type {
+      case protowire.VarintType:
+         var val uint64
+         err := json.Unmarshal(raw.Value, &val)
+         if err != nil {
+            return err
+         }
+      case protowire.Fixed32Type:
+         var val uint32
+         err := json.Unmarshal(raw.Value, &val)
+         if err != nil {
+            return err
+         }
+      case protowire.Fixed64Type:
+         var val uint64
+         err := json.Unmarshal(raw.Value, &val)
+         if err != nil {
+            return err
+         }
+      case protowire.BytesType:
+      }
    }
    return nil
-}
-
-func (m message) MarshalJSON() ([]byte, error) {
-   mes := map[protowire.Number]interface{}(m)
-   return json.Marshal(mes)
 }

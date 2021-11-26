@@ -58,21 +58,7 @@ func consume(num protowire.Number, typ protowire.Type, buf []byte) (interface{},
    return nil, 0
 }
 
-// mimesniff.spec.whatwg.org#binary-data-byte
-func isBinary(buf []byte) bool {
-   for _, b := range buf {
-      switch {
-      case b <= 0x08,
-      b == 0x0B,
-      0x0E <= b && b <= 0x1A,
-      0x1C <= b && b <= 0x1F:
-         return true
-      }
-   }
-   return false
-}
-
-func unmarshalJSON(buf []byte) (interface{}, error) {
+func consumeJSON(buf []byte) (interface{}, error) {
    if buf[0] == '{' {
       mes := make(Message)
       err := json.Unmarshal(buf, &mes)
@@ -89,7 +75,7 @@ func unmarshalJSON(buf []byte) (interface{}, error) {
       }
       var arr []interface{}
       for _, val := range raw {
-         any, err := unmarshalJSON(val)
+         any, err := consumeJSON(val)
          if err != nil {
             return nil, err
          }
@@ -103,6 +89,20 @@ func unmarshalJSON(buf []byte) (interface{}, error) {
       return nil, err
    }
    return any, nil
+}
+
+// mimesniff.spec.whatwg.org#binary-data-byte
+func isBinary(buf []byte) bool {
+   for _, b := range buf {
+      switch {
+      case b <= 0x08,
+      b == 0x0B,
+      0x0E <= b && b <= 0x1A,
+      0x1C <= b && b <= 0x1F:
+         return true
+      }
+   }
+   return false
 }
 
 type Message map[protowire.Number]interface{}
@@ -171,7 +171,7 @@ func (m *Message) UnmarshalJSON(buf []byte) error {
       return err
    }
    for key, val := range raw {
-      any, err := unmarshalJSON(val)
+      any, err := consumeJSON(val)
       if err != nil {
          return err
       }
