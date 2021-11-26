@@ -4,6 +4,36 @@ import (
    "google.golang.org/protobuf/encoding/protowire"
 )
 
+func isBinary(buf []byte) bool {
+   for _, b := range buf {
+      switch {
+      case b <= 0x08,
+      b == 0x0B,
+      0x0E <= b && b <= 0x1A,
+      0x1C <= b && b <= 0x1F:
+         return true
+      }
+   }
+   return false
+}
+
+type message map[protowire.Number]interface{}
+
+type token struct {
+   Type protowire.Type
+   Value interface{}
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+func (m message) marshal() []byte {
+   var buf []byte
+   for key, val := range m {
+      buf = appendField(buf, key, val)
+   }
+   return buf
+}
+
 func appendField(buf []byte, num protowire.Number, val interface{}) []byte {
    switch val := val.(type) {
    case token:
@@ -65,21 +95,6 @@ func consume(num protowire.Number, typ protowire.Type, buf []byte) (token, int) 
    return token{}, 0
 }
 
-func isBinary(buf []byte) bool {
-   for _, b := range buf {
-      switch {
-      case b <= 0x08,
-      b == 0x0B,
-      0x0E <= b && b <= 0x1A,
-      0x1C <= b && b <= 0x1F:
-         return true
-      }
-   }
-   return false
-}
-
-type message map[protowire.Number]interface{}
-
 func unmarshal(buf []byte) message {
    mes := make(message)
    for len(buf) >= 1 {
@@ -111,15 +126,3 @@ func unmarshal(buf []byte) message {
    return mes
 }
 
-func (m message) marshal() []byte {
-   var buf []byte
-   for key, val := range m {
-      buf = appendField(buf, key, val)
-   }
-   return buf
-}
-
-type token struct {
-   Type protowire.Type
-   Value interface{}
-}

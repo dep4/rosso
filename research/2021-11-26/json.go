@@ -16,7 +16,7 @@ func (m *message) UnmarshalJSON(buf []byte) error {
    if err != nil {
       return err
    }
-   for _, buf := range raw {
+   for key, buf := range raw {
       var raw struct {
          Type protowire.Type
          Value json.RawMessage
@@ -26,25 +26,36 @@ func (m *message) UnmarshalJSON(buf []byte) error {
          return err
       }
       switch raw.Type {
-      case protowire.VarintType:
-         var val uint64
-         err := json.Unmarshal(raw.Value, &val)
-         if err != nil {
-            return err
-         }
       case protowire.Fixed32Type:
          var val uint32
          err := json.Unmarshal(raw.Value, &val)
          if err != nil {
             return err
          }
-      case protowire.Fixed64Type:
+         (*m)[key] = token{raw.Type, val}
+      case protowire.Fixed64Type, protowire.VarintType:
          var val uint64
          err := json.Unmarshal(raw.Value, &val)
          if err != nil {
             return err
          }
+         (*m)[key] = token{raw.Type, val}
       case protowire.BytesType:
+         if raw.Value[0] == '"' {
+            var val string
+            err := json.Unmarshal(raw.Value, &val)
+            if err != nil {
+               return err
+            }
+            (*m)[key] = token{raw.Type, val}
+         } else {
+            val := make(message)
+            err := json.Unmarshal(raw.Value, &val)
+            if err != nil {
+               return err
+            }
+            (*m)[key] = token{raw.Type, val}
+         }
       }
    }
    return nil
