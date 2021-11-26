@@ -72,7 +72,7 @@ func isBinary(buf []byte) bool {
    return false
 }
 
-func unmarshal(buf []byte) (interface{}, error) {
+func unmarshalJSON(buf []byte) (interface{}, error) {
    if buf[0] == '{' {
       mes := make(Message)
       err := json.Unmarshal(buf, &mes)
@@ -89,7 +89,7 @@ func unmarshal(buf []byte) (interface{}, error) {
       }
       var arr []interface{}
       for _, val := range raw {
-         any, err := unmarshal(val)
+         any, err := unmarshalJSON(val)
          if err != nil {
             return nil, err
          }
@@ -117,7 +117,7 @@ func Decode(src io.Reader) (Message, error) {
 
 func Unmarshal(buf []byte) Message {
    mes := make(Message)
-   for len(buf) > 0 {
+   for len(buf) >= 1 {
       num, typ, fLen := protowire.ConsumeField(buf)
       if fLen <= 0 {
          return nil
@@ -130,13 +130,13 @@ func Unmarshal(buf []byte) Message {
       if vLen <= 0 {
          return nil
       }
-      dVal, ok := mes[num]
+      vMes, ok := mes[num]
       if ok {
-         sVal, ok := dVal.([]interface{})
+         vSlice, ok := vMes.([]interface{})
          if ok {
-            mes[num] = append(sVal, val)
+            mes[num] = append(vSlice, val)
          } else {
-            mes[num] = []interface{}{dVal, val}
+            mes[num] = []interface{}{vMes, val}
          }
       } else {
          mes[num] = val
@@ -171,7 +171,7 @@ func (m *Message) UnmarshalJSON(buf []byte) error {
       return err
    }
    for key, val := range raw {
-      any, err := unmarshal(val)
+      any, err := unmarshalJSON(val)
       if err != nil {
          return err
       }
