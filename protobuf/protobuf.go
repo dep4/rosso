@@ -24,7 +24,7 @@ func appendField(buf []byte, num protowire.Number, val interface{}) []byte {
       }
    case Message:
       buf = protowire.AppendTag(buf, num, protowire.BytesType)
-      buf = protowire.AppendBytes(buf, Message.Marshal(val))
+      buf = protowire.AppendBytes(buf, val.Marshal())
    }
    return buf
 }
