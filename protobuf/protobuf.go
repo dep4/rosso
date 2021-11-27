@@ -121,3 +121,46 @@ func (m Message) Marshal() []byte {
    }
    return buf
 }
+
+func (m Message) Message(k protowire.Number) Message {
+   val, ok := m[k].(Message)
+   if ok {
+      return val
+   }
+   return nil
+}
+
+func (m Message) Set(k protowire.Number, v interface{}) bool {
+   if m == nil {
+      return false
+   }
+   m[k] = v
+   return true
+}
+
+func (m Message) Slice(k protowire.Number) []interface{} {
+   switch val := m[k].(type) {
+   case nil:
+      return nil
+   case []interface{}:
+      return val
+   default:
+      return []interface{}{val}
+   }
+}
+
+func (m Message) String(k protowire.Number) string {
+   val, ok := m[k].(string)
+   if ok {
+      return val
+   }
+   return ""
+}
+
+func (m Message) Uint64(k protowire.Number) uint64 {
+   val, ok := m[k].(uint64)
+   if ok {
+      return val
+   }
+   return 0
+}

@@ -9,7 +9,7 @@ var youtube = []byte("\n\xc9E\x12\xc6E\"\xb0C\n\x1acom.google.android.youtube\x1
 
 func TestProto(t *testing.T) {
    mes := Unmarshal(youtube)
-   fmt.Println(mes)
+   fmt.Printf("%#v\n", mes)
    buf := mes.Marshal()
    fmt.Println(len(youtube), len(buf))
 }
