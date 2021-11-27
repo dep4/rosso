@@ -31,24 +31,24 @@ func appendField(buf []byte, num protowire.Number, val interface{}) []byte {
 
 func consume(num protowire.Number, typ protowire.Type, buf []byte) (interface{}, int) {
    switch typ {
+   case protowire.VarintType:
+      return protowire.ConsumeVarint(buf)
    case protowire.Fixed32Type:
       return protowire.ConsumeFixed32(buf)
    case protowire.Fixed64Type:
       return protowire.ConsumeFixed64(buf)
-   case protowire.VarintType:
-      return protowire.ConsumeVarint(buf)
-   case protowire.StartGroupType:
-      buf, vLen := protowire.ConsumeGroup(num, buf)
+   case protowire.BytesType:
+      buf, vLen := protowire.ConsumeBytes(buf)
       recs := Unmarshal(buf)
       if recs != nil {
          return recs, vLen
       }
-      return buf, vLen
-   case protowire.BytesType:
-      buf, vLen := protowire.ConsumeBytes(buf)
-      if !isBinary(buf) {
-         return string(buf), vLen
+      if isBinary(buf) {
+         return buf, vLen
       }
+      return string(buf), vLen
+   case protowire.StartGroupType:
+      buf, vLen := protowire.ConsumeGroup(num, buf)
       recs := Unmarshal(buf)
       if recs != nil {
          return recs, vLen

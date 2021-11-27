@@ -4,34 +4,6 @@ import (
    "google.golang.org/protobuf/encoding/protowire"
 )
 
-func isBinary(buf []byte) bool {
-   for _, b := range buf {
-      switch {
-      case b <= 0x08,
-      b == 0x0B,
-      0x0E <= b && b <= 0x1A,
-      0x1C <= b && b <= 0x1F:
-         return true
-      }
-   }
-   return false
-}
-
-type message map[protowire.Number]interface{}
-
-type token struct {
-   Type protowire.Type
-   Value interface{}
-}
-
-func (m message) marshal() []byte {
-   var buf []byte
-   for key, val := range m {
-      buf = appendField(buf, key, val)
-   }
-   return buf
-}
-
 func appendField(buf []byte, num protowire.Number, val interface{}) []byte {
    switch val := val.(type) {
    case token:
@@ -43,7 +15,7 @@ func appendField(buf []byte, num protowire.Number, val interface{}) []byte {
          buf = protowire.AppendFixed64(buf, val.Value.(uint64))
       case protowire.VarintType:
          buf = protowire.AppendVarint(buf, val.Value.(uint64))
-      case protowire.BytesType:
+      case protowire.BytesType, protowire.StartGroupType:
          switch val := val.Value.(type) {
          case string:
             buf = protowire.AppendString(buf, val)
@@ -61,37 +33,49 @@ func appendField(buf []byte, num protowire.Number, val interface{}) []byte {
    return buf
 }
 
-func consume(num protowire.Number, typ protowire.Type, buf []byte) (token, int) {
+func consume(num protowire.Number, typ protowire.Type, buf []byte) (interface{}, int) {
    switch typ {
    case protowire.VarintType:
-      val, vLen := protowire.ConsumeVarint(buf)
-      return token{typ, val}, vLen
+      return protowire.ConsumeVarint(buf)
    case protowire.Fixed32Type:
-      val, vLen := protowire.ConsumeFixed32(buf)
-      return token{typ, val}, vLen
+      return protowire.ConsumeFixed32(buf)
    case protowire.Fixed64Type:
-      val, vLen := protowire.ConsumeFixed64(buf)
-      return token{typ, val}, vLen
+      return protowire.ConsumeFixed64(buf)
    case protowire.BytesType:
       buf, vLen := protowire.ConsumeBytes(buf)
-      if !isBinary(buf) {
-         return token{typ, string(buf)}, vLen
-      }
       recs := unmarshal(buf)
       if recs != nil {
-         return token{typ, recs}, vLen
+         return recs, vLen
       }
-      return token{typ, buf}, vLen
+      if isBinary(buf) {
+         return buf, vLen
+      }
+      return string(buf), vLen
    case protowire.StartGroupType:
       buf, vLen := protowire.ConsumeGroup(num, buf)
       recs := unmarshal(buf)
       if recs != nil {
-         return token{protowire.BytesType, recs}, vLen
+         return recs, vLen
       }
-      return token{protowire.BytesType, buf}, vLen
+      return buf, vLen
    }
-   return token{}, 0
+   return nil, 0
 }
+
+func isBinary(buf []byte) bool {
+   for _, b := range buf {
+      switch {
+      case b <= 0x08,
+      b == 0x0B,
+      0x0E <= b && b <= 0x1A,
+      0x1C <= b && b <= 0x1F:
+         return true
+      }
+   }
+   return false
+}
+
+type message map[protowire.Number]interface{}
 
 func unmarshal(buf []byte) message {
    mes := make(message)
@@ -104,10 +88,11 @@ func unmarshal(buf []byte) message {
       if tLen <= 0 {
          return nil
       }
-      tok, vLen := consume(num, typ, buf[tLen:fLen])
+      val, vLen := consume(num, typ, buf[tLen:fLen])
       if vLen <= 0 {
          return nil
       }
+      tok := token{typ, val}
       vMes, ok := mes[num]
       if ok {
          vSlice, ok := vMes.([]interface{})
@@ -122,4 +107,17 @@ func unmarshal(buf []byte) message {
       buf = buf[fLen:]
    }
    return mes
+}
+
+func (m message) marshal() []byte {
+   var buf []byte
+   for key, val := range m {
+      buf = appendField(buf, key, val)
+   }
+   return buf
+}
+
+type token struct {
+   Type protowire.Type
+   Value interface{}
 }
