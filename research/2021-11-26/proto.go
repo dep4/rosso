@@ -79,9 +79,9 @@ func consume(num protowire.Number, typ protowire.Type, buf []byte) (token, int) 
       }
       recs := unmarshal(buf)
       if recs != nil {
-         return token{protowire.BytesType, recs}, vLen
+         return token{typ, recs}, vLen
       }
-      return token{protowire.BytesType, buf}, vLen
+      return token{typ, buf}, vLen
    case protowire.StartGroupType:
       buf, vLen := protowire.ConsumeGroup(num, buf)
       recs := unmarshal(buf)
