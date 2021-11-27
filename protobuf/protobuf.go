@@ -1,15 +1,16 @@
 package protobuf
 
 import (
+   "bytes"
    "google.golang.org/protobuf/encoding/protowire"
    "io"
 )
 
 func appendField(buf []byte, num protowire.Number, val interface{}) []byte {
    switch val := val.(type) {
-   case []byte:
-      buf = protowire.AppendTag(buf, num, protowire.BytesType)
-      buf = protowire.AppendBytes(buf, val)
+   case bool:
+      buf = protowire.AppendTag(buf, num, protowire.VarintType)
+      buf = protowire.AppendVarint(buf, protowire.EncodeBool(val))
    case uint32:
       buf = protowire.AppendTag(buf, num, protowire.Fixed32Type)
       buf = protowire.AppendFixed32(buf, val)
@@ -19,6 +20,9 @@ func appendField(buf []byte, num protowire.Number, val interface{}) []byte {
    case string:
       buf = protowire.AppendTag(buf, num, protowire.BytesType)
       buf = protowire.AppendString(buf, val)
+   case []byte:
+      buf = protowire.AppendTag(buf, num, protowire.BytesType)
+      buf = protowire.AppendBytes(buf, val)
    case []interface{}:
       for _, elem := range val {
          buf = appendField(buf, num, elem)
@@ -114,6 +118,53 @@ func Unmarshal(buf []byte) Message {
    return mes
 }
 
+func (m Message) Encode() io.Reader {
+   buf := m.Marshal()
+   return bytes.NewReader(buf)
+}
+
+func (m Message) Get(k protowire.Number) Message {
+   val, ok := m[k].(Message)
+   if ok {
+      return val
+   }
+   return nil
+}
+
+func (m Message) GetMessages(k protowire.Number) []Message {
+   switch typ := m[k].(type) {
+   case Message:
+      return []Message{typ}
+   case []interface{}:
+      var mess []Message
+      for _, val := range typ {
+         mes, ok := val.(Message)
+         if ok {
+            mess = append(mess, mes)
+         }
+      }
+      return mess
+   default:
+      return nil
+   }
+}
+
+func (m Message) GetString(k protowire.Number) string {
+   val, ok := m[k].(string)
+   if ok {
+      return val
+   }
+   return ""
+}
+
+func (m Message) GetUint64(k protowire.Number) uint64 {
+   val, ok := m[k].(uint64)
+   if ok {
+      return val
+   }
+   return 0
+}
+
 func (m Message) Marshal() []byte {
    var buf []byte
    for key, val := range m {
@@ -122,45 +173,10 @@ func (m Message) Marshal() []byte {
    return buf
 }
 
-func (m Message) Message(k protowire.Number) Message {
-   val, ok := m[k].(Message)
-   if ok {
-      return val
-   }
-   return nil
-}
-
 func (m Message) Set(k protowire.Number, v interface{}) bool {
    if m == nil {
       return false
    }
    m[k] = v
    return true
-}
-
-func (m Message) Slice(k protowire.Number) []interface{} {
-   switch val := m[k].(type) {
-   case nil:
-      return nil
-   case []interface{}:
-      return val
-   default:
-      return []interface{}{val}
-   }
-}
-
-func (m Message) String(k protowire.Number) string {
-   val, ok := m[k].(string)
-   if ok {
-      return val
-   }
-   return ""
-}
-
-func (m Message) Uint64(k protowire.Number) uint64 {
-   val, ok := m[k].(uint64)
-   if ok {
-      return val
-   }
-   return 0
 }
