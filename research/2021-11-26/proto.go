@@ -26,8 +26,8 @@ func appendField(buf []byte, num protowire.Number, val interface{}) []byte {
          }
       }
    case []interface{}:
-      for _, elem := range val {
-         buf = appendField(buf, num, elem)
+      for _, tok := range val {
+         buf = appendField(buf, num, tok)
       }
    }
    return buf
@@ -43,9 +43,9 @@ func consume(num protowire.Number, typ protowire.Type, buf []byte) (interface{},
       return protowire.ConsumeFixed64(buf)
    case protowire.BytesType:
       buf, vLen := protowire.ConsumeBytes(buf)
-      recs := unmarshal(buf)
-      if recs != nil {
-         return recs, vLen
+      mes := unmarshal(buf)
+      if mes != nil {
+         return mes, vLen
       }
       if isBinary(buf) {
          return buf, vLen
@@ -53,9 +53,9 @@ func consume(num protowire.Number, typ protowire.Type, buf []byte) (interface{},
       return string(buf), vLen
    case protowire.StartGroupType:
       buf, vLen := protowire.ConsumeGroup(num, buf)
-      recs := unmarshal(buf)
-      if recs != nil {
-         return recs, vLen
+      mes := unmarshal(buf)
+      if mes != nil {
+         return mes, vLen
       }
       return buf, vLen
    }
