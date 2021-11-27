@@ -17,45 +17,64 @@ func (m *message) UnmarshalJSON(buf []byte) error {
       return err
    }
    for key, buf := range raw {
-      var raw struct {
-         Type protowire.Type
-         Value json.RawMessage
-      }
-      err := json.Unmarshal(buf, &raw)
-      if err != nil {
-         return err
-      }
-      switch raw.Type {
-      case protowire.Fixed32Type:
-         var val uint32
-         err := json.Unmarshal(raw.Value, &val)
+      if buf[0] == '{' {
+         var raw struct {
+            Type protowire.Type
+            Value json.RawMessage
+         }
+         err := json.Unmarshal(buf, &raw)
          if err != nil {
             return err
          }
-         (*m)[key] = token{raw.Type, val}
-      case protowire.Fixed64Type, protowire.VarintType:
-         var val uint64
-         err := json.Unmarshal(raw.Value, &val)
-         if err != nil {
-            return err
-         }
-         (*m)[key] = token{raw.Type, val}
-      case protowire.BytesType:
-         if raw.Value[0] == '"' {
-            var val string
+         switch raw.Type {
+         case protowire.Fixed32Type:
+            var val uint32
             err := json.Unmarshal(raw.Value, &val)
             if err != nil {
                return err
             }
             (*m)[key] = token{raw.Type, val}
-         } else {
-            val := make(message)
+         case protowire.Fixed64Type, protowire.VarintType:
+            var val uint64
             err := json.Unmarshal(raw.Value, &val)
             if err != nil {
                return err
             }
             (*m)[key] = token{raw.Type, val}
+         case protowire.BytesType:
+            if raw.Value[0] == '"' {
+               var val string
+               err := json.Unmarshal(raw.Value, &val)
+               if err != nil {
+                  return err
+               }
+               (*m)[key] = token{raw.Type, val}
+            } else {
+               val := make(message)
+               err := json.Unmarshal(raw.Value, &val)
+               if err != nil {
+                  return err
+               }
+               (*m)[key] = token{raw.Type, val}
+            }
          }
+      } else {
+         // {"1":[{"Type":0,"Value":2},{"Type":0,"Value":3}]}
+         var raw []json.RawMessage
+         err := json.Unmarshal(buf, &raw)
+         if err != nil {
+            return err
+         }
+         var arr []interface{}
+         for _, val := range raw {
+            any := make(message)
+            err := json.Unmarshal(val, &any)
+            if err != nil {
+               return err
+            }
+            arr = append(arr, any)
+         }
+         (*m)[key] = arr
       }
    }
    return nil

@@ -24,8 +24,6 @@ type token struct {
    Value interface{}
 }
 
-////////////////////////////////////////////////////////////////////////////////
-
 func (m message) marshal() []byte {
    var buf []byte
    for key, val := range m {
@@ -125,4 +123,3 @@ func unmarshal(buf []byte) message {
    }
    return mes
 }
-
