@@ -1,6 +1,7 @@
 package protobuf
 
 import (
+   "bytes"
    "google.golang.org/protobuf/encoding/protowire"
    "io"
 )
@@ -112,6 +113,11 @@ func Unmarshal(buf []byte) Message {
       buf = buf[fLen:]
    }
    return mes
+}
+
+func (m Message) Encode() io.Reader {
+   buf := m.Marshal()
+   return bytes.NewReader(buf)
 }
 
 func (m Message) Marshal() []byte {
