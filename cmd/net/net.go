@@ -3,6 +3,7 @@ package main
 import (
    "bytes"
    "flag"
+   "encoding/json"
    "fmt"
    "github.com/89z/parse/net"
    "github.com/89z/parse/protobuf"
@@ -73,7 +74,7 @@ func main() {
       if err != nil {
          panic(err)
       }
-      buf, err := mes.MarshalJSON()
+      buf, err := json.Marshal(mes)
       if err != nil {
          panic(err)
       }
