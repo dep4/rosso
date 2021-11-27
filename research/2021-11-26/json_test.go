@@ -1,6 +1,7 @@
 package protobuf
 
 import (
+   "encoding/json"
    "fmt"
    "os"
    "testing"
@@ -9,11 +10,14 @@ import (
 var buf = []byte(`
 {
    "1": {"Type": 1, "Value": 10},
-   "3": {
+   "2": {
       "Type": 2, "Value": {
          "3": {"Type": 1, "Value": 11}
       }
-   }
+   },
+   "3": [
+      {"Type": 1, "Value": 10}, {"Type": 1, "Value": 11}
+   ]
 }
 `)
 
@@ -33,4 +37,20 @@ func TestMarshalJSON(t *testing.T) {
       t.Fatal(err)
    }
    os.Stdout.Write(buf)
+}
+
+
+type appDetails struct {
+   Version []varint `json:"1"`
+}
+
+func TestVarint(t *testing.T) {
+   app := appDetails{
+      []varint{2, 3},
+   }
+   // {"1":[{"Type":0,"Value":2},{"Type":0,"Value":3}]}
+   err := json.NewEncoder(os.Stdout).Encode(app)
+   if err != nil {
+      t.Fatal(err)
+   }
 }
