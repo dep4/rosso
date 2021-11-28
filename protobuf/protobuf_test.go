@@ -12,5 +12,7 @@ func TestProto(t *testing.T) {
    if err != nil {
       t.Fatal(err)
    }
-   fmt.Printf("%#v\n", mes)
+   fmt.Println(mes)
+   buf := mes.Marshal()
+   fmt.Println(len(youtube), len(buf))
 }
