@@ -20,9 +20,17 @@ func appendField(buf []byte, num protowire.Number, val interface{}) []byte {
    case Message:
       buf = protowire.AppendTag(buf, num, protowire.BytesType)
       buf = protowire.AppendBytes(buf, val.Marshal())
-   case []interface{}:
-      for _, elem := range val {
-         buf = appendField(buf, num, elem)
+   case []uint64:
+      for _, ran := range val {
+         buf = appendField(buf, num, ran)
+      }
+   case []string:
+      for _, ran := range val {
+         buf = appendField(buf, num, ran)
+      }
+   case []Message:
+      for _, ran := range val {
+         buf = appendField(buf, num, ran)
       }
    }
    return buf
@@ -66,20 +74,51 @@ func Unmarshal(buf []byte) (Message, error) {
       if err != nil {
          return nil, err
       }
-      val, err := consume(num, typ, buf[tLen:fLen])
-      if err != nil {
-         return nil, err
-      }
-      vMes, ok := mes[num]
-      if ok {
-         vSlice, ok := vMes.([]interface{})
-         if ok {
-            mes[num] = append(vSlice, val)
-         } else {
-            mes[num] = []interface{}{vMes, val}
+      bVal := buf[tLen:fLen]
+      switch typ {
+      case protowire.VarintType:
+         val, err := consumeVarint(bVal)
+         if err != nil {
+            return nil, err
          }
-      } else {
-         mes[num] = val
+         mes.addUint64(num, val)
+      case protowire.Fixed64Type:
+         val, err := consumeFixed64(bVal)
+         if err != nil {
+            return nil, err
+         }
+         mes.addUint64(num, val)
+      case protowire.Fixed32Type:
+         val, err := consumeFixed32(bVal)
+         if err != nil {
+            return nil, err
+         }
+         mes.addUint32(num, val)
+      case protowire.StartGroupType:
+         buf, err := consumeGroup(num, bVal)
+         if err != nil {
+            return nil, err
+         }
+         mNew, err := Unmarshal(buf)
+         if err != nil {
+            return nil, err
+         }
+         mes.add(num, mNew)
+      case protowire.BytesType:
+         buf, err := consumeBytes(bVal)
+         if err != nil {
+            return nil, err
+         }
+         mNew, err := Unmarshal(buf)
+         if err != nil {
+            if isBinary(buf) {
+               mes.addBytes(num, buf)
+            } else {
+               mes.addString(num, string(buf))
+            }
+         } else {
+            mes.add(num, mNew)
+         }
       }
       buf = buf[fLen:]
    }
@@ -91,53 +130,10 @@ func (m Message) Encode() io.Reader {
    return bytes.NewReader(buf)
 }
 
-func (m Message) Get(k protowire.Number) Message {
-   val, ok := m[k].(Message)
-   if ok {
-      return val
-   }
-   return nil
-}
-
-func (m Message) GetMessages(k protowire.Number) []Message {
-   switch typ := m[k].(type) {
-   case []Message:
-      return typ
-   case Message:
-      return []Message{typ}
-   default:
-      return nil
-   }
-}
-
-func (m Message) GetString(k protowire.Number) string {
-   val, ok := m[k].(string)
-   if ok {
-      return val
-   }
-   return ""
-}
-
-func (m Message) GetUint64(k protowire.Number) uint64 {
-   val, ok := m[k].(uint64)
-   if ok {
-      return val
-   }
-   return 0
-}
-
 func (m Message) Marshal() []byte {
    var buf []byte
    for key, val := range m {
       buf = appendField(buf, key, val)
    }
    return buf
-}
-
-func (m Message) Set(k protowire.Number, v interface{}) bool {
-   if m == nil {
-      return false
-   }
-   m[k] = v
-   return true
 }
