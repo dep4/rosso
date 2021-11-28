@@ -1,0 +1,157 @@
+package protobuf
+
+import (
+   "google.golang.org/protobuf/encoding/protowire"
+)
+
+func consumeBytes(b []byte) ([]byte, error) {
+   val, vLen := protowire.ConsumeBytes(b)
+   err := protowire.ParseError(vLen)
+   if err != nil {
+      return nil, err
+   }
+   return val, nil
+}
+
+func consumeField(b []byte) (protowire.Number, protowire.Type, int, error) {
+   num, typ, fLen := protowire.ConsumeField(b)
+   err := protowire.ParseError(fLen)
+   if err != nil {
+      return 0, 0, 0, err
+   }
+   return num, typ, fLen, nil
+}
+
+func consumeFixed32(b []byte) (uint32, error) {
+   val, vLen := protowire.ConsumeFixed32(b)
+   err := protowire.ParseError(vLen)
+   if err != nil {
+      return 0, err
+   }
+   return val, nil
+}
+
+func consumeFixed64(b []byte) (uint64, error) {
+   val, vLen := protowire.ConsumeFixed64(b)
+   err := protowire.ParseError(vLen)
+   if err != nil {
+      return 0, err
+   }
+   return val, nil
+}
+
+func consumeGroup(num protowire.Number, b []byte) ([]byte, error) {
+   val, vLen := protowire.ConsumeGroup(num, b)
+   err := protowire.ParseError(vLen)
+   if err != nil {
+      return nil, err
+   }
+   return val, nil
+}
+
+func consumeTag(b []byte) (int, error) {
+   _, _, tLen := protowire.ConsumeTag(b)
+   err := protowire.ParseError(tLen)
+   if err != nil {
+      return 0, err
+   }
+   return tLen, nil
+}
+
+func consumeVarint(b []byte) (uint64, error) {
+   val, vLen := protowire.ConsumeVarint(b)
+   err := protowire.ParseError(vLen)
+   if err != nil {
+      return 0, err
+   }
+   return val, nil
+}
+
+func (m Message) Add(k protowire.Number, v Message) {
+   switch u := m[k].(type) {
+   case nil:
+      m[k] = v
+   case Message:
+      m[k] = []Message{u, v}
+   case []Message:
+      m[k] = append(u, v)
+   }
+}
+
+func (m Message) AddString(k protowire.Number, v string) {
+   switch u := m[k].(type) {
+   case nil:
+      m[k] = v
+   case string:
+      m[k] = []string{u, v}
+   case []string:
+      m[k] = append(u, v)
+   }
+}
+
+func (m Message) AddUint64(k protowire.Number, v uint64) {
+   switch u := m[k].(type) {
+   case nil:
+      m[k] = v
+   case uint64:
+      m[k] = []uint64{u, v}
+   case []uint64:
+      m[k] = append(u, v)
+   }
+}
+
+func (m Message) Get(key protowire.Number) Message {
+   val, ok := m[key].(Message)
+   if ok {
+      return val
+   }
+   return nil
+}
+
+func (m Message) GetMessages(key protowire.Number) []Message {
+   switch val := m[key].(type) {
+   case []Message:
+      return val
+   case Message:
+      return []Message{val}
+   }
+   return nil
+}
+
+func (m Message) GetString(key protowire.Number) string {
+   val, ok := m[key].(string)
+   if ok {
+      return val
+   }
+   return ""
+}
+
+func (m Message) GetUint64(key protowire.Number) uint64 {
+   val, ok := m[key].(uint64)
+   if ok {
+      return val
+   }
+   return 0
+}
+
+func (m Message) addBytes(k protowire.Number, v []byte) {
+   switch u := m[k].(type) {
+   case nil:
+      m[k] = v
+   case []byte:
+      m[k] = [][]byte{u, v}
+   case [][]byte:
+      m[k] = append(u, v)
+   }
+}
+
+func (m Message) addUint32(k protowire.Number, v uint32) {
+   switch u := m[k].(type) {
+   case nil:
+      m[k] = v
+   case uint32:
+      m[k] = []uint32{u, v}
+   case []uint32:
+      m[k] = append(u, v)
+   }
+}
