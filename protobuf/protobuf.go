@@ -2,7 +2,6 @@ package protobuf
 
 import (
    "bytes"
-   "encoding/base64"
    "google.golang.org/protobuf/encoding/protowire"
    "io"
 )
@@ -29,31 +28,6 @@ func appendField(buf []byte, num protowire.Number, val interface{}) []byte {
    return buf
 }
 
-func consume(num protowire.Number, typ protowire.Type, buf []byte) (interface{}, int) {
-   switch typ {
-   case protowire.VarintType:
-      return protowire.ConsumeVarint(buf)
-   case protowire.Fixed32Type:
-      return protowire.ConsumeFixed32(buf)
-   case protowire.Fixed64Type:
-      return protowire.ConsumeFixed64(buf)
-   case protowire.BytesType:
-      buf, vLen := protowire.ConsumeBytes(buf)
-      mes := Unmarshal(buf)
-      if mes != nil {
-         return mes, vLen
-      }
-      if isBinary(buf) {
-         return base64.StdEncoding.EncodeToString(buf), vLen
-      }
-      return string(buf), vLen
-   case protowire.StartGroupType:
-      buf, vLen := protowire.ConsumeGroup(num, buf)
-      return Unmarshal(buf), vLen
-   }
-   return nil, 0
-}
-
 // mimesniff.spec.whatwg.org#binary-data-byte
 func isBinary(buf []byte) bool {
    for _, b := range buf {
@@ -75,23 +49,26 @@ func Decode(src io.Reader) (Message, error) {
    if err != nil {
       return nil, err
    }
-   return Unmarshal(buf), nil
+   return Unmarshal(buf)
 }
 
-func Unmarshal(buf []byte) Message {
+func Unmarshal(buf []byte) (Message, error) {
+   if len(buf) == 0 {
+      return nil, io.ErrUnexpectedEOF
+   }
    mes := make(Message)
    for len(buf) >= 1 {
-      num, typ, fLen := protowire.ConsumeField(buf)
-      if fLen <= 0 {
-         return nil
+      num, typ, fLen, err := consumeField(buf)
+      if err != nil {
+         return nil, err
       }
-      _, _, tLen := protowire.ConsumeTag(buf[:fLen])
-      if tLen <= 0 {
-         return nil
+      tLen, err := consumeTag(buf[:fLen])
+      if err != nil {
+         return nil, err
       }
-      val, vLen := consume(num, typ, buf[tLen:fLen])
-      if vLen <= 0 {
-         return nil
+      val, err := consume(num, typ, buf[tLen:fLen])
+      if err != nil {
+         return nil, err
       }
       vMes, ok := mes[num]
       if ok {
@@ -106,7 +83,7 @@ func Unmarshal(buf []byte) Message {
       }
       buf = buf[fLen:]
    }
-   return mes
+   return mes, nil
 }
 
 func (m Message) Encode() io.Reader {
