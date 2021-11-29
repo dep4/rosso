@@ -1,4 +1,4 @@
-// HTML lexer.
+// HTML, HTTP and URL functions.
 //
 // Why use "github.com/tdewolff/parse/v2/html" instead of
 // "golang.org/x/net/html"?
@@ -18,7 +18,7 @@
 // also, if you count lines of code in non test Go files, including imported
 // packages, "golang.org/x/net/html" has 8,149, while
 // "github.com/tdewolff/parse/v2/html" has 1,718.
-package html
+package net
 
 import (
    "bytes"
