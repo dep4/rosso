@@ -94,16 +94,6 @@ func Unmarshal(buf []byte) (Message, error) {
             return nil, err
          }
          mes.addUint32(num, val)
-      case protowire.StartGroupType:
-         buf, err := consumeGroup(num, bVal)
-         if err != nil {
-            return nil, err
-         }
-         mNew, err := Unmarshal(buf)
-         if err != nil {
-            return nil, err
-         }
-         mes.add(num, mNew)
       case protowire.BytesType:
          buf, err := consumeBytes(bVal)
          if err != nil {
@@ -119,6 +109,16 @@ func Unmarshal(buf []byte) (Message, error) {
          } else {
             mes.add(num, mNew)
          }
+      case protowire.StartGroupType:
+         buf, err := consumeGroup(num, bVal)
+         if err != nil {
+            return nil, err
+         }
+         mNew, err := Unmarshal(buf)
+         if err != nil {
+            return nil, err
+         }
+         mes.add(num, mNew)
       }
       buf = buf[fLen:]
    }

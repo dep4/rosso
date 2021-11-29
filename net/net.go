@@ -2,57 +2,50 @@ package net
 
 import (
    "bufio"
-   "bytes"
+   "github.com/89z/parse/strings"
    "io"
    "net/http"
    "net/textproto"
    "net/url"
-   "strings"
 )
 
 // text/plain encoding algorithm
 // html.spec.whatwg.org/multipage/form-control-infrastructure.html
-func ParseQuery(query []byte) url.Values {
-   res := make(url.Values)
-   lines := bytes.Split(query, []byte{'\n'})
-   for _, line := range lines {
-      key, val, ok := keyVal(line)
-      if ! ok {
-         return nil
+func ReadQuery(src io.Reader) url.Values {
+   vals := make(url.Values)
+   buf := bufio.NewScanner(src)
+   for buf.Scan() {
+      key, val, ok := strings.CutByte(buf.Text(), '=')
+      if ok {
+         vals.Add(key, val)
       }
-      res.Add(string(key), string(val))
    }
-   return res
+   return vals
 }
 
-func ReadRequest(r io.Reader) (*http.Request, error) {
-   t := textproto.NewReader(bufio.NewReader(r))
-   s, err := t.ReadLine()
+func ReadRequest(src io.Reader) (*http.Request, error) {
+   text := textproto.NewReader(bufio.NewReader(src))
+   line, err := text.ReadLine()
    if err != nil {
       return nil, err
    }
-   h, err := t.ReadMIMEHeader()
+   head, err := text.ReadMIMEHeader()
    if err != nil {
       return nil, err
    }
-   f := strings.Fields(s)
-   p, err := url.Parse(f[1])
+   method, sURL, ok := strings.CutByte(line, ' ')
+   if !ok {
+      return nil, textproto.ProtocolError(line)
+   }
+   tURL, err := url.Parse(sURL)
    if err != nil {
       return nil, err
    }
-   p.Host = h.Get("Host")
-   return &http.Request{
-      Body: io.NopCloser(t.R),
-      Header: http.Header(h),
-      Method: f[0],
-      URL: p,
-   }, nil
-}
-
-func keyVal(kv []byte) ([]byte, []byte, bool) {
-   i := bytes.IndexByte(kv, '=')
-   if i == -1 {
-      return kv, nil, false
-   }
-   return kv[:i], kv[i+1:], true
+   tURL.Host = head.Get("Host")
+   var req http.Request
+   req.Body = io.NopCloser(text.R)
+   req.Header = http.Header(head)
+   req.Method = method
+   req.URL = tURL
+   return &req, nil
 }
