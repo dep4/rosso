@@ -2,28 +2,12 @@ package net
 
 import (
    "bufio"
-   "bytes"
    "io"
    "net/http"
    "net/textproto"
    "net/url"
    "strings"
 )
-
-// text/plain encoding algorithm
-// html.spec.whatwg.org/multipage/form-control-infrastructure.html
-func ParseQuery(query []byte) url.Values {
-   res := make(url.Values)
-   lines := bytes.Split(query, []byte{'\n'})
-   for _, line := range lines {
-      key, val, ok := keyVal(line)
-      if ! ok {
-         return nil
-      }
-      res.Add(string(key), string(val))
-   }
-   return res
-}
 
 func ReadRequest(r io.Reader) (*http.Request, error) {
    t := textproto.NewReader(bufio.NewReader(r))
@@ -47,12 +31,4 @@ func ReadRequest(r io.Reader) (*http.Request, error) {
       Method: f[0],
       URL: p,
    }, nil
-}
-
-func keyVal(kv []byte) ([]byte, []byte, bool) {
-   i := bytes.IndexByte(kv, '=')
-   if i == -1 {
-      return kv, nil, false
-   }
-   return kv[:i], kv[i+1:], true
 }

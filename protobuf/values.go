@@ -91,6 +91,38 @@ func (m Message) GetUint64(keys ...protowire.Number) uint64 {
    return 0
 }
 
+func (m Message) SetStrings(val []string, keys ...protowire.Number) {
+   b := m
+   for index, key := range keys {
+      if index == len(keys)-1 {
+         b[key] = val
+      } else {
+         c, ok := b[key].(Message)
+         if !ok {
+            c = make(Message)
+            b[key] = c
+         }
+         b = c
+      }
+   }
+}
+
+func (m Message) SetUint64(val uint64, keys ...protowire.Number) {
+   b := m
+   for index, key := range keys {
+      if index == len(keys)-1 {
+         b[key] = val
+      } else {
+         c, ok := b[key].(Message)
+         if !ok {
+            c = make(Message)
+            b[key] = c
+         }
+         b = c
+      }
+   }
+}
+
 func (m Message) addUint64(k protowire.Number, v uint64) {
    switch u := m[k].(type) {
    case nil:
