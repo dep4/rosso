@@ -1,4 +1,4 @@
-package html
+package net
 
 import (
    "fmt"
@@ -15,7 +15,7 @@ func TestMeta(t *testing.T) {
          t.Fatal(err)
       }
       defer f.Close()
-      for _, node := range Parse(f, test) {
+      for _, node := range ReadHTML(f, test) {
          fmt.Printf("%+v\n", node)
       }
    }
