@@ -67,6 +67,18 @@ func consumeVarint(b []byte) (uint64, error) {
    return val, nil
 }
 
+func (m Message) GetMessages(keys ...protowire.Number) []Message {
+   for _, key := range keys {
+      switch val := m[key].(type) {
+      case Message:
+         m = val
+      case []Message:
+         return val
+      }
+   }
+   return nil
+}
+
 func (m Message) GetString(keys ...protowire.Number) string {
    for _, key := range keys {
       switch val := m[key].(type) {
