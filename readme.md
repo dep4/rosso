@@ -27,5 +27,6 @@ https://godocs.io/github.com/89z/parse
 - HTTP
 - JA3
 - JSON
+- M3U
 - Protobuf
 - pcap
