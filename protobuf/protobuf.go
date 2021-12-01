@@ -8,6 +8,10 @@ import (
    "strings"
 )
 
+func Tag(num protowire.Number) protowire.Number {
+   return num
+}
+
 func appendField(buf []byte, num protowire.Number, val interface{}) []byte {
    switch val := val.(type) {
    case uint32:
@@ -19,6 +23,9 @@ func appendField(buf []byte, num protowire.Number, val interface{}) []byte {
    case string:
       buf = protowire.AppendTag(buf, num, protowire.BytesType)
       buf = protowire.AppendString(buf, val)
+   case []byte:
+      buf = protowire.AppendTag(buf, num, protowire.BytesType)
+      buf = protowire.AppendBytes(buf, val)
    case Message:
       buf = protowire.AppendTag(buf, num, protowire.BytesType)
       buf = protowire.AppendBytes(buf, val.Marshal())
