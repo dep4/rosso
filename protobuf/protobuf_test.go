@@ -12,8 +12,5 @@ func TestGet(t *testing.T) {
    if err != nil {
       t.Fatal(err)
    }
-   ver := mes.GetUint64(1, 2, 4, 13, 1, 3)
-   fmt.Println(ver)
-   dev := mes.GetString(1, 2, 4, 13, 1, 1)
-   fmt.Println(dev)
+   fmt.Printf("%#v\n", mes)
 }

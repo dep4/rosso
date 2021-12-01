@@ -125,28 +125,6 @@ func (m Message) GetUint64(keys ...protowire.Number) uint64 {
    return 0
 }
 
-func (m Message) addUint64(k protowire.Number, v uint64) {
-   switch u := m[k].(type) {
-   case nil:
-      m[k] = v
-   case uint64:
-      m[k] = []uint64{u, v}
-   case []uint64:
-      m[k] = append(u, v)
-   }
-}
-
-func (m Message) addUint32(k protowire.Number, v uint32) {
-   switch u := m[k].(type) {
-   case nil:
-      m[k] = v
-   case uint32:
-      m[k] = []uint32{u, v}
-   case []uint32:
-      m[k] = append(u, v)
-   }
-}
-
 func (m Message) add(k protowire.Number, v Message) {
    switch u := m[k].(type) {
    case nil:
@@ -154,6 +132,17 @@ func (m Message) add(k protowire.Number, v Message) {
    case Message:
       m[k] = []Message{u, v}
    case []Message:
+      m[k] = append(u, v)
+   }
+}
+
+func (m Message) addBytes(k protowire.Number, v []byte) {
+   switch u := m[k].(type) {
+   case nil:
+      m[k] = v
+   case []byte:
+      m[k] = [][]byte{u, v}
+   case [][]byte:
       m[k] = append(u, v)
    }
 }
@@ -169,13 +158,24 @@ func (m Message) addString(k protowire.Number, v string) {
    }
 }
 
-func (m Message) addBytes(k protowire.Number, v []byte) {
+func (m Message) addUint32(k protowire.Number, v uint32) {
    switch u := m[k].(type) {
    case nil:
       m[k] = v
-   case []byte:
-      m[k] = [][]byte{u, v}
-   case [][]byte:
+   case uint32:
+      m[k] = []uint32{u, v}
+   case []uint32:
+      m[k] = append(u, v)
+   }
+}
+
+func (m Message) addUint64(k protowire.Number, v uint64) {
+   switch u := m[k].(type) {
+   case nil:
+      m[k] = v
+   case uint64:
+      m[k] = []uint64{u, v}
+   case []uint64:
       m[k] = append(u, v)
    }
 }

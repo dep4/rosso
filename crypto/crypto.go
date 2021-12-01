@@ -4,6 +4,7 @@ import (
    "bytes"
    "encoding/binary"
    "fmt"
+   "github.com/89z/parse"
    "github.com/refraction-networking/utls"
    "io"
    "net"
@@ -147,7 +148,7 @@ func ParseHandshake(data []byte) (*ClientHello, error) {
 func ParseJA3(str string) (*ClientHello, error) {
    tokens := strings.Split(str, ",")
    if len(tokens) != 5 {
-      return nil, fmt.Errorf("%q", tokens)
+      return nil, parse.Invalid{str}
    }
    var version uint16
    _, err := fmt.Sscan(tokens[0], &version)
