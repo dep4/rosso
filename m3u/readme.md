@@ -14,5 +14,4 @@ fffrnw
 
 which has audio.
 
-- https://github.com/ytdl-org/youtube-dl/issues/26410
-- https://wikipedia.org/wiki/M3U
+https://wikipedia.org/wiki/M3U
