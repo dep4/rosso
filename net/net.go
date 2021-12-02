@@ -7,6 +7,7 @@ import (
    "net/http"
    "net/textproto"
    "net/url"
+   stdstr "strings"
 )
 
 // text/plain encoding algorithm
@@ -33,19 +34,20 @@ func ReadRequest(src io.Reader) (*http.Request, error) {
    if err != nil {
       return nil, err
    }
-   method, sURL, ok := strings.CutByte(line, ' ')
-   if !ok {
+   // GET /fdfe/details?doc=com.instagram.android HTTP/1.1
+   methodURL := stdstr.Fields(line)
+   if len(methodURL) != 3 {
       return nil, textproto.ProtocolError(line)
    }
-   tURL, err := url.Parse(sURL)
+   addr, err := url.Parse(methodURL[1])
    if err != nil {
       return nil, err
    }
-   tURL.Host = head.Get("Host")
+   addr.Host = head.Get("Host")
    var req http.Request
    req.Body = io.NopCloser(text.R)
    req.Header = http.Header(head)
-   req.Method = method
-   req.URL = tURL
+   req.Method = methodURL[0]
+   req.URL = addr
    return &req, nil
 }
