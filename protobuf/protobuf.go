@@ -2,48 +2,9 @@ package protobuf
 
 import (
    "bytes"
-   "fmt"
    "google.golang.org/protobuf/encoding/protowire"
    "io"
-   "strings"
 )
-
-func Tag(num protowire.Number) protowire.Number {
-   return num
-}
-
-func appendField(buf []byte, num protowire.Number, val interface{}) []byte {
-   switch val := val.(type) {
-   case uint32:
-      buf = protowire.AppendTag(buf, num, protowire.Fixed32Type)
-      buf = protowire.AppendFixed32(buf, val)
-   case uint64:
-      buf = protowire.AppendTag(buf, num, protowire.VarintType)
-      buf = protowire.AppendVarint(buf, val)
-   case string:
-      buf = protowire.AppendTag(buf, num, protowire.BytesType)
-      buf = protowire.AppendString(buf, val)
-   case []byte:
-      buf = protowire.AppendTag(buf, num, protowire.BytesType)
-      buf = protowire.AppendBytes(buf, val)
-   case Message:
-      buf = protowire.AppendTag(buf, num, protowire.BytesType)
-      buf = protowire.AppendBytes(buf, val.Marshal())
-   case []uint64:
-      for _, ran := range val {
-         buf = appendField(buf, num, ran)
-      }
-   case []string:
-      for _, ran := range val {
-         buf = appendField(buf, num, ran)
-      }
-   case []Message:
-      for _, ran := range val {
-         buf = appendField(buf, num, ran)
-      }
-   }
-   return buf
-}
 
 // mimesniff.spec.whatwg.org#binary-data-byte
 func isBinary(buf []byte) bool {
@@ -59,7 +20,12 @@ func isBinary(buf []byte) bool {
    return false
 }
 
-type Message map[protowire.Number]interface{}
+type Tag struct {
+   protowire.Number
+   String string
+}
+
+type Message map[Tag]interface{}
 
 func Decode(src io.Reader) (Message, error) {
    buf, err := io.ReadAll(src)
@@ -67,6 +33,11 @@ func Decode(src io.Reader) (Message, error) {
       return nil, err
    }
    return Unmarshal(buf)
+}
+
+func (m Message) Encode() io.Reader {
+   buf := m.Marshal()
+   return bytes.NewReader(buf)
 }
 
 func Unmarshal(buf []byte) (Message, error) {
@@ -134,39 +105,43 @@ func Unmarshal(buf []byte) (Message, error) {
    return mes, nil
 }
 
-func (m Message) Encode() io.Reader {
-   buf := m.Marshal()
-   return bytes.NewReader(buf)
-}
-
-func (m Message) GoString() string {
-   str := new(strings.Builder)
-   str.WriteString("protobuf.Message{")
-   first := true
-   for key, val := range m {
-      if first {
-         first = false
-      } else {
-         str.WriteString(",\n")
+func appendField(buf []byte, num protowire.Number, val interface{}) []byte {
+   switch val := val.(type) {
+   case uint32:
+      buf = protowire.AppendTag(buf, num, protowire.Fixed32Type)
+      buf = protowire.AppendFixed32(buf, val)
+   case uint64:
+      buf = protowire.AppendTag(buf, num, protowire.VarintType)
+      buf = protowire.AppendVarint(buf, val)
+   case string:
+      buf = protowire.AppendTag(buf, num, protowire.BytesType)
+      buf = protowire.AppendString(buf, val)
+   case []byte:
+      buf = protowire.AppendTag(buf, num, protowire.BytesType)
+      buf = protowire.AppendBytes(buf, val)
+   case Message:
+      buf = protowire.AppendTag(buf, num, protowire.BytesType)
+      buf = protowire.AppendBytes(buf, val.Marshal())
+   case []uint64:
+      for _, ran := range val {
+         buf = appendField(buf, num, ran)
       }
-      fmt.Fprintf(str, "%v:", key)
-      switch typ := val.(type) {
-      case uint32:
-         fmt.Fprintf(str, "uint32(%v)", typ)
-      case uint64:
-         fmt.Fprintf(str, "uint64(%v)", typ)
-      default:
-         fmt.Fprintf(str, "%#v", val)
+   case []string:
+      for _, ran := range val {
+         buf = appendField(buf, num, ran)
+      }
+   case []Message:
+      for _, ran := range val {
+         buf = appendField(buf, num, ran)
       }
    }
-   str.WriteByte('}')
-   return str.String()
+   return buf
 }
 
 func (m Message) Marshal() []byte {
    var buf []byte
    for key, val := range m {
-      buf = appendField(buf, key, val)
+      buf = appendField(buf, key.Number, val)
    }
    return buf
 }

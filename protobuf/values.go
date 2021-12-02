@@ -67,9 +67,70 @@ func consumeVarint(b []byte) (uint64, error) {
    return val, nil
 }
 
+func (m Message) add(key protowire.Number, val Message) {
+   tag := Tag{Number: key}
+   switch typ := m[tag].(type) {
+   case nil:
+      m[tag] = val
+   case Message:
+      m[tag] = []Message{typ, val}
+   case []Message:
+      m[tag] = append(typ, val)
+   }
+}
+
+func (m Message) addBytes(key protowire.Number, val []byte) {
+   tag := Tag{Number: key}
+   switch typ := m[tag].(type) {
+   case nil:
+      m[tag] = val
+   case []byte:
+      m[tag] = [][]byte{typ, val}
+   case [][]byte:
+      m[tag] = append(typ, val)
+   }
+}
+
+func (m Message) addString(key protowire.Number, val string) {
+   tag := Tag{Number: key}
+   switch typ := m[tag].(type) {
+   case nil:
+      m[tag] = val
+   case string:
+      m[tag] = []string{typ, val}
+   case []string:
+      m[tag] = append(typ, val)
+   }
+}
+
+func (m Message) addUint32(key protowire.Number, val uint32) {
+   tag := Tag{Number: key}
+   switch typ := m[tag].(type) {
+   case nil:
+      m[tag] = val
+   case uint32:
+      m[tag] = []uint32{typ, val}
+   case []uint32:
+      m[tag] = append(typ, val)
+   }
+}
+
+func (m Message) addUint64(key protowire.Number, val uint64) {
+   tag := Tag{Number: key}
+   switch typ := m[tag].(type) {
+   case nil:
+      m[tag] = val
+   case uint64:
+      m[tag] = []uint64{typ, val}
+   case []uint64:
+      m[tag] = append(typ, val)
+   }
+}
+
 func (m Message) Get(keys ...protowire.Number) Message {
    for _, key := range keys {
-      val, ok := m[key].(Message)
+      tag := Tag{Number: key}
+      val, ok := m[tag].(Message)
       if ok {
          m = val
       }
@@ -79,7 +140,8 @@ func (m Message) Get(keys ...protowire.Number) Message {
 
 func (m Message) GetBytes(keys ...protowire.Number) []byte {
    for _, key := range keys {
-      switch val := m[key].(type) {
+      tag := Tag{Number: key}
+      switch val := m[tag].(type) {
       case Message:
          m = val
       case []byte:
@@ -91,7 +153,8 @@ func (m Message) GetBytes(keys ...protowire.Number) []byte {
 
 func (m Message) GetMessages(keys ...protowire.Number) []Message {
    for _, key := range keys {
-      switch val := m[key].(type) {
+      tag := Tag{Number: key}
+      switch val := m[tag].(type) {
       case Message:
          m = val
       case []Message:
@@ -103,7 +166,8 @@ func (m Message) GetMessages(keys ...protowire.Number) []Message {
 
 func (m Message) GetString(keys ...protowire.Number) string {
    for _, key := range keys {
-      switch val := m[key].(type) {
+      tag := Tag{Number: key}
+      switch val := m[tag].(type) {
       case Message:
          m = val
       case string:
@@ -115,7 +179,8 @@ func (m Message) GetString(keys ...protowire.Number) string {
 
 func (m Message) GetUint64(keys ...protowire.Number) uint64 {
    for _, key := range keys {
-      switch val := m[key].(type) {
+      tag := Tag{Number: key}
+      switch val := m[tag].(type) {
       case Message:
          m = val
       case uint64:
@@ -125,57 +190,7 @@ func (m Message) GetUint64(keys ...protowire.Number) uint64 {
    return 0
 }
 
-func (m Message) add(k protowire.Number, v Message) {
-   switch u := m[k].(type) {
-   case nil:
-      m[k] = v
-   case Message:
-      m[k] = []Message{u, v}
-   case []Message:
-      m[k] = append(u, v)
-   }
-}
-
-func (m Message) addBytes(k protowire.Number, v []byte) {
-   switch u := m[k].(type) {
-   case nil:
-      m[k] = v
-   case []byte:
-      m[k] = [][]byte{u, v}
-   case [][]byte:
-      m[k] = append(u, v)
-   }
-}
-
-func (m Message) addString(k protowire.Number, v string) {
-   switch u := m[k].(type) {
-   case nil:
-      m[k] = v
-   case string:
-      m[k] = []string{u, v}
-   case []string:
-      m[k] = append(u, v)
-   }
-}
-
-func (m Message) addUint32(k protowire.Number, v uint32) {
-   switch u := m[k].(type) {
-   case nil:
-      m[k] = v
-   case uint32:
-      m[k] = []uint32{u, v}
-   case []uint32:
-      m[k] = append(u, v)
-   }
-}
-
-func (m Message) addUint64(k protowire.Number, v uint64) {
-   switch u := m[k].(type) {
-   case nil:
-      m[k] = v
-   case uint64:
-      m[k] = []uint64{u, v}
-   case []uint64:
-      m[k] = append(u, v)
-   }
+func (m Message) Set(key protowire.Number, val interface{}) {
+   tag := Tag{Number: key}
+   m[tag] = val
 }
