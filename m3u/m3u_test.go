@@ -21,7 +21,7 @@ func TestPlaylist(t *testing.T) {
          t.Fatal(err)
       }
       defer file.Close()
-      forms, err := Formats(file, "http://example.com/")
+      forms, err := Decode(file, "http://example.com/")
       if err != nil {
          t.Fatal(err)
       }
