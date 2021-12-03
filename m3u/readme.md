@@ -1,17 +1,11 @@
 # M3U
 
-We need to support this:
-
 ~~~
-iduchl
-~~~
+#EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=1854000,RESOLUTION=360x640,CODECS="avc1.4d001f,mp4a.40.2",AUDIO="audio-0"
+HLS_540_v4.m3u8
 
-which has no audio. Also need to support this:
-
+#EXT-X-STREAM-INF:BANDWIDTH=1802000,CODECS="mp4a.40.5,avc1.64001F",RESOLUTION=960x540,FRAME-RATE=25,AUDIO="audio-aach-96",CLOSED-CAPTIONS=NONE
+vf_p0b7p8sq_2a145b73-7888-4546-a5a8-72bd9b987a53-audio_eng=96000-video=1604000.m3u8
 ~~~
-fffrnw
-~~~
-
-which has audio.
 
 https://wikipedia.org/wiki/M3U
