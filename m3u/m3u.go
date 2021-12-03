@@ -1,18 +1,23 @@
 package m3u
 
 import (
-   "bufio"
+   "bytes"
    "io"
    "strconv"
-   "strings"
 )
 
-func isDirective(text string) bool {
-   return strings.HasPrefix(text, "#EXT-X-STREAM-INF:")
-}
-
-func isURI(text string) bool {
-   return text != "" && text[0] != '#'
+func merge(forms []Format) int {
+   fLen := len(forms)
+   if fLen == 0 {
+      return -1
+   }
+   form := forms[fLen-1]
+   if form.Resolution == "" {
+      // INSERT
+      return -1
+   }
+   // UPDATE
+   return fLen-1
 }
 
 type Format struct {
@@ -20,106 +25,102 @@ type Format struct {
    Resolution string
    Bandwidth int
    Codecs string
-   URI URI
+   URI string
 }
 
-func Formats(src io.Reader, dir string) ([]Format, error) {
-   var dups []Format
-   buf := bufio.NewScanner(src)
-   for buf.Scan() {
-      text := buf.Text()
-      if isDirective(text) {
-         dup, err := directive(text)
-         if err != nil {
-            return nil, err
+func Decode(src io.Reader) ([]Format, error) {
+   buf, err := io.ReadAll(src)
+   if err != nil {
+      return nil, err
+   }
+   return Unmarshal(buf)
+}
+
+func Unmarshal(buf []byte) ([]Format, error) {
+   lines := bytes.FieldsFunc(buf, func(r rune) bool {
+      return r == '\n'
+   })
+   var pass1 []Format
+   for _, line := range lines {
+      if line[0] == '#' {
+         var form Format
+         com := reader{line}
+         com.readBytes(':', '"')
+         for {
+            key := com.readString('=', '"')
+            val := com.readString(',', '"')
+            if val == "" {
+               break
+            }
+            switch key {
+            case "BANDWIDTH":
+               num, err := strconv.Atoi(val)
+               if err != nil {
+                  return nil, err
+               }
+               form.Bandwidth = num
+            case "CODECS":
+               unq, err := strconv.Unquote(val)
+               if err == nil {
+                  val = unq
+               }
+               form.Codecs = val
+            case "RESOLUTION":
+               form.Resolution = val
+            case "URI":
+               unq, err := strconv.Unquote(val)
+               if err == nil {
+                  val = unq
+               }
+               form.URI = val
+            }
          }
-         dup.ID = len(dups)
-         dups = append(dups, dup)
-      }
-      if isURI(text) {
-         fLen := len(dups)
-         if fLen == 0 {
-            dups = append(dups, Format{
-               URI: URI{File: text},
-            })
+         pass1 = append(pass1, form)
+      } else {
+         text := string(line)
+         ind := merge(pass1)
+         if ind == -1 {
+            form := Format{URI: text}
+            pass1 = append(pass1, form)
          } else {
-            dups[fLen-1].URI.File = text
+            pass1[ind].URI = text
          }
       }
    }
-   var forms []Format
+   var pass2 []Format
    uris := make(map[string]bool)
-   for _, dup := range dups {
-      if !uris[dup.URI.File] {
-         dup.URI.Dir = dir
-         forms = append(forms, dup)
-         uris[dup.URI.File] = true
+   for _, form := range pass1 {
+      if form.URI != "" && !uris[form.URI] {
+         form.ID = len(pass2)
+         pass2 = append(pass2, form)
+         uris[form.URI] = true
       }
    }
-   return forms, nil
-}
-
-func directive(text string) (Format, error) {
-   var form Format
-   str := reader{text}
-   str.readString(':', '"')
-   for {
-      key := str.readString('=', '"')
-      if key == "" {
-         return form, nil
-      }
-      val := str.readString(',', '"')
-      switch key {
-      case "BANDWIDTH":
-         num, err := strconv.Atoi(val)
-         if err != nil {
-            return Format{}, err
-         }
-         form.Bandwidth = num
-      case "CODECS":
-         unq, err := strconv.Unquote(val)
-         if err == nil {
-            val = unq
-         }
-         form.Codecs = val
-      case "RESOLUTION":
-         form.Resolution = val
-      case "URI":
-         unq, err := strconv.Unquote(val)
-         if err == nil {
-            val = unq
-         }
-         form.URI.File = val
-      }
-   }
-}
-
-type URI struct {
-   Dir string
-   File string
-}
-
-func (u URI) String() string {
-   return u.Dir + u.File
+   return pass2, nil
 }
 
 type reader struct {
-   str string
+   buf []byte
 }
 
-func (r *reader) readString(sep, enc rune) string {
+func (r *reader) readBytes(sep, enc byte) []byte {
    out := true
-   for k, v := range r.str {
-      if v == enc {
+   for key, val := range r.buf {
+      if val == enc {
          out = !out
       }
-      if out && v == sep {
-         str := r.str[:k]
-         r.str = r.str[k+1:]
-         return str
+      if out && val == sep {
+         buf := r.buf[:key]
+         r.buf = r.buf[key+1:]
+         return buf
       }
    }
-   str := r.str
-   r.str = ""
-   return str
+   buf := r.buf
+   r.buf = nil
+   return buf
+}
+
+func (r *reader) readString(sep, enc byte) string {
+   bytes := r.readBytes(sep, enc)
+   return string(bytes)
 }

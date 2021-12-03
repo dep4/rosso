@@ -16,12 +16,11 @@ var tests = []string{
 func TestPlaylist(t *testing.T) {
    for _, test := range tests {
       fmt.Println(test + ":")
-      file, err := os.Open(test)
+      buf, err := os.ReadFile(test)
       if err != nil {
          t.Fatal(err)
       }
-      defer file.Close()
-      forms, err := Formats(file, "http://example.com/")
+      forms, err := Unmarshal(buf)
       if err != nil {
          t.Fatal(err)
       }
