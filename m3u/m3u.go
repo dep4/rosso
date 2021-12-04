@@ -7,13 +7,12 @@ import (
 )
 
 func merge(forms []Format) int {
+   // INSERT
    fLen := len(forms)
    if fLen == 0 {
       return -1
    }
-   form := forms[fLen-1]
-   if form.Resolution == "" {
-      // INSERT
+   if forms[fLen-1].Resolution == "" {
       return -1
    }
    // UPDATE
