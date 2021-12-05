@@ -7,6 +7,7 @@ import (
 )
 
 var tests = []string{
+   "2.m3u8",
    "HLSPlaylist.m3u8",
    "HLS_540.m3u8",
    "pc_hd_abr_v2_hls_master.m3u8",
@@ -16,16 +17,11 @@ var tests = []string{
 func TestPlaylist(t *testing.T) {
    for _, test := range tests {
       fmt.Println(test + ":")
-      file, err := os.Open(test)
+      buf, err := os.ReadFile(test)
       if err != nil {
          t.Fatal(err)
       }
-      defer file.Close()
-      forms, err := Decode(file, "http://example.com/")
-      if err != nil {
-         t.Fatal(err)
-      }
-      for _, form := range forms {
+      for _, form := range Unmarshal(buf, "dir/") {
          fmt.Printf("%+v\n", form)
       }
       fmt.Println()

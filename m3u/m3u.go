@@ -6,117 +6,80 @@ import (
    "strconv"
 )
 
-type Format struct {
-   ID int
-   Resolution string
-   Bandwidth int
-   Codecs string
-   URI URI
+func merge(forms []Format) int {
+   // INSERT
+   fLen := len(forms)
+   if fLen == 0 {
+      return -1
+   }
+   form := forms[fLen-1]
+   if len(form) == 0 {
+      return -1
+   }
+   // UPDATE
+   return fLen-1
 }
 
-type Formats []Format
+type Format map[string]string
 
-func Decode(src io.Reader, dir string) (Formats, error) {
+func Decode(src io.Reader, dir string) ([]Format, error) {
    buf, err := io.ReadAll(src)
    if err != nil {
       return nil, err
    }
-   return Unmarshal(buf, dir)
+   return Unmarshal(buf, dir), nil
 }
 
-func Unmarshal(buf []byte, dir string) (Formats, error) {
+// #EXTINF:6.006,frame-rate=23.976
+func Unmarshal(buf []byte, dir string) []Format {
    lines := bytes.FieldsFunc(buf, func(r rune) bool {
       return r == '\n'
    })
-   var pass1 Formats
+   var pass1 []Format
    for _, line := range lines {
       if line[0] == '#' {
-         var form Format
-         com := reader{line}
-         com.readBytes(':', '"')
+         form := make(Format)
+         pairs := reader{line}
+         pairs.readBytes(':', '"')
          for {
-            key := com.readString('=', '"')
-            val := com.readString(',', '"')
-            if val == "" {
+            if pairs.buf == nil {
                break
             }
-            switch key {
-            case "BANDWIDTH":
-               num, err := strconv.Atoi(val)
-               if err != nil {
-                  return nil, err
-               }
-               form.Bandwidth = num
-            case "CODECS":
+            var pair reader
+            pair.buf = pairs.readBytes(',', '"')
+            key := pair.readString('=', '"')
+            if pair.buf != nil {
+               val := string(pair.buf)
                unq, err := strconv.Unquote(val)
                if err == nil {
                   val = unq
                }
-               form.Codecs = val
-            case "RESOLUTION":
-               form.Resolution = val
-            case "URI":
-               unq, err := strconv.Unquote(val)
-               if err == nil {
-                  val = unq
-               }
-               form.URI.File = val
+               form[key] = val
             }
          }
          pass1 = append(pass1, form)
       } else {
          text := string(line)
-         ind := pass1.merge()
+         ind := merge(pass1)
          if ind == -1 {
-            var form Format
-            form.URI.File = text
+            form := Format{"URI": text}
             pass1 = append(pass1, form)
          } else {
-            pass1[ind].URI.File = text
+            pass1[ind]["URI"] = text
          }
       }
    }
-   var pass2 Formats
+   var pass2 []Format
    uris := make(map[string]bool)
    for _, form := range pass1 {
-      if form.URI.File != "" && !uris[form.URI.File] {
-         form.URI.Dir = dir
-         form.ID = len(pass2)
+      uri, ok := form["URI"]
+      if ok && !uris[uri] {
+         form["URI"] = dir + form["URI"]
          pass2 = append(pass2, form)
-         uris[form.URI.File] = true
+         uris[uri] = true
       }
    }
-   return pass2, nil
-}
-
-func (f Formats) Get(n int) (Format, bool) {
-   if n <= -1 {
-      return Format{}, false
-   }
-   if n >= len(f) {
-      return Format{}, false
-   }
-   return f[n], true
-}
-
-func (f Formats) merge() int {
-   index := len(f) -1
-   // INSERT
-   last, ok := f.Get(index)
-   if !ok || last.Resolution == "" {
-      return -1
-   }
-   // UPDATE
-   return index
-}
-
-type URI struct {
-   Dir string
-   File string
-}
-
-func (u URI) String() string {
-   return u.Dir + u.File
+   return pass2
 }
 
 type reader struct {
