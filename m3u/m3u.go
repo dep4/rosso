@@ -6,19 +6,6 @@ import (
    "strconv"
 )
 
-func merge(forms []Format) int {
-   // INSERT
-   fLen := len(forms)
-   if fLen == 0 {
-      return -1
-   }
-   if forms[fLen-1].Resolution == "" {
-      return -1
-   }
-   // UPDATE
-   return fLen-1
-}
-
 type Format struct {
    ID int
    Resolution string
@@ -27,7 +14,9 @@ type Format struct {
    URI URI
 }
 
-func Decode(src io.Reader, dir string) ([]Format, error) {
+type Formats []Format
+
+func Decode(src io.Reader, dir string) (Formats, error) {
    buf, err := io.ReadAll(src)
    if err != nil {
       return nil, err
@@ -35,11 +24,11 @@ func Decode(src io.Reader, dir string) ([]Format, error) {
    return Unmarshal(buf, dir)
 }
 
-func Unmarshal(buf []byte, dir string) ([]Format, error) {
+func Unmarshal(buf []byte, dir string) (Formats, error) {
    lines := bytes.FieldsFunc(buf, func(r rune) bool {
       return r == '\n'
    })
-   var pass1 []Format
+   var pass1 Formats
    for _, line := range lines {
       if line[0] == '#' {
          var form Format
@@ -77,7 +66,7 @@ func Unmarshal(buf []byte, dir string) ([]Format, error) {
          pass1 = append(pass1, form)
       } else {
          text := string(line)
-         ind := merge(pass1)
+         ind := pass1.merge()
          if ind == -1 {
             var form Format
             form.URI.File = text
@@ -87,7 +76,7 @@ func Unmarshal(buf []byte, dir string) ([]Format, error) {
          }
       }
    }
-   var pass2 []Format
+   var pass2 Formats
    uris := make(map[string]bool)
    for _, form := range pass1 {
       if form.URI.File != "" && !uris[form.URI.File] {
@@ -98,6 +87,27 @@ func Unmarshal(buf []byte, dir string) ([]Format, error) {
       }
    }
    return pass2, nil
+}
+
+func (f Formats) Get(n int) (Format, bool) {
+   if n <= -1 {
+      return Format{}, false
+   }
+   if n >= len(f) {
+      return Format{}, false
+   }
+   return f[n], true
+}
+
+func (f Formats) merge() int {
+   index := len(f) -1
+   // INSERT
+   last, ok := f.Get(index)
+   if !ok || last.Resolution == "" {
+      return -1
+   }
+   // UPDATE
+   return index
 }
 
 type URI struct {
