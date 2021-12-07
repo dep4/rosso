@@ -2,9 +2,11 @@ package protobuf
 
 import (
    "bytes"
+   "fmt"
    "google.golang.org/protobuf/encoding/protowire"
    "io"
    "strconv"
+   "strings"
 )
 
 func appendField(buf []byte, num protowire.Number, val interface{}) []byte {
@@ -132,6 +134,30 @@ func Unmarshal(buf []byte) (Message, error) {
 func (m Message) Encode() io.Reader {
    buf := m.Marshal()
    return bytes.NewReader(buf)
+}
+
+func (m Message) GoString() string {
+   str := new(strings.Builder)
+   str.WriteString("protobuf.Message{")
+   first := true
+   for key, val := range m {
+      if first {
+         first = false
+      } else {
+         str.WriteString(",\n")
+      }
+      fmt.Fprintf(str, "%v:", key)
+      switch typ := val.(type) {
+      case uint32:
+         fmt.Fprintf(str, "uint32(%v)", typ)
+      case uint64:
+         fmt.Fprintf(str, "uint64(%v)", typ)
+      default:
+         fmt.Fprintf(str, "%#v", val)
+      }
+   }
+   str.WriteByte('}')
+   return str.String()
 }
 
 func (m Message) Marshal() []byte {
