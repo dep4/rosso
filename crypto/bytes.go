@@ -13,7 +13,6 @@ func NewBuffer(buf []byte) *Buffer {
    return &Buffer{buf}
 }
 
-// godocs.io/bytes#Buffer.Next
 func (b *Buffer) Next(n int) ([]byte, bool) {
    if n < 0 || n > len(b.buf) {
       return nil, false
@@ -23,18 +22,16 @@ func (b *Buffer) Next(n int) ([]byte, bool) {
    return buf, true
 }
 
-// godocs.io/bytes#Buffer.ReadBytes
 func (b *Buffer) ReadBytes(delim byte) ([]byte, bool) {
-   i := bytes.IndexByte(b.buf, delim)
-   if i == -1 {
+   ind := bytes.IndexByte(b.buf, delim)
+   if ind == -1 {
       return nil, false
    }
-   buf := b.buf[:i+1]
-   b.buf = b.buf[i+1:]
+   buf := b.buf[:ind+1]
+   b.buf = b.buf[ind+1:]
    return buf, true
 }
 
-// godocs.io/golang.org/x/crypto/cryptobyte#String.ReadUint16LengthPrefixed
 func (b *Buffer) ReadUint16LengthPrefixed() ([]byte, []byte, bool) {
    low := 2
    if len(b.buf) < low {

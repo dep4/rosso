@@ -2,27 +2,12 @@ package net
 
 import (
    "bufio"
-   "github.com/89z/parse/strings"
    "io"
    "net/http"
    "net/textproto"
    "net/url"
-   stdstr "strings"
+   "strings"
 )
-
-// text/plain encoding algorithm
-// html.spec.whatwg.org/multipage/form-control-infrastructure.html
-func ReadQuery(src io.Reader) url.Values {
-   vals := make(url.Values)
-   buf := bufio.NewScanner(src)
-   for buf.Scan() {
-      key, val, ok := strings.CutByte(buf.Text(), '=')
-      if ok {
-         vals.Add(key, val)
-      }
-   }
-   return vals
-}
 
 func ReadRequest(src io.Reader) (*http.Request, error) {
    text := textproto.NewReader(bufio.NewReader(src))
@@ -35,7 +20,7 @@ func ReadRequest(src io.Reader) (*http.Request, error) {
       return nil, err
    }
    // GET /fdfe/details?doc=com.instagram.android HTTP/1.1
-   methodURL := stdstr.Fields(line)
+   methodURL := strings.Fields(line)
    if len(methodURL) != 3 {
       return nil, textproto.ProtocolError(line)
    }
@@ -50,4 +35,23 @@ func ReadRequest(src io.Reader) (*http.Request, error) {
    req.Method = methodURL[0]
    req.URL = addr
    return &req, nil
+}
+
+// text/plain encoding algorithm
+// html.spec.whatwg.org/multipage/form-control-infrastructure.html
+func ReadQuery(src io.Reader) url.Values {
+   vals := make(url.Values)
+   buf := bufio.NewReader(src)
+   for {
+      key, err := buf.ReadString('=')
+      if err != nil {
+         break
+      }
+      val, err := buf.ReadString('\n')
+      if err != nil {
+         break
+      }
+      vals.Add(key, val)
+   }
+   return vals
 }

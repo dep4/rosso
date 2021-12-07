@@ -11,33 +11,6 @@ import (
    "strings"
 )
 
-func Handshakes(pcap []byte) [][]byte {
-   var hands [][]byte
-   for {
-      var hand []byte
-      buf := NewBuffer(pcap)
-      // Content Type
-      junk, ok := buf.ReadBytes(0x16)
-      if ! ok {
-         return hands
-      }
-      hand = append(hand, 0x16)
-      // Version
-      ver, ok := buf.Next(2)
-      if ok {
-         hand = append(hand, ver...)
-      }
-      // Length, Handshake Protocol
-      pre, pro, ok := buf.ReadUint16LengthPrefixed()
-      if ok {
-         hand = append(hand, pre...)
-         hand = append(hand, pro...)
-         hands = append(hands, hand)
-      }
-      pcap = pcap[len(junk):]
-   }
-}
-
 func NewTransport(spec *tls.ClientHelloSpec) *http.Transport {
    return &http.Transport{
       DialTLS: func(network, addr string) (net.Conn, error) {
@@ -215,4 +188,33 @@ func (h ClientHello) FormatJA3() (string, error) {
       fmt.Fprint(buf, val)
    }
    return buf.String(), nil
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+func Handshakes(pcap []byte) [][]byte {
+   var hands [][]byte
+   for {
+      var hand []byte
+      buf := NewBuffer(pcap)
+      // Content Type
+      junk, ok := buf.ReadBytes(0x16)
+      if !ok {
+         return hands
+      }
+      hand = append(hand, 0x16)
+      // Version
+      ver, ok := buf.Next(2)
+      if ok {
+         hand = append(hand, ver...)
+      }
+      // Length, Handshake Protocol
+      pre, pro, ok := buf.ReadUint16LengthPrefixed()
+      if ok {
+         hand = append(hand, pre...)
+         hand = append(hand, pro...)
+         hands = append(hands, hand)
+      }
+      pcap = pcap[len(junk):]
+   }
 }
