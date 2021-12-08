@@ -19,8 +19,6 @@
 
 Parsers for web formats
 
-https://godocs.io/github.com/89z/parse
-
 ## Formats
 
 - HTML
@@ -30,3 +28,7 @@ https://godocs.io/github.com/89z/parse
 - M3U
 - Protobuf
 - pcap
+
+## Repo
+
+https://github.com/89z/parse
