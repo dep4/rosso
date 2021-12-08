@@ -41,17 +41,12 @@ func ReadRequest(src io.Reader) (*http.Request, error) {
 // html.spec.whatwg.org/multipage/form-control-infrastructure.html
 func ReadQuery(src io.Reader) url.Values {
    vals := make(url.Values)
-   buf := bufio.NewReader(src)
-   for {
-      key, err := buf.ReadString('=')
-      if err != nil {
-         break
+   buf := bufio.NewScanner(src)
+   for buf.Scan() {
+      kv := strings.SplitN(buf.Text(), "=", 2)
+      if len(kv) == 2 {
+         vals.Add(kv[0], kv[1])
       }
-      val, err := buf.ReadString('\n')
-      if err != nil {
-         break
-      }
-      vals.Add(key, val)
    }
    return vals
 }

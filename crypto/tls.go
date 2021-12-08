@@ -190,8 +190,6 @@ func (h ClientHello) FormatJA3() (string, error) {
    return buf.String(), nil
 }
 
-////////////////////////////////////////////////////////////////////////////////
-
 func Handshakes(pcap []byte) [][]byte {
    var hands [][]byte
    for {

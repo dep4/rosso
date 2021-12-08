@@ -146,7 +146,7 @@ func (m Message) GoString() string {
       } else {
          str.WriteString(",\n")
       }
-      fmt.Fprintf(str, "%v:", key)
+      fmt.Fprintf(str, "%#v:", key)
       switch typ := val.(type) {
       case uint32:
          fmt.Fprintf(str, "uint32(%v)", typ)
@@ -173,6 +173,7 @@ type Tag struct {
    String string
 }
 
+// encoding/json
 func (t Tag) MarshalText() ([]byte, error) {
    num := int64(t.Number)
    return strconv.AppendInt(nil, num, 10), nil
