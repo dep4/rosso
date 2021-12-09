@@ -49,6 +49,9 @@ func TestJA3(t *testing.T) {
    if err != nil {
       t.Fatal(err)
    }
+   for _, ext := range h.ClientHelloSpec.Extensions {
+      fmt.Printf("%#v\n", ext)
+   }
    j, err := h.FormatJA3()
    if err != nil {
       t.Fatal(err)
