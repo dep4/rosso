@@ -4,79 +4,21 @@ import (
    "bufio"
    "crypto/tls"
    "fmt"
-   "github.com/pkg/errors"
    "io"
-   "io/ioutil"
    "net"
    "net/http"
    "os"
 )
 
-// HTTPSAction defines how to act for requests via HTTPS.
-type HTTPSAction int
-
-const (
-	// HTTPSActionProxy just performs as proxy server. In this behaviour, middlewares are ignored.
-	HTTPSActionProxy HTTPSAction = iota
-	// HTTPSActionReject rejects all HTTPS requests (returns http.StatusBadRequest).
-	HTTPSActionReject
-	// HTTPSActionMITM strips SSL encryption.
-	// Builtin certificates is not verified, so clients must accept insecure certificates.
-	HTTPSActionMITM
-)
-
-// ProxyServer is a programmable proxy server instance, behaves as an http.Handler.
-type ProxyServer struct {
-	// Logger is a logger that prints proxy requests.
-	Logger Logger
-	// NonProxyRequestHandler handles non-proxy requests.
-	// If it's nil, non-proxy requests causes http.StatusBadRequest.
-	NonProxyRequestHandler http.Handler
-	HTTPSAction            HTTPSAction
-	middlewares            []Middleware
-}
-
-// Use adds given middlewares to p's middlewares.
-func (p *ProxyServer) Use(ms ...Middleware) {
-	p.middlewares = append(p.middlewares, ms...)
-}
-
-func (p *ProxyServer) log(args ...interface{}) {
-	if p.Logger != nil {
-		p.Logger.Print(args...)
-	}
-}
-
-func copyResponse(dst http.ResponseWriter, src *http.Response) error {
-	dstHeader := dst.Header()
-	for k := range dstHeader {
-		dstHeader.Del(k)
-	}
-	for k, vs := range src.Header {
-		for _, v := range vs {
-			dstHeader.Add(k, v)
+func logging(h Handler) Handler {
+	return func(req *http.Request) (*http.Response, error) {
+		resp, err := h(req)
+		if err != nil {
+			return nil, err
 		}
+		fmt.Printf("%#v\n", resp)
+		return resp, nil
 	}
-	dst.WriteHeader(src.StatusCode)
-	if _, err := io.Copy(dst, src.Body); err != nil {
-		return errors.Wrap(err, "failed to copy response body")
-	}
-	return nil
-}
-
-func (p *ProxyServer) pipeConn(dst, src *net.TCPConn) {
-	if _, err := io.Copy(dst, src); err != nil {
-		p.log("failed to pipe connections: ", err)
-	}
-	dst.CloseWrite()
-	src.CloseRead()
-}
-
-func (p *ProxyServer) apply(base Handler) Handler {
-	for _, m := range p.middlewares {
-		base = m(base)
-	}
-	return base
 }
 
 func (p *ProxyServer) proxyHTTPS(w http.ResponseWriter, r *http.Request) {
@@ -105,6 +47,27 @@ func (p *ProxyServer) proxyHTTPS(w http.ResponseWriter, r *http.Request) {
 	go p.pipeConn(cliTCPConn, dstTCPConn)
 
 	p.log("accept CONNECT to ", r.URL.Host)
+}
+
+func (p *ProxyServer) pipeConn(dst, src *net.TCPConn) {
+	if _, err := io.Copy(dst, src); err != nil {
+		p.log("failed to pipe connections: ", err)
+	}
+	dst.CloseWrite()
+	src.CloseRead()
+}
+
+func (p *ProxyServer) connectHandler(w http.ResponseWriter, r *http.Request) {
+	switch p.HTTPSAction {
+	case HTTPSActionProxy:
+		p.proxyHTTPS(w, r)
+	case HTTPSActionReject:
+		http.Error(w, "HTTPS request is not allowed", http.StatusBadRequest)
+	case HTTPSActionMITM:
+		p.mitmHTTPS(w, r)
+	default:
+		http.Error(w, fmt.Sprintf("unknown HTTPS action: %v", p.HTTPSAction), http.StatusInternalServerError)
+	}
 }
 
 func (p *ProxyServer) mitmHTTPS(w http.ResponseWriter, r *http.Request) {
@@ -142,7 +105,7 @@ func (p *ProxyServer) mitmHTTPS(w http.ResponseWriter, r *http.Request) {
 			p.log("failed to read TLS response: ", err)
 			break
 		}
-		body, err := ioutil.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
 		resp.Body.Close()
 		if err != nil {
 			p.log("failed to read respnse body: ", err)
@@ -158,18 +121,35 @@ func (p *ProxyServer) mitmHTTPS(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (p *ProxyServer) connectHandler(w http.ResponseWriter, r *http.Request) {
-	switch p.HTTPSAction {
-	case HTTPSActionProxy:
-		p.proxyHTTPS(w, r)
-	case HTTPSActionReject:
-		http.Error(w, "HTTPS request is not allowed", http.StatusBadRequest)
-	case HTTPSActionMITM:
-		p.mitmHTTPS(w, r)
-	default:
-		http.Error(w, fmt.Sprintf("unknown HTTPS action: %v", p.HTTPSAction), http.StatusInternalServerError)
+func DefaultHTTPSHandler(tr *http.Transport) Handler {
+	return tr.RoundTrip
+}
+
+func main() {
+	var proxy ProxyServer
+	proxy.HTTPSAction = HTTPSActionMITM
+	proxy.Use(logging)
+	if err := http.ListenAndServe(":8888", &proxy); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
 	}
 }
+
+type ProxyServer struct {
+	// Logger is a logger that prints proxy requests.
+	Logger Logger
+	// NonProxyRequestHandler handles non-proxy requests.
+	// If it's nil, non-proxy requests causes http.StatusBadRequest.
+	NonProxyRequestHandler http.Handler
+	HTTPSAction            httpsAction
+	middlewares            []Middleware
+}
+
+func (p *ProxyServer) Use(ms ...Middleware) {
+	p.middlewares = append(p.middlewares, ms...)
+}
+
+type Middleware func(Handler) Handler
 
 func (p *ProxyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	p.log("received request: ", r)
@@ -202,6 +182,35 @@ func (p *ProxyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+}
+
+func DefaultHTTPHandler(req *http.Request) (*http.Response, error) {
+	return httpclient.Do(req)
+}
+
+var httpclient = &http.Client{
+	CheckRedirect: func(r *http.Request, via []*http.Request) error {
+		return http.ErrUseLastResponse
+	},
+}
+
+func (p *ProxyServer) log(args ...interface{}) {
+	if p.Logger != nil {
+		p.Logger.Print(args...)
+	}
+}
+
+type Logger interface {
+	Print(...interface{})
+}
+
+type Handler func(*http.Request) (*http.Response, error)
+
+func (p *ProxyServer) apply(base Handler) Handler {
+	for _, m := range p.middlewares {
+		base = m(base)
+	}
+	return base
 }
 
 var groxyCa tls.Certificate
@@ -265,64 +274,30 @@ bJNefkZ2L79jEO6aR0t/+hWgaM4XG++cgt6COU/ljzgFNOe8U7GJ0mL5keX2VuFP
 WvcLOt83/KZ1jHrn5wkv0ajqtbJYXHu+e2kD3yoElZGxKTVJRSfV6/0=
 -----END CERTIFICATE-----`)
 
-
-// Handler handles http.Request and somehow generate http.Response or error.
-type Handler func(*http.Request) (*http.Response, error)
-
-// Middleware wraps original Handler and create new Handler.
-type Middleware func(Handler) Handler
-
-var httpclient = &http.Client{
-	CheckRedirect: func(r *http.Request, via []*http.Request) error {
-		return http.ErrUseLastResponse
-	},
-}
-
-// DefaultHTTPHandler pass the request to the target server, and returns its response or error.
-func DefaultHTTPHandler(req *http.Request) (*http.Response, error) {
-	return httpclient.Do(req)
-}
-
-// DefaultHTTPSHandler pass the request to the target server, and returns its response or error.
-func DefaultHTTPSHandler(tr *http.Transport) Handler {
-	return tr.RoundTrip
-}
-
-// Logger is an interface to log events.
-type Logger interface {
-	Print(...interface{})
-}
-
-type nullLogger struct{}
-
-func (nullLogger) Print(...interface{}) {}
-
-// FuncLogger is a Logger that wraps print function
-type FuncLogger func(...interface{})
-
-// Print invokes f with args
-func (f FuncLogger) Print(args ...interface{}) {
-	f(args...)
-}
-
-func logging(h Handler) Handler {
-	return func(req *http.Request) (*http.Response, error) {
-		resp, err := h(req)
-		if err != nil {
-			return nil, err
+func copyResponse(dst http.ResponseWriter, src *http.Response) error {
+	dstHeader := dst.Header()
+	for k := range dstHeader {
+		dstHeader.Del(k)
+	}
+	for k, vs := range src.Header {
+		for _, v := range vs {
+			dstHeader.Add(k, v)
 		}
-		fmt.Printf("%#v\n", resp)
-		return resp, nil
 	}
+	dst.WriteHeader(src.StatusCode)
+	if _, err := io.Copy(dst, src.Body); err != nil {
+               return err
+	}
+	return nil
 }
 
-func main() {
-	var proxy ProxyServer
-	proxy.HTTPSAction = HTTPSActionMITM
-	proxy.Use(logging)
+type httpsAction int
 
-	if err := http.ListenAndServe(":8888", &proxy); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-}
+const (
+   // HTTPSActionProxy just performs as proxy server. In this behaviour, middlewares are ignored.
+   HTTPSActionProxy httpsAction = iota
+   // HTTPSActionReject rejects all HTTPS requests (returns http.StatusBadRequest).
+   HTTPSActionReject
+   // Builtin certificates is not verified, so clients must accept insecure certificates.
+   HTTPSActionMITM
+)
