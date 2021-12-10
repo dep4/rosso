@@ -28,4 +28,5 @@ HTTPS proxy
 .\openssl x509 -in my_site.crt -outform der -out my_site.der.crt
 ~~~
 
-https://android.stackexchange.com/questions/61540/self-signed-certificate
+- https://android.stackexchange.com/questions/61540/self-signed-certificate
+- https://github.com/mitmproxy/mitmproxy/blob/6997129b/mitmproxy/certs.py#L381-L408
