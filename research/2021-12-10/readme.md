@@ -1,7 +1,8 @@
 # December 10 2021
 
 ~~~
-"Handshake" "TeeReader"
+CONNECT [2607:f8b0:4000:818::2003]:443 HTTP/1.1
+"Handshake" "TeeReader" "CONNECT"
 ~~~
 
 this works:
