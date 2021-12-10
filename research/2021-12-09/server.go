@@ -10,6 +10,24 @@ import (
    "os"
 )
 
+func init() {
+	var err error
+	groxyCa, err = tls.X509KeyPair(caCert, caKey)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func main() {
+	var proxy ProxyServer
+	proxy.HTTPSAction = HTTPSActionMITM
+	proxy.Use(logging)
+	if err := http.ListenAndServe(":8888", &proxy); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
+
 func logging(h Handler) Handler {
 	return func(req *http.Request) (*http.Response, error) {
 		resp, err := h(req)
@@ -125,16 +143,6 @@ func DefaultHTTPSHandler(tr *http.Transport) Handler {
 	return tr.RoundTrip
 }
 
-func main() {
-	var proxy ProxyServer
-	proxy.HTTPSAction = HTTPSActionMITM
-	proxy.Use(logging)
-	if err := http.ListenAndServe(":8888", &proxy); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-}
-
 type ProxyServer struct {
 	// Logger is a logger that prints proxy requests.
 	Logger Logger
@@ -214,14 +222,6 @@ func (p *ProxyServer) apply(base Handler) Handler {
 }
 
 var groxyCa tls.Certificate
-
-func init() {
-	var err error
-	groxyCa, err = tls.X509KeyPair(caCert, caKey)
-	if err != nil {
-		panic(err)
-	}
-}
 
 var caKey = []byte(`-----BEGIN RSA PRIVATE KEY-----
 MIIEowIBAAKCAQEApzPRppQb/lr92PAyn63Tu1HIcsO1F5FjlMRWzSHTjyUUtKs9
