@@ -1,0 +1,6 @@
+github.com/agatan/groxy v0.0.0-20171012123044-6253a346e783 h1:/U5qVrQhfRAZ7EAd4liVfRuihGj2E6Ufro88lbv6/ro=
+github.com/agatan/groxy v0.0.0-20171012123044-6253a346e783/go.mod h1:3qS90GNpyJk/kdiSAhlYxJ2Ak4QD1zcrDJbm7eotUYU=
+github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 h1:Z9n2FFNUXsshfwJMBgNA0RU6/i7WVaAegv3PtuIHPMs=
+github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51/go.mod h1:CzGEWj7cYgsdH8dAjBGEr58BoE7ScuLd+fwFZ44+/x8=
+github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
+github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
