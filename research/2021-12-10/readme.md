@@ -14,3 +14,4 @@ curl -x https://localhost:8080 example.com
 - https://go.dev/play/p/ZbLYpWWLYd
 - https://godocs.io/crypto/tls#Conn.Handshake
 - https://godocs.io/io#TeeReader
+- https://medium.com/@mlowicki/http-s-proxy-in-golang-in-less-than-100-lines-of-code-6a51c2f2c38c

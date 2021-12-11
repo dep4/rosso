@@ -9,7 +9,7 @@ import (
 
 func main() {
    http.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
-      fmt.Fprintln(w, "Goodbye, World!")
+      w.WriteHeader(200)
    })
    // net.Listener
    ln, err := net.Listen("tcp", ":8080")
