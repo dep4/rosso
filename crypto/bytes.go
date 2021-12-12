@@ -13,22 +13,22 @@ func NewBuffer(buf []byte) *Buffer {
    return &Buffer{buf}
 }
 
-func (b *Buffer) Next(n int) ([]byte, bool) {
-   if n < 0 || n > len(b.buf) {
+func (b *Buffer) Next(i int) ([]byte, bool) {
+   if i < 0 || i > len(b.buf) {
       return nil, false
    }
-   buf := b.buf[:n]
-   b.buf = b.buf[n:]
+   buf := b.buf[:i]
+   b.buf = b.buf[i:]
    return buf, true
 }
 
 func (b *Buffer) ReadBytes(delim byte) ([]byte, bool) {
-   ind := bytes.IndexByte(b.buf, delim)
-   if ind == -1 {
+   i := bytes.IndexByte(b.buf, delim)
+   if i == -1 {
       return nil, false
    }
-   buf := b.buf[:ind+1]
-   b.buf = b.buf[ind+1:]
+   buf := b.buf[:i+1]
+   b.buf = b.buf[i+1:]
    return buf, true
 }
 

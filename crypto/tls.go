@@ -88,8 +88,8 @@ func ParseHandshake(data []byte) (*ClientHello, error) {
 
 func ParseJA3(str string) (*ClientHello, error) {
    tokens := strings.Split(str, ",")
-   if len(tokens) != 5 {
-      return nil, parse.Invalid{str}
+   if tLen := len(tokens); tLen <= 4 {
+      return nil, parse.InvalidSlice{4, tLen}
    }
    var version uint16
    _, err := fmt.Sscan(tokens[0], &version)
@@ -217,3 +217,4 @@ func (h ClientHello) FormatJA3() (string, error) {
    }
    return buf.String(), nil
 }
+
