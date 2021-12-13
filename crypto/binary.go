@@ -1,36 +1,10 @@
 package crypto
 
 import (
-   "bytes"
    "encoding/binary"
+   "github.com/refraction-networking/utls"
+   "io"
 )
-
-type Buffer struct {
-   buf []byte
-}
-
-func NewBuffer(buf []byte) *Buffer {
-   return &Buffer{buf}
-}
-
-func (b *Buffer) Next(i int) ([]byte, bool) {
-   if i < 0 || i > len(b.buf) {
-      return nil, false
-   }
-   buf := b.buf[:i]
-   b.buf = b.buf[i:]
-   return buf, true
-}
-
-func (b *Buffer) ReadBytes(delim byte) ([]byte, bool) {
-   i := bytes.IndexByte(b.buf, delim)
-   if i == -1 {
-      return nil, false
-   }
-   buf := b.buf[:i+1]
-   b.buf = b.buf[i+1:]
-   return buf, true
-}
 
 func (b *Buffer) ReadUint16LengthPrefixed() ([]byte, []byte, bool) {
    low := 2
@@ -59,4 +33,23 @@ func (b *Buffer) ReadUint32LengthPrefixed() ([]byte, []byte, bool) {
    pre, buf := b.buf[:low], b.buf[low:high]
    b.buf = b.buf[high:]
    return pre, buf, true
+}
+
+func extensionType(ext tls.TLSExtension) (uint16, error) {
+   data, err := io.ReadAll(ext)
+   if err != nil || len(data) <= 1 {
+      return 0, err
+   }
+   return binary.BigEndian.Uint16(data), nil
+}
+
+func ParseHandshake(data []byte) (*ClientHello, error) {
+   // unsupported extension 0x16
+   fin := tls.Fingerprinter{AllowBluntMimicry: true}
+   spec, err := fin.FingerprintClientHello(data)
+   if err != nil {
+      return nil, err
+   }
+   version := binary.BigEndian.Uint16(data[1:])
+   return &ClientHello{spec, version}, nil
 }

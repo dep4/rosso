@@ -1,15 +1,41 @@
 package crypto
 
 import (
-   "encoding/binary"
+   "bytes"
    "fmt"
    "github.com/89z/parse"
    "github.com/refraction-networking/utls"
-   "io"
    "net"
    "net/http"
    "strings"
 )
+
+type Buffer struct {
+   buf []byte
+}
+
+func NewBuffer(buf []byte) *Buffer {
+   return &Buffer{buf}
+}
+
+func (b *Buffer) Next(i int) ([]byte, bool) {
+   if i < 0 || i > len(b.buf) {
+      return nil, false
+   }
+   buf := b.buf[:i]
+   b.buf = b.buf[i:]
+   return buf, true
+}
+
+func (b *Buffer) ReadBytes(delim byte) ([]byte, bool) {
+   i := bytes.IndexByte(b.buf, delim)
+   if i == -1 {
+      return nil, false
+   }
+   buf := b.buf[:i+1]
+   b.buf = b.buf[i+1:]
+   return buf, true
+}
 
 func Handshakes(pcap []byte) [][]byte {
    var hands [][]byte
@@ -62,28 +88,9 @@ func NewTransport(spec *tls.ClientHelloSpec) *http.Transport {
    }
 }
 
-func extensionType(ext tls.TLSExtension) (uint16, error) {
-   data, err := io.ReadAll(ext)
-   if err != nil || len(data) <= 1 {
-      return 0, err
-   }
-   return binary.BigEndian.Uint16(data), nil
-}
-
 type ClientHello struct {
    *tls.ClientHelloSpec
    Version uint16
-}
-
-func ParseHandshake(data []byte) (*ClientHello, error) {
-   // unsupported extension 0x16
-   fin := tls.Fingerprinter{AllowBluntMimicry: true}
-   spec, err := fin.FingerprintClientHello(data)
-   if err != nil {
-      return nil, err
-   }
-   version := binary.BigEndian.Uint16(data[1:])
-   return &ClientHello{spec, version}, nil
 }
 
 func ParseJA3(str string) (*ClientHello, error) {
@@ -217,4 +224,3 @@ func (h ClientHello) FormatJA3() (string, error) {
    }
    return buf.String(), nil
 }
-
