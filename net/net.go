@@ -52,16 +52,28 @@ func ReadRequest(src io.Reader) (*http.Request, error) {
    return &req, nil
 }
 
-// text/plain encoding algorithm
-// html.spec.whatwg.org/multipage/form-control-infrastructure.html
-func ReadQuery(src io.Reader) url.Values {
-   vals := make(url.Values)
-   buf := bufio.NewScanner(src)
-   for buf.Scan() {
-      kv := strings.SplitN(buf.Text(), "=", 2)
-      if len(kv) == 2 {
-         vals.Add(kv[0], kv[1])
-      }
+type Values map[string]string
+
+// godocs.io/net/http#Request.Body
+func (v Values) Body() io.Reader {
+   raw := v.RawQuery()
+   return strings.NewReader(raw)
+}
+
+// godocs.io/net/http#Request.Header
+func (v Values) Header() http.Header {
+   vals := make(http.Header)
+   for key, val := range v {
+      vals.Set(key, val)
    }
    return vals
+}
+
+// godocs.io/net/url#URL.RawQuery
+func (v Values) RawQuery() string {
+   vals := make(url.Values)
+   for key, val := range v {
+      vals.Set(key, val)
+   }
+   return vals.Encode()
 }
