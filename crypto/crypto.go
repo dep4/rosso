@@ -3,7 +3,6 @@ package crypto
 import (
    "bytes"
    "fmt"
-   "github.com/89z/parse"
    "github.com/refraction-networking/utls"
    "net"
    "net/http"
@@ -96,7 +95,7 @@ type ClientHello struct {
 func ParseJA3(str string) (*ClientHello, error) {
    tokens := strings.Split(str, ",")
    if tLen := len(tokens); tLen <= 4 {
-      return nil, parse.InvalidSlice{4, tLen}
+      return nil, invalidSlice{4, tLen}
    }
    var version uint16
    _, err := fmt.Sscan(tokens[0], &version)
