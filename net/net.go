@@ -65,3 +65,29 @@ func ReadQuery(src io.Reader) url.Values {
    }
    return vals
 }
+
+type Values map[string]string
+
+// godocs.io/net/http#Request.Body
+func (v Values) Body() io.Reader {
+   raw := v.RawQuery()
+   return strings.NewReader(raw)
+}
+
+// godocs.io/net/http#Request.Header
+func (v Values) Header() http.Header {
+   vals := make(http.Header)
+   for key, val := range v {
+      vals.Set(key, val)
+   }
+   return vals
+}
+
+// godocs.io/net/url#URL.RawQuery
+func (v Values) RawQuery() string {
+   vals := make(url.Values)
+   for key, val := range v {
+      vals.Set(key, val)
+   }
+   return vals.Encode()
+}

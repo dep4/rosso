@@ -18,7 +18,7 @@ content-length: 54
 {"isStationStart":true,"stationId":126608766085892525}`
 
 func TestRequest(t *testing.T) {
-   req, err := readRequest(strings.NewReader(post))
+   req, err := ReadRequest(strings.NewReader(post))
    if err != nil {
       t.Fatal(err)
    }
