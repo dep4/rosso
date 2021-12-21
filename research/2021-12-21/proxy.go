@@ -2,19 +2,20 @@ package main
 
 import (
    "crypto/tls"
-   "encoding/json"
    "fmt"
    "github.com/89z/parse/crypto"
    "io"
    "net"
    "net/http"
-   "os"
-   "os/signal"
-   "sync"
-   "sync/atomic"
    "time"
-   stdcontext "context"
 )
+
+const NormalMode = iota
+
+const defaultTargetConnectTimeout   = 5 * time.Second
+
+// Canned HTTP responses
+var tunnelEstablishedResponseLine = []byte(fmt.Sprintf("HTTP/1.1 %d Connection established\r\n\r\n", http.StatusOK))
 
 func main() {
    // Providing certain log configuration before Run() is optional e.g.
@@ -47,30 +48,9 @@ func (s spyConn) Read(p []byte) (int, error) {
    return n, err
 }
 
-const defaultTargetConnectTimeout   = 5 * time.Second
-
-// Canned HTTP responses
-var (
-   badGateway = fmt.Sprintf("HTTP/1.1 %d %s\r\n\r\n", http.StatusBadGateway, http.StatusText(http.StatusBadGateway))
-   internalErr = "PROXY_CHANNEL_INTERNAL_ERR"
-   tunnelEstablishedResponseLine = []byte(fmt.Sprintf("HTTP/1.1 %d Connection established\r\n\r\n", http.StatusOK))
-)
-
-// ProxyError specifies all the possible errors that can occur due to this proxy's behavior,
-// which does not include the behavior of parent proxies.
-type proxyError struct {
-	ErrType string `json:"errType"`
-	ErrCode int32  `json:"errCode"`
-	ErrMsg  string `json:"errMsg"`
-}
-
-const NormalMode = iota
-
 // Proxy is a struct that implements ServeHTTP() method
 type proxy struct {
-   connNum int32
    transport     *http.Transport
-   mode          int
 }
 
 func newProxy(hconf *http.Transport) *proxy {
@@ -105,65 +85,25 @@ func (p *proxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
    if req.URL.Host == "" {
       req.URL.Host = req.Host
    }
-   atomic.AddInt32(&p.connNum, 1)
-   defer func() {
-      atomic.AddInt32(&p.connNum, -1)
-   }()
    ctx := &context{
       data:       make(map[interface{}]interface{}),
       req:        req,
    }
-   if ctx.abort {
-      ctx.setContextErrType(ConnectFail)
-      return
-   }
-   if ctx.abort {
-      ctx.setContextErrType(AuthFail)
-      return
-   }
-   // NormalMode: This proxy will forward requests to parent proxy, and return
-   // whatever it gets from parent proxy back to requestor.
-   switch p.mode {
-   case NormalMode:
-      if ctx.req.Method == http.MethodConnect {
-         h := ctx.req.Header.Get("MITM")
-         if h == "Enabled" {
-            ctx.mitm = true
-         } else {
-            p.proxyTunnel(ctx, rw)
-         }
+   if ctx.req.Method == http.MethodConnect {
+      h := ctx.req.Header.Get("MITM")
+      if h == "Enabled" {
+         ctx.mitm = true
+      } else {
+         p.proxyTunnel(ctx, rw)
       }
    }
 }
 
-func writeProxyErrorToResponseBody(ctx *context, respWriter io.Writer, httpcode int32, msg string, optionalPrefix string) {
-	if optionalPrefix != "" {
-		m, _ := respWriter.Write([]byte(optionalPrefix))
-		ctx.respLength += int64(m)
-	}
-	pe := &proxyError{
-		ErrType: internalErr,
-		ErrCode: httpcode,
-		ErrMsg:  msg,
-	}
-	errJSON, err := json.Marshal(pe)
-	if err != nil {
-		panic(fmt.Errorf("jason marshal failed"))
-	}
-	n, _ := respWriter.Write(errJSON)
-	ctx.respLength += int64(n)
-}
-
 func (p *proxy) proxyTunnel(ctx *context, rw http.ResponseWriter) {
-   if ctx.abort {
-      ctx.setContextErrType(ParentProxyFail)
-      return
-   }
    clientConn, err := hijacker(rw)
    if err != nil {
       fmt.Printf("proxyTunnel hijack client connection failed: %s", err)
       rw.WriteHeader(http.StatusBadGateway)
-      writeProxyErrorToResponseBody(ctx, rw, http.StatusBadGateway, fmt.Sprintf("proxyTunnel hijack client connection failed: %s", err), "")
       ctx.setContextErrorWithType(err, TunnelHijackClientConnFail)
       return
    }
@@ -179,13 +119,8 @@ func (p *proxy) proxyTunnel(ctx *context, rw http.ResponseWriter) {
    fmt.Println(ctx.req.Header)
    targetAddr := ctx.req.URL.Host
    targetConn, err := net.DialTimeout("tcp", targetAddr, defaultTargetConnectTimeout)
-   if ctx.abort {
-      ctx.setContextErrType(BeforeResponseFail)
-      return
-   }
    if err != nil {
       fmt.Printf("proxyTunnel %s dial remote server failed: %s", ctx.req.URL.Host, err)
-      writeProxyErrorToResponseBody(ctx, clientConn, http.StatusBadGateway, fmt.Sprintf("proxyTunnel %s dial remote server failed: %s", ctx.req.URL.Host, err), badGateway)
       ctx.setContextErrorWithType(err, TunnelDialRemoteServerFail)
       return
    }
@@ -278,13 +213,13 @@ const (
 
 type proxychannel struct {
    server           *http.Server
-   waitGroup        *sync.WaitGroup
+   //waitGroup        *sync.WaitGroup
    serverDone       chan bool
 }
 
 func NewProxychannel(hconf *http.Transport, sconf *serverConfig) *proxychannel {
    pc := &proxychannel{
-      waitGroup:        &sync.WaitGroup{},
+      //waitGroup:        &sync.WaitGroup{},
       serverDone:       make(chan bool),
    }
    pc.server = &http.Server{
@@ -298,45 +233,17 @@ func NewProxychannel(hconf *http.Transport, sconf *serverConfig) *proxychannel {
 }
 
 func (pc *proxychannel) runServer() {
-   ctx, cancel := stdcontext.WithCancel(stdcontext.Background())
-   defer cancel()
    defer close(pc.serverDone)
-   pc.server.BaseContext = func(_ net.Listener) stdcontext.Context { return ctx }
-   stop := func() {
-   gracefulCtx, cancel := stdcontext.WithTimeout(stdcontext.Background(), 5*time.Second)
-   defer cancel()
-   if err := pc.server.Shutdown(gracefulCtx); err != nil {
-   fmt.Printf("HTTP server Shutdown error: %v\n", err)
-   } else {
-   fmt.Println("HTTP server gracefully stopped")
-   }
-   }
-   // Run server
-   go func() {
    if err := pc.server.ListenAndServe(); err != http.ErrServerClosed {
-   //Logger.Errorf("HTTP server ListenAndServe: %v", err)
-   os.Exit(1)
+      fmt.Printf("HTTP server ListenAndServe: %v", err)
    }
-   }()
-   signalChan := make(chan os.Signal, 1)
-   signal.Notify(signalChan)
-   // Will block until shutdown signal is received
-   <-signalChan
-   // Terminate after second signal before callback is done
-   go func() {
-   <-signalChan
-   os.Exit(1)
-   }()
-   stop()
 }
 
 type context struct {
-   abort      bool
    data       map[interface{}]interface{}
    err        error
    errType    string
    hijack     bool
-   lock       sync.RWMutex
    mitm       bool
    req        *http.Request
    reqLength  int64
@@ -344,8 +251,6 @@ type context struct {
 }
 
 func (c *context) setContextErrorWithType(err error, errType string) {
-   c.lock.Lock()
-   defer c.lock.Unlock()
    if c.errType == HTTPRedialCancelTimeout || c.errType == HTTPSRedialCancelTimeout || c.errType == TunnelRedialCancelTimeout {
       return
    }
@@ -354,8 +259,6 @@ func (c *context) setContextErrorWithType(err error, errType string) {
 }
 
 func (c *context) setPoolContextErrorWithType(err error, errType string, parentProxy ...string) {
-   c.lock.Lock()
-   defer c.lock.Unlock()
    switch len(parentProxy) {
    case 0:
       c.errType = errType
@@ -381,12 +284,10 @@ func (c *context) setPoolContextErrorWithType(err error, errType string, parentP
 }
 
 func (c *context) setContextErrType(errType string) {
-	c.lock.Lock()
-	defer c.lock.Unlock()
-	if c.errType == HTTPRedialCancelTimeout || c.errType == HTTPSRedialCancelTimeout || c.errType == TunnelRedialCancelTimeout {
-		return
-	}
-	c.errType = errType
+   if c.errType == HTTPRedialCancelTimeout || c.errType == HTTPSRedialCancelTimeout || c.errType == TunnelRedialCancelTimeout {
+      return
+   }
+   c.errType = errType
 }
 
 var defaultHandlerConfig = &http.Transport{
