@@ -21,13 +21,13 @@ func file(output string) (*os.File, error) {
 
 func main() {
    var (
-      https, proto, noBody bool
+      https, info, proto bool
       output string
    )
-   flag.BoolVar(&https, "s", false, "HTTPS")
-   flag.BoolVar(&noBody, "n", false, "no body")
-   flag.BoolVar(&proto, "p", false, "Protocol Buffer")
+   flag.BoolVar(&info, "i", false, "info")
    flag.StringVar(&output, "o", "", "output file")
+   flag.BoolVar(&proto, "p", false, "Protocol Buffer")
+   flag.BoolVar(&https, "s", false, "HTTPS")
    flag.Parse()
    if flag.NArg() != 1 {
       fmt.Println("net [flags] [request file]")
@@ -43,6 +43,10 @@ func main() {
    req, err := net.ReadRequest(read)
    if err != nil {
       panic(err)
+   }
+   if info {
+      fmt.Printf("%#v\n", req.URL.Query())
+      fmt.Printf("%#v\n", req.Header)
    }
    if https {
       req.URL.Scheme = "https"
@@ -61,9 +65,6 @@ func main() {
    }
    os.Stdout.Write(buf)
    // body
-   if noBody {
-      return
-   }
    write, err := file(output)
    if err != nil {
       panic(err)
