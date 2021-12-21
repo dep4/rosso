@@ -1,28 +1,24 @@
-# December 21 2021
+# December 20 2021
 
-## Done
+~~~
+CONNECT [2607:f8b0:4000:818::2003]:443 HTTP/1.1
+~~~
 
-- <https://agwa.name/blog/post/writing_an_sni_proxy_in_go>
-- https://android.stackexchange.com/questions/243184/capture-tls-handshake
-- https://android.stackexchange.com/questions/61540/self-signed-certificate
-- https://github.com/Bren2010/mitm/issues/1
-- https://github.com/agatan/groxy
-- https://github.com/jmhodges/howsmyssl/issues/357
-- https://github.com/mitmproxy/mitmproxy/blob/6997129b/mitmproxy/certs.py#L381-L408
-- https://github.com/petethepig/mitm/issues/2
-- https://github.com/vinhjaxt/vitm-proxy/issues/1
-- https://go.dev/play/p/ZbLYpWWLYd
-- https://medium.com/@j0hnsmith/eavesdrop-on-a-golang-http-client-c4dc49af9d5e
-- https://medium.com/@mlowicki/http-s-proxy-in-golang-in-less-than-100-lines-of-code-6a51c2f2c38c
-- https://medium.com/@shaneutt/create-sign-x509-certificates-in-golang-8ac4ae49f903
-- https://unix.stackexchange.com/questions/208412/how-to-see-list-of-curl
+These work with MITM Proxy:
 
-## To do
+~~~
+curl --cacert mitmproxy-ca-cert.pem -x localhost:8080 https://example.com
+curl --cacert mitmproxy-ca.pem -x localhost:8080 https://example.com
+~~~
 
-28.6 KB:
+~~~
+generate_cert -host 127.0.0.1
+generate_cert -host 10.0.2.2
+~~~
 
-https://github.com/mikluko/multiproxy
+~~~
+.\openssl req -x509 -nodes -days 365 -newkey rsa:4096 -keyout my_site.key `
+-out my_site.crt -reqexts v3_req -extensions v3_ca
 
-54.6 KB:
-
-https://github.com/spritesprite/proxychannel
+.\openssl x509 -in my_site.crt -outform der -out my_site.der.crt
+~~~
