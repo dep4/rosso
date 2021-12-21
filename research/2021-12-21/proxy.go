@@ -1,18 +1,19 @@
 package main
 
 import (
-   "bytes"
    "crypto/tls"
    "encoding/json"
    "fmt"
    "github.com/89z/parse/crypto"
    "io"
-   "io/ioutil"
    "net"
    "net/http"
    "net/http/httptrace"
    "net/url"
+   "os"
+   "os/signal"
    "strings"
+   "sync"
    "sync/atomic"
    "time"
    stdcontext "context"
@@ -60,16 +61,14 @@ type proxyError struct {
 
 const NormalMode = iota
 
-////////////////////////////////////////////////////////////////////////////////
-
 // Proxy is a struct that implements ServeHTTP() method
 type proxy struct {
-   clientConnNum int32
+   connNum int32
    transport     *http.Transport
    mode          int
 }
 
-func NewProxy(hconf *http.Transport) *proxy {
+func newProxy(hconf *http.Transport) *proxy {
    p := &proxy{}
    if hconf == nil {
       p.transport = &http.Transport{
@@ -96,15 +95,14 @@ func NewProxy(hconf *http.Transport) *proxy {
    return p
 }
 
-// ServeHTTP .
 func (p *proxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
    fmt.Println(req.Header)
    if req.URL.Host == "" {
       req.URL.Host = req.Host
    }
-   atomic.AddInt32(&p.clientConnNum, 1)
+   atomic.AddInt32(&p.connNum, 1)
    defer func() {
-      atomic.AddInt32(&p.clientConnNum, -1)
+      atomic.AddInt32(&p.connNum, -1)
    }()
    ctx := &context{
       data:       make(map[interface{}]interface{}),
@@ -135,11 +133,6 @@ func (p *proxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
    }
 }
 
-// ClientConnNum gets the Client
-func (p *proxy) ClientConnNum() int32 {
-	return atomic.LoadInt32(&p.clientConnNum)
-}
-
 func writeProxyErrorToResponseBody(ctx *context, respWriter io.Writer, httpcode int32, msg string, optionalPrefix string) {
 	if optionalPrefix != "" {
 		m, _ := respWriter.Write([]byte(optionalPrefix))
@@ -161,7 +154,7 @@ func writeProxyErrorToResponseBody(ctx *context, respWriter io.Writer, httpcode 
 func (p *proxy) proxyHTTP(ctx *context, rw http.ResponseWriter) {
    fmt.Println(ctx.req.Header)
    ctx.req.URL.Scheme = "http"
-   p.DoRequest(ctx, rw, func(resp *http.Response, err error) {
+   p.doRequest(ctx, rw, func(resp *http.Response, err error) {
       if err != nil {
          fmt.Printf("proxyHTTP %s forward request failed: %s", ctx.req.URL, err)
          rw.WriteHeader(http.StatusBadGateway)
@@ -170,7 +163,7 @@ func (p *proxy) proxyHTTP(ctx *context, rw http.ResponseWriter) {
          return
       }
       defer resp.Body.Close()
-      CopyHeader(rw.Header(), resp.Header)
+      copyHeader(rw.Header(), resp.Header)
       rw.WriteHeader(resp.StatusCode)
       written, err := io.Copy(rw, resp.Body)
       ctx.respLength += written
@@ -269,10 +262,7 @@ func transfer(ctx *context, clientConn net.Conn, targetConn net.Conn, parentProx
    clientConn.Close()
 }
 
-// DoRequest makes a request to remote server as a clent through given proxy,
-// and calls responseFunc before returning the response.
-// The "conn" is needed when it comes to https request, and only one conn is accepted.
-func (p *proxy) DoRequest(ctx *context, rw http.ResponseWriter, responseFunc func(*http.Response, error), conn ...interface{}) {
+func (p *proxy) doRequest(ctx *context, rw http.ResponseWriter, responseFunc func(*http.Response, error), conn ...interface{}) {
    if len(conn) > 1 {
       return
    }
@@ -286,7 +276,7 @@ func (p *proxy) DoRequest(ctx *context, rw http.ResponseWriter, responseFunc fun
    newReq := new(http.Request)
    *newReq = *ctx.req
    fmt.Println(newReq.Header)
-   newReq.Header = CloneHeader(newReq.Header)
+   newReq.Header = cloneHeader(newReq.Header)
    // When server reads http request it sets req.Close to true if "Connection"
    // header contains "close".
    // https://github.com/golang/go/blob/master/src/net/http/request.go#L1080
@@ -390,8 +380,7 @@ func removeMITMHeaders(h http.Header) {
 	}
 }
 
-// CopyHeader shallow copy.
-func CopyHeader(dst, src http.Header) {
+func copyHeader(dst, src http.Header) {
 	for k, vv := range src {
 		for _, v := range vv {
 			dst.Add(k, v)
@@ -399,8 +388,7 @@ func CopyHeader(dst, src http.Header) {
 	}
 }
 
-// CloneHeader deep copy.
-func CloneHeader(h http.Header) http.Header {
+func cloneHeader(h http.Header) http.Header {
 	h2 := make(http.Header, len(h))
 	for k, vv := range h {
 		vv2 := make([]string, len(vv))
@@ -410,16 +398,167 @@ func CloneHeader(h http.Header) http.Header {
 	return h2
 }
 
-// CloneBody deep copy.
-func CloneBody(b io.ReadCloser) (r io.ReadCloser, body []byte, err error) {
-	if b == nil {
-		return http.NoBody, nil, nil
-	}
-	body, err = ioutil.ReadAll(b)
-	if err != nil {
-		return http.NoBody, nil, err
-	}
-	r = ioutil.NopCloser(bytes.NewReader(body))
+func main() {
+   // Providing certain log configuration before Run() is optional e.g.
+   // ConfigLogging(lconf) where lconf is a *LogConfig
+   pc := NewProxychannel(defaultHandlerConfig, defaultServerConfig)
+   pc.runServer()
+}
 
-	return r, body, nil
+// FailEventType. When a request is aborted, the event should be one of the
+// following.
+const (
+   AuthFail           = "AUTH_FAIL"
+   BeforeRequestFail  = "BEFORE_REQUEST_FAIL"
+   BeforeResponseFail = "BEFORE_RESPONSE_FAIL"
+   ConnectFail        = "CONNECT_FAIL"
+   HTTPDoRequestFail               = "HTTP_DO_REQUEST_FAIL"
+   HTTPRedialCancelTimeout   = "HTTP_REDIAL_CANCEL_TIMEOUT"
+   HTTPSRedialCancelTimeout  = "HTTPS_REDIAL_CANCEL_TIMEOUT"
+   HTTPWriteClientFail             = "HTTP_WRITE_CLIENT_FAIL"
+   ParentProxyFail    = "PARENT_PROXY_FAIL"
+   TunnelConnectRemoteFail         = "TUNNEL_CONNECT_REMOTE_FAIL"
+   TunnelDialRemoteServerFail      = "TUNNEL_DIAL_REMOTE_SERVER_FAIL"
+   TunnelHijackClientConnFail      = "TUNNEL_HIJACK_CLIENT_CONN_FAIL"
+   TunnelRedialCancelTimeout = "TUNNEL_REDIAL_CANCEL_TIMEOUT"
+   TunnelWriteClientConnFinish     = "TUNNEL_WRITE_CLIENT_CONN_FINISH"
+   TunnelWriteEstRespFail          = "TUNNEL_WRITE_EST_RESP_FAIL"
+   TunnelWriteTargetConnFinish     = "TUNNEL_WRITE_TARGET_CONN_FINISH"
+)
+
+type proxychannel struct {
+   server           *http.Server
+   waitGroup        *sync.WaitGroup
+   serverDone       chan bool
+}
+
+func NewProxychannel(hconf *http.Transport, sconf *serverConfig) *proxychannel {
+   pc := &proxychannel{
+      waitGroup:        &sync.WaitGroup{},
+      serverDone:       make(chan bool),
+   }
+   pc.server = &http.Server{
+      Addr:         sconf.ProxyAddr,
+      Handler:    newProxy(hconf),
+      ReadTimeout:  sconf.ReadTimeout,
+      WriteTimeout: sconf.WriteTimeout,
+      TLSConfig:    sconf.TLSConfig,
+   }
+   return pc
+}
+
+func (pc *proxychannel) runServer() {
+   ctx, cancel := stdcontext.WithCancel(stdcontext.Background())
+   defer cancel()
+   defer close(pc.serverDone)
+   pc.server.BaseContext = func(_ net.Listener) stdcontext.Context { return ctx }
+   stop := func() {
+   gracefulCtx, cancel := stdcontext.WithTimeout(stdcontext.Background(), 5*time.Second)
+   defer cancel()
+   if err := pc.server.Shutdown(gracefulCtx); err != nil {
+   fmt.Printf("HTTP server Shutdown error: %v\n", err)
+   } else {
+   fmt.Println("HTTP server gracefully stopped")
+   }
+   }
+   // Run server
+   go func() {
+   if err := pc.server.ListenAndServe(); err != http.ErrServerClosed {
+   //Logger.Errorf("HTTP server ListenAndServe: %v", err)
+   os.Exit(1)
+   }
+   }()
+   signalChan := make(chan os.Signal, 1)
+   signal.Notify(signalChan)
+   // Will block until shutdown signal is received
+   <-signalChan
+   // Terminate after second signal before callback is done
+   go func() {
+   <-signalChan
+   os.Exit(1)
+   }()
+   stop()
+}
+
+type context struct {
+   abort      bool
+   data       map[interface{}]interface{}
+   err        error
+   errType    string
+   hijack     bool
+   lock       sync.RWMutex
+   mitm       bool
+   req        *http.Request
+   reqLength  int64
+   respLength int64
+}
+
+func (c *context) setContextErrorWithType(err error, errType string) {
+   c.lock.Lock()
+   defer c.lock.Unlock()
+   if c.errType == HTTPRedialCancelTimeout || c.errType == HTTPSRedialCancelTimeout || c.errType == TunnelRedialCancelTimeout {
+      return
+   }
+   c.errType = errType
+   c.err = err
+}
+
+func (c *context) setPoolContextErrorWithType(err error, errType string, parentProxy ...string) {
+   c.lock.Lock()
+   defer c.lock.Unlock()
+   switch len(parentProxy) {
+   case 0:
+      c.errType = errType
+      if err != nil {
+         if c.err != nil {
+            c.err = fmt.Errorf("%s | %s", err, c.err)
+         } else {
+            c.err = fmt.Errorf("%s", err)
+         }
+      }
+   case 1:
+      p := parentProxy[0]
+      if err != nil {
+         if c.err != nil {
+            c.err = fmt.Errorf("(%s) [%s] %s | %s", p, errType, err, c.err)
+         } else {
+            c.err = fmt.Errorf("(%s) [%s] %s", p, errType, err)
+         }
+      }
+   default:
+      return
+   }
+}
+
+func (c *context) setContextErrType(errType string) {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	if c.errType == HTTPRedialCancelTimeout || c.errType == HTTPSRedialCancelTimeout || c.errType == TunnelRedialCancelTimeout {
+		return
+	}
+	c.errType = errType
+}
+
+var defaultHandlerConfig = &http.Transport{
+   TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+   DialContext: (&net.Dialer{
+      DualStack: true,
+   }).DialContext,
+   MaxIdleConns:          100,
+   IdleConnTimeout:       90 * time.Second,
+   TLSHandshakeTimeout:   10 * time.Second,
+   ExpectContinueTimeout: 1 * time.Second,
+}
+
+var defaultServerConfig = &serverConfig{
+	ProxyAddr:    ":8080",
+	ReadTimeout:  60 * time.Second,
+	WriteTimeout: 60 * time.Second,
+}
+
+type serverConfig struct {
+	ProxyAddr    string
+	ReadTimeout  time.Duration
+	WriteTimeout time.Duration
+	TLSConfig    *tls.Config
 }
