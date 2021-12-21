@@ -10,20 +10,70 @@ import (
    "time"
 )
 
-const NormalMode = iota
+const (
+   HTTPRedialCancelTimeout   = "HTTP_REDIAL_CANCEL_TIMEOUT"
+   HTTPSRedialCancelTimeout  = "HTTPS_REDIAL_CANCEL_TIMEOUT"
+   TunnelDialRemoteServerFail      = "TUNNEL_DIAL_REMOTE_SERVER_FAIL"
+   TunnelHijackClientConnFail      = "TUNNEL_HIJACK_CLIENT_CONN_FAIL"
+   TunnelRedialCancelTimeout = "TUNNEL_REDIAL_CANCEL_TIMEOUT"
+   TunnelWriteEstRespFail          = "TUNNEL_WRITE_EST_RESP_FAIL"
+)
+
+func newProxy(hconf *http.Transport) *proxy {
+   p := &proxy{}
+   if hconf == nil {
+      p.transport = &http.Transport{
+         TLSClientConfig: &tls.Config{
+            // No need to verify because as a proxy we don't care
+            InsecureSkipVerify: true,
+         },
+         DialContext: (&net.Dialer{
+            Timeout:   30 * time.Second,
+            KeepAlive: 30 * time.Second,
+            DualStack: true,
+         }).DialContext,
+         MaxIdleConns:          100,
+         MaxIdleConnsPerHost:   10,
+         IdleConnTimeout:       90 * time.Second,
+         TLSHandshakeTimeout:   10 * time.Second,
+         ExpectContinueTimeout: 1 * time.Second,
+         ProxyConnectHeader:    make(http.Header),
+      }
+   } else {
+      p.transport = hconf
+      p.transport.ProxyConnectHeader = make(http.Header)
+   }
+   return p
+}
+
+func main() {
+   defaultHandlerConfig := &http.Transport{
+      TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+      DialContext: (&net.Dialer{
+         DualStack: true,
+      }).DialContext,
+      MaxIdleConns:          100,
+      IdleConnTimeout:       90 * time.Second,
+      TLSHandshakeTimeout:   10 * time.Second,
+      ExpectContinueTimeout: 1 * time.Second,
+   }
+   pc := &proxychannel{
+      server: &http.Server{
+         Addr:         defaultServerConfig.ProxyAddr,
+         Handler:    newProxy(defaultHandlerConfig),
+         ReadTimeout:  defaultServerConfig.ReadTimeout,
+         WriteTimeout: defaultServerConfig.WriteTimeout,
+         TLSConfig:    defaultServerConfig.TLSConfig,
+      },
+   }
+   fmt.Println("runServer")
+   pc.server.ListenAndServe()
+}
 
 const defaultTargetConnectTimeout   = 5 * time.Second
 
 // Canned HTTP responses
 var tunnelEstablishedResponseLine = []byte(fmt.Sprintf("HTTP/1.1 %d Connection established\r\n\r\n", http.StatusOK))
-
-func main() {
-   // Providing certain log configuration before Run() is optional e.g.
-   // ConfigLogging(lconf) where lconf is a *LogConfig
-   pc := NewProxychannel(defaultHandlerConfig, defaultServerConfig)
-   fmt.Println("runServer")
-   pc.runServer()
-}
 
 type spyConn struct {
    net.Conn
@@ -51,33 +101,6 @@ func (s spyConn) Read(p []byte) (int, error) {
 // Proxy is a struct that implements ServeHTTP() method
 type proxy struct {
    transport     *http.Transport
-}
-
-func newProxy(hconf *http.Transport) *proxy {
-   p := &proxy{}
-   if hconf == nil {
-      p.transport = &http.Transport{
-         TLSClientConfig: &tls.Config{
-            // No need to verify because as a proxy we don't care
-            InsecureSkipVerify: true,
-         },
-         DialContext: (&net.Dialer{
-            Timeout:   30 * time.Second,
-            KeepAlive: 30 * time.Second,
-            DualStack: true,
-         }).DialContext,
-         MaxIdleConns:          100,
-         MaxIdleConnsPerHost:   10,
-         IdleConnTimeout:       90 * time.Second,
-         TLSHandshakeTimeout:   10 * time.Second,
-         ExpectContinueTimeout: 1 * time.Second,
-         ProxyConnectHeader:    make(http.Header),
-      }
-   } else {
-      p.transport = hconf
-      p.transport.ProxyConnectHeader = make(http.Header)
-   }
-   return p
 }
 
 func (p *proxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
@@ -116,7 +139,6 @@ func (p *proxy) proxyTunnel(ctx *context, rw http.ResponseWriter) {
          fmt.Println("defer client close done")
       }
    }()
-   fmt.Println(ctx.req.Header)
    targetAddr := ctx.req.URL.Host
    targetConn, err := net.DialTimeout("tcp", targetAddr, defaultTargetConnectTimeout)
    if err != nil {
@@ -141,19 +163,11 @@ func (p *proxy) proxyTunnel(ctx *context, rw http.ResponseWriter) {
    transfer(ctx, clientConn, targetConn)
 }
 
-// transfer does two-way forwarding through connections
 func transfer(ctx *context, clientConn net.Conn, targetConn net.Conn, parentProxy ...string) {
    go func() {
       written1, err1 := io.Copy(clientConn, targetConn)
       if err1 != nil {
          fmt.Printf("io.Copy write clientConn failed: %s", err1)
-         if len(parentProxy) <= 1 {
-            if len(parentProxy) == 0 {
-               ctx.setContextErrorWithType(err1, TunnelWriteClientConnFinish)
-            } else {
-               ctx.setPoolContextErrorWithType(err1, TunnelWriteClientConnFinish, parentProxy[0])
-            }
-         }
       }
       ctx.respLength += written1
       clientConn.Close()
@@ -162,81 +176,27 @@ func transfer(ctx *context, clientConn net.Conn, targetConn net.Conn, parentProx
    spy := spyConn{clientConn}
    written2, err2 := io.Copy(targetConn, spy)
    if err2 != nil {
-   fmt.Printf("io.Copy write targetConn failed: %s", err2)
-   if len(parentProxy) <= 1 {
-   if len(parentProxy) == 0 {
-   ctx.setContextErrorWithType(err2, TunnelWriteTargetConnFinish)
-   } else {
-   ctx.setPoolContextErrorWithType(err2, TunnelWriteTargetConnFinish, parentProxy[0])
-   }
-   }
+      fmt.Printf("io.Copy write targetConn failed: %s", err2)
    }
    ctx.reqLength += written2
    targetConn.Close()
    clientConn.Close()
 }
 
-// hijacker gets the underlying connection of an http.ResponseWriter
 func hijacker(rw http.ResponseWriter) (net.Conn, error) {
-	hijacker, ok := rw.(http.Hijacker)
-	if !ok {
-		return nil, fmt.Errorf("hijacker is not supported")
-	}
-	conn, _, err := hijacker.Hijack()
-	if err != nil {
-		return nil, fmt.Errorf("hijacker failed: %s", err)
-	}
-
-	return conn, nil
+   hijacker, ok := rw.(http.Hijacker)
+   if !ok {
+      return nil, fmt.Errorf("hijacker is not supported")
+   }
+   conn, _, err := hijacker.Hijack()
+   if err != nil {
+      return nil, fmt.Errorf("hijacker failed: %s", err)
+   }
+   return conn, nil
 }
-
-// FailEventType. When a request is aborted, the event should be one of the
-// following.
-const (
-   AuthFail           = "AUTH_FAIL"
-   BeforeRequestFail  = "BEFORE_REQUEST_FAIL"
-   BeforeResponseFail = "BEFORE_RESPONSE_FAIL"
-   ConnectFail        = "CONNECT_FAIL"
-   HTTPDoRequestFail               = "HTTP_DO_REQUEST_FAIL"
-   HTTPRedialCancelTimeout   = "HTTP_REDIAL_CANCEL_TIMEOUT"
-   HTTPSRedialCancelTimeout  = "HTTPS_REDIAL_CANCEL_TIMEOUT"
-   HTTPWriteClientFail             = "HTTP_WRITE_CLIENT_FAIL"
-   ParentProxyFail    = "PARENT_PROXY_FAIL"
-   TunnelConnectRemoteFail         = "TUNNEL_CONNECT_REMOTE_FAIL"
-   TunnelDialRemoteServerFail      = "TUNNEL_DIAL_REMOTE_SERVER_FAIL"
-   TunnelHijackClientConnFail      = "TUNNEL_HIJACK_CLIENT_CONN_FAIL"
-   TunnelRedialCancelTimeout = "TUNNEL_REDIAL_CANCEL_TIMEOUT"
-   TunnelWriteClientConnFinish     = "TUNNEL_WRITE_CLIENT_CONN_FINISH"
-   TunnelWriteEstRespFail          = "TUNNEL_WRITE_EST_RESP_FAIL"
-   TunnelWriteTargetConnFinish     = "TUNNEL_WRITE_TARGET_CONN_FINISH"
-)
 
 type proxychannel struct {
    server           *http.Server
-   //waitGroup        *sync.WaitGroup
-   serverDone       chan bool
-}
-
-func NewProxychannel(hconf *http.Transport, sconf *serverConfig) *proxychannel {
-   pc := &proxychannel{
-      //waitGroup:        &sync.WaitGroup{},
-      serverDone:       make(chan bool),
-   }
-   pc.server = &http.Server{
-      Addr:         sconf.ProxyAddr,
-      Handler:    newProxy(hconf),
-      ReadTimeout:  sconf.ReadTimeout,
-      WriteTimeout: sconf.WriteTimeout,
-      TLSConfig:    sconf.TLSConfig,
-   }
-   return pc
-}
-
-func (pc *proxychannel) runServer() {
-   defer close(pc.serverDone)
-   if err := pc.server.ListenAndServe(); err != http.ErrServerClosed {
-      fmt.Printf("HTTP server ListenAndServe: %v", err)
-   }
 }
 
 type context struct {
@@ -288,17 +248,6 @@ func (c *context) setContextErrType(errType string) {
       return
    }
    c.errType = errType
-}
-
-var defaultHandlerConfig = &http.Transport{
-   TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-   DialContext: (&net.Dialer{
-      DualStack: true,
-   }).DialContext,
-   MaxIdleConns:          100,
-   IdleConnTimeout:       90 * time.Second,
-   TLSHandshakeTimeout:   10 * time.Second,
-   ExpectContinueTimeout: 1 * time.Second,
 }
 
 var defaultServerConfig = &serverConfig{
