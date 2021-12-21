@@ -1,4 +1,4 @@
-package proxychannel
+package main
 
 import (
    "crypto/tls"
@@ -14,7 +14,6 @@ type HandlerConfig struct {
 	DisableKeepAlive bool
 	Delegate         Delegate
 	DecryptHTTPS     bool
-	//CertCache        cert.Cache
 	Transport        *http.Transport
 	Mode             int
 }
@@ -89,7 +88,6 @@ type Writer interface {
 
 // WriterWithProtocol .
 type WriterWithProtocol struct {
-	writer Writer
 	length int
 }
 

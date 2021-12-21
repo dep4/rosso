@@ -1,4 +1,4 @@
-package proxychannel
+package main
 
 import (
    "bytes"
