@@ -1,7 +1,7 @@
 package main
 
 import (
-   "context"
+   stdcontext "context"
    "fmt"
    "net"
    "net/http"
@@ -81,36 +81,36 @@ func (pc *Proxychannel) runExtensionManager() {
 }
 
 func (pc *Proxychannel) runServer() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	defer close(pc.serverDone)
-	pc.server.BaseContext = func(_ net.Listener) context.Context { return ctx }
-	stop := func() {
-		gracefulCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		if err := pc.server.Shutdown(gracefulCtx); err != nil {
-			fmt.Printf("HTTP server Shutdown error: %v\n", err)
-		} else {
-			fmt.Println("HTTP server gracefully stopped")
-		}
-	}
-	// Run server
-	go func() {
-		if err := pc.server.ListenAndServe(); err != http.ErrServerClosed {
-			//Logger.Errorf("HTTP server ListenAndServe: %v", err)
-			os.Exit(1)
-		}
-	}()
-	signalChan := make(chan os.Signal, 1)
-	signal.Notify(signalChan)
-	// Will block until shutdown signal is received
-	<-signalChan
-	// Terminate after second signal before callback is done
-	go func() {
-		<-signalChan
-		os.Exit(1)
-	}()
-	stop()
+   ctx, cancel := stdcontext.WithCancel(stdcontext.Background())
+   defer cancel()
+   defer close(pc.serverDone)
+   pc.server.BaseContext = func(_ net.Listener) stdcontext.Context { return ctx }
+   stop := func() {
+   gracefulCtx, cancel := stdcontext.WithTimeout(stdcontext.Background(), 5*time.Second)
+   defer cancel()
+   if err := pc.server.Shutdown(gracefulCtx); err != nil {
+   fmt.Printf("HTTP server Shutdown error: %v\n", err)
+   } else {
+   fmt.Println("HTTP server gracefully stopped")
+   }
+   }
+   // Run server
+   go func() {
+   if err := pc.server.ListenAndServe(); err != http.ErrServerClosed {
+   //Logger.Errorf("HTTP server ListenAndServe: %v", err)
+   os.Exit(1)
+   }
+   }()
+   signalChan := make(chan os.Signal, 1)
+   signal.Notify(signalChan)
+   // Will block until shutdown signal is received
+   <-signalChan
+   // Terminate after second signal before callback is done
+   go func() {
+   <-signalChan
+   os.Exit(1)
+   }()
+   stop()
 }
 
 // Run launches the ExtensionManager and the HTTP server

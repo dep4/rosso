@@ -9,8 +9,7 @@ import (
    "time"
 )
 
-// Context stores what methods of Delegate would need as input.
-type Context struct {
+type context struct {
 	Req        *http.Request
 	Data       map[interface{}]interface{}
 	abort      bool
@@ -24,13 +23,7 @@ type Context struct {
 	Lock       sync.RWMutex
 }
 
-func (c *Context) GetContextError() (errType string, err error) {
-	c.Lock.RLock()
-	defer c.Lock.RUnlock()
-	return c.ErrType, c.Err
-}
-
-func (c *Context) SetContextErrorWithType(err error, errType string) {
+func (c *context) setContextErrorWithType(err error, errType string) {
 	c.Lock.Lock()
 	defer c.Lock.Unlock()
 	if c.ErrType == HTTPRedialCancelTimeout || c.ErrType == HTTPSRedialCancelTimeout || c.ErrType == TunnelRedialCancelTimeout {
@@ -40,37 +33,37 @@ func (c *Context) SetContextErrorWithType(err error, errType string) {
 	c.Err = err
 }
 
-// SetPoolContextErrorWithType .
-func (c *Context) SetPoolContextErrorWithType(err error, errType string, parentProxy ...string) {
-	c.Lock.Lock()
-	defer c.Lock.Unlock()
+////////////////////////////////////////////////////////////////////////////////
 
-	switch len(parentProxy) {
-	case 0:
-		c.ErrType = errType
-		if err != nil {
-			if c.Err != nil {
-				c.Err = fmt.Errorf("%s | %s", err, c.Err)
-			} else {
-				c.Err = fmt.Errorf("%s", err)
-			}
-		}
-	case 1:
-		p := parentProxy[0]
-		if err != nil {
-			if c.Err != nil {
-				c.Err = fmt.Errorf("(%s) [%s] %s | %s", p, errType, err, c.Err)
-			} else {
-				c.Err = fmt.Errorf("(%s) [%s] %s", p, errType, err)
-			}
-		}
-	default:
-		return
-	}
+func (c *context) setPoolContextErrorWithType(err error, errType string, parentProxy ...string) {
+   c.Lock.Lock()
+   defer c.Lock.Unlock()
+   switch len(parentProxy) {
+   case 0:
+   c.ErrType = errType
+   if err != nil {
+   if c.Err != nil {
+   c.Err = fmt.Errorf("%s | %s", err, c.Err)
+   } else {
+   c.Err = fmt.Errorf("%s", err)
+   }
+   }
+   case 1:
+   p := parentProxy[0]
+   if err != nil {
+   if c.Err != nil {
+   c.Err = fmt.Errorf("(%s) [%s] %s | %s", p, errType, err, c.Err)
+   } else {
+   c.Err = fmt.Errorf("(%s) [%s] %s", p, errType, err)
+   }
+   }
+   default:
+   return
+   }
 }
 
 // SetContextErrType .
-func (c *Context) SetContextErrType(errType string) {
+func (c *context) SetContextErrType(errType string) {
 	c.Lock.Lock()
 	defer c.Lock.Unlock()
 	if c.ErrType == HTTPRedialCancelTimeout || c.ErrType == HTTPSRedialCancelTimeout || c.ErrType == TunnelRedialCancelTimeout {
@@ -80,19 +73,19 @@ func (c *Context) SetContextErrType(errType string) {
 }
 
 // SetContextError .
-func (c *Context) SetContextError(err error) {
+func (c *context) SetContextError(err error) {
 	c.Lock.Lock()
 	defer c.Lock.Unlock()
 	c.Err = err
 }
 
 // Abort sets abort to true.
-func (c *Context) Abort() {
+func (c *context) Abort() {
 	c.abort = true
 }
 
 // AbortWithError sets Err and abort to true.
-func (c *Context) AbortWithError(err error) {
+func (c *context) AbortWithError(err error) {
 	c.Lock.Lock()
 	c.Err = err
 	c.Lock.Unlock()
@@ -100,7 +93,7 @@ func (c *Context) AbortWithError(err error) {
 }
 
 // IsAborted checks whether abort is set to true.
-func (c *Context) IsAborted() bool {
+func (c *context) IsAborted() bool {
 	return c.abort
 }
 

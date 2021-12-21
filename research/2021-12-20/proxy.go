@@ -2,10 +2,10 @@ package main
 
 import (
    "bytes"
-   "context"
    "crypto/tls"
    "encoding/json"
    "fmt"
+   "github.com/89z/parse/crypto"
    "io"
    "io/ioutil"
    "net"
@@ -15,7 +15,7 @@ import (
    "strings"
    "sync/atomic"
    "time"
-   "github.com/89z/parse/crypto"
+   stdcontext "context"
 )
 
 type spyConn struct {
@@ -155,7 +155,7 @@ func (p *Proxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
    defer func() {
       atomic.AddInt32(&p.clientConnNum, -1)
    }()
-   ctx := &Context{
+   ctx := &context{
       Req:        req,
       Data:       make(map[interface{}]interface{}),
       Hijack:     false,
@@ -194,7 +194,7 @@ func (p *Proxy) ClientConnNum() int32 {
 	return atomic.LoadInt32(&p.clientConnNum)
 }
 
-func writeProxyErrorToResponseBody(ctx *Context, respWriter io.Writer, httpcode int32, msg string, optionalPrefix string) {
+func writeProxyErrorToResponseBody(ctx *context, respWriter io.Writer, httpcode int32, msg string, optionalPrefix string) {
 	if optionalPrefix != "" {
 		m, _ := respWriter.Write([]byte(optionalPrefix))
 		ctx.RespLength += int64(m)
@@ -212,7 +212,7 @@ func writeProxyErrorToResponseBody(ctx *Context, respWriter io.Writer, httpcode 
 	ctx.RespLength += int64(n)
 }
 
-func (p *Proxy) proxyHTTP(ctx *Context, rw http.ResponseWriter) {
+func (p *Proxy) proxyHTTP(ctx *context, rw http.ResponseWriter) {
    fmt.Println(ctx.Req.Header)
    ctx.Req.URL.Scheme = "http"
    p.DoRequest(ctx, rw, func(resp *http.Response, err error) {
@@ -220,7 +220,7 @@ func (p *Proxy) proxyHTTP(ctx *Context, rw http.ResponseWriter) {
          fmt.Printf("proxyHTTP %s forward request failed: %s", ctx.Req.URL, err)
          rw.WriteHeader(http.StatusBadGateway)
          writeProxyErrorToResponseBody(ctx, rw, http.StatusBadGateway, fmt.Sprintf("proxyHTTP %s forward request failed: %s", ctx.Req.URL, err), "")
-         ctx.SetContextErrorWithType(err, HTTPDoRequestFail)
+         ctx.setContextErrorWithType(err, HTTPDoRequestFail)
          return
       }
       defer resp.Body.Close()
@@ -230,13 +230,13 @@ func (p *Proxy) proxyHTTP(ctx *Context, rw http.ResponseWriter) {
       ctx.RespLength += written
       if err != nil {
          fmt.Printf("proxyHTTP %s write client failed: %s", ctx.Req.URL, err)
-         ctx.SetContextErrorWithType(err, HTTPWriteClientFail)
+         ctx.setContextErrorWithType(err, HTTPWriteClientFail)
          return
       }
    })
 }
 
-func (p *Proxy) proxyTunnel(ctx *Context, rw http.ResponseWriter) {
+func (p *Proxy) proxyTunnel(ctx *context, rw http.ResponseWriter) {
    if ctx.abort {
       ctx.SetContextErrType(ParentProxyFail)
       return
@@ -246,7 +246,7 @@ func (p *Proxy) proxyTunnel(ctx *Context, rw http.ResponseWriter) {
       fmt.Printf("proxyTunnel hijack client connection failed: %s", err)
       rw.WriteHeader(http.StatusBadGateway)
       writeProxyErrorToResponseBody(ctx, rw, http.StatusBadGateway, fmt.Sprintf("proxyTunnel hijack client connection failed: %s", err), "")
-      ctx.SetContextErrorWithType(err, TunnelHijackClientConnFail)
+      ctx.setContextErrorWithType(err, TunnelHijackClientConnFail)
       return
    }
    ctx.Hijack = true
@@ -268,7 +268,7 @@ func (p *Proxy) proxyTunnel(ctx *Context, rw http.ResponseWriter) {
    if err != nil {
       fmt.Printf("proxyTunnel %s dial remote server failed: %s", ctx.Req.URL.Host, err)
       writeProxyErrorToResponseBody(ctx, clientConn, http.StatusBadGateway, fmt.Sprintf("proxyTunnel %s dial remote server failed: %s", ctx.Req.URL.Host, err), badGateway)
-      ctx.SetContextErrorWithType(err, TunnelDialRemoteServerFail)
+      ctx.setContextErrorWithType(err, TunnelDialRemoteServerFail)
       return
    }
    defer func() {
@@ -282,23 +282,23 @@ func (p *Proxy) proxyTunnel(ctx *Context, rw http.ResponseWriter) {
    _, err = clientConn.Write(tunnelEstablishedResponseLine)
    if err != nil {
       fmt.Printf("proxyTunnel %s write message failed: %s", ctx.Req.URL.Host, err)
-      ctx.SetContextErrorWithType(err, TunnelWriteEstRespFail)
+      ctx.setContextErrorWithType(err, TunnelWriteEstRespFail)
       return
    }
    transfer(ctx, clientConn, targetConn)
 }
 
 // transfer does two-way forwarding through connections
-func transfer(ctx *Context, clientConn net.Conn, targetConn net.Conn, parentProxy ...string) {
+func transfer(ctx *context, clientConn net.Conn, targetConn net.Conn, parentProxy ...string) {
    go func() {
       written1, err1 := io.Copy(clientConn, targetConn)
       if err1 != nil {
-         //Logger.Errorf("io.Copy write clientConn failed: %s", err1)
+         fmt.Printf("io.Copy write clientConn failed: %s", err1)
          if len(parentProxy) <= 1 {
             if len(parentProxy) == 0 {
-               ctx.SetContextErrorWithType(err1, TunnelWriteClientConnFinish)
+               ctx.setContextErrorWithType(err1, TunnelWriteClientConnFinish)
             } else {
-               ctx.SetPoolContextErrorWithType(err1, TunnelWriteClientConnFinish, parentProxy[0])
+               ctx.setPoolContextErrorWithType(err1, TunnelWriteClientConnFinish, parentProxy[0])
             }
          }
       }
@@ -308,25 +308,25 @@ func transfer(ctx *Context, clientConn net.Conn, targetConn net.Conn, parentProx
    }()
    spy := spyConn{clientConn}
    written2, err2 := io.Copy(targetConn, spy)
-	if err2 != nil {
-		fmt.Printf("io.Copy write targetConn failed: %s", err2)
-		if len(parentProxy) <= 1 {
-			if len(parentProxy) == 0 {
-				ctx.SetContextErrorWithType(err2, TunnelWriteTargetConnFinish)
-			} else {
-				ctx.SetPoolContextErrorWithType(err2, TunnelWriteTargetConnFinish, parentProxy[0])
-			}
-		}
-	}
-	ctx.ReqLength += written2
-	targetConn.Close()
-	clientConn.Close()
+   if err2 != nil {
+   fmt.Printf("io.Copy write targetConn failed: %s", err2)
+   if len(parentProxy) <= 1 {
+   if len(parentProxy) == 0 {
+   ctx.setContextErrorWithType(err2, TunnelWriteTargetConnFinish)
+   } else {
+   ctx.setPoolContextErrorWithType(err2, TunnelWriteTargetConnFinish, parentProxy[0])
+   }
+   }
+   }
+   ctx.ReqLength += written2
+   targetConn.Close()
+   clientConn.Close()
 }
 
 // DoRequest makes a request to remote server as a clent through given proxy,
 // and calls responseFunc before returning the response.
 // The "conn" is needed when it comes to https request, and only one conn is accepted.
-func (p *Proxy) DoRequest(ctx *Context, rw http.ResponseWriter, responseFunc func(*http.Response, error), conn ...interface{}) {
+func (p *Proxy) DoRequest(ctx *context, rw http.ResponseWriter, responseFunc func(*http.Response, error), conn ...interface{}) {
    if len(conn) > 1 {
       return
    }
@@ -361,7 +361,7 @@ func (p *Proxy) DoRequest(ctx *Context, rw http.ResponseWriter, responseFunc fun
    }
    type CtxKey int
    var pkey CtxKey = 0
-   fakeCtx := context.WithValue(newReq.Context(), pkey, parentProxyURL)
+   fakeCtx := stdcontext.WithValue(newReq.Context(), pkey, parentProxyURL)
    newReq = newReq.Clone(fakeCtx)
    ctx.ReqLength += newReq.ContentLength
    tr := p.transport
@@ -379,7 +379,7 @@ func (p *Proxy) DoRequest(ctx *Context, rw http.ResponseWriter, responseFunc fun
       fmt.Printf("GotFirstResponseByte: %+v", time.Now())
       },
       }
-      req.Clone(httptrace.WithClientTrace(context.Background(), trace))
+      req.Clone(httptrace.WithClientTrace(stdcontext.Background(), trace))
       return pURL, err
    }
    resp, err := tr.RoundTrip(newReq)
