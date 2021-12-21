@@ -8,16 +8,21 @@ import (
    "io"
    "net"
    "net/http"
-   "net/http/httptrace"
-   "net/url"
    "os"
    "os/signal"
-   "strings"
    "sync"
    "sync/atomic"
    "time"
    stdcontext "context"
 )
+
+func main() {
+   // Providing certain log configuration before Run() is optional e.g.
+   // ConfigLogging(lconf) where lconf is a *LogConfig
+   pc := NewProxychannel(defaultHandlerConfig, defaultServerConfig)
+   fmt.Println("runServer")
+   pc.runServer()
+}
 
 type spyConn struct {
    net.Conn
@@ -127,8 +132,6 @@ func (p *proxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
          } else {
             p.proxyTunnel(ctx, rw)
          }
-      } else {
-         p.proxyHTTP(ctx, rw)
       }
    }
 }
@@ -149,30 +152,6 @@ func writeProxyErrorToResponseBody(ctx *context, respWriter io.Writer, httpcode 
 	}
 	n, _ := respWriter.Write(errJSON)
 	ctx.respLength += int64(n)
-}
-
-func (p *proxy) proxyHTTP(ctx *context, rw http.ResponseWriter) {
-   fmt.Println(ctx.req.Header)
-   ctx.req.URL.Scheme = "http"
-   p.doRequest(ctx, rw, func(resp *http.Response, err error) {
-      if err != nil {
-         fmt.Printf("proxyHTTP %s forward request failed: %s", ctx.req.URL, err)
-         rw.WriteHeader(http.StatusBadGateway)
-         writeProxyErrorToResponseBody(ctx, rw, http.StatusBadGateway, fmt.Sprintf("proxyHTTP %s forward request failed: %s", ctx.req.URL, err), "")
-         ctx.setContextErrorWithType(err, HTTPDoRequestFail)
-         return
-      }
-      defer resp.Body.Close()
-      copyHeader(rw.Header(), resp.Header)
-      rw.WriteHeader(resp.StatusCode)
-      written, err := io.Copy(rw, resp.Body)
-      ctx.respLength += written
-      if err != nil {
-         fmt.Printf("proxyHTTP %s write client failed: %s", ctx.req.URL, err)
-         ctx.setContextErrorWithType(err, HTTPWriteClientFail)
-         return
-      }
-   })
 }
 
 func (p *proxy) proxyTunnel(ctx *context, rw http.ResponseWriter) {
@@ -262,74 +241,6 @@ func transfer(ctx *context, clientConn net.Conn, targetConn net.Conn, parentProx
    clientConn.Close()
 }
 
-func (p *proxy) doRequest(ctx *context, rw http.ResponseWriter, responseFunc func(*http.Response, error), conn ...interface{}) {
-   if len(conn) > 1 {
-      return
-   }
-   if ctx.data == nil {
-      ctx.data = make(map[interface{}]interface{})
-   }
-   if ctx.abort {
-      ctx.setContextErrType(BeforeRequestFail)
-      return
-   }
-   newReq := new(http.Request)
-   *newReq = *ctx.req
-   fmt.Println(newReq.Header)
-   newReq.Header = cloneHeader(newReq.Header)
-   // When server reads http request it sets req.Close to true if "Connection"
-   // header contains "close".
-   // https://github.com/golang/go/blob/master/src/net/http/request.go#L1080
-   // Later, transfer.go adds "Connection: close" back when req.Close is true
-   // https://github.com/golang/go/blob/master/src/net/http/transfer.go#L275
-   // That's why tests that checks "Connection: close" removal fail
-   if newReq.Header.Get("Connection") == "close" {
-      newReq.Close = false
-   }
-   removeMITMHeaders(newReq.Header)
-   removeConnectionHeaders(newReq.Header)
-   removeHopHeaders(newReq.Header)
-   var parentProxyURL *url.URL
-   var err error
-   if ctx.abort {
-      ctx.setContextErrType(ParentProxyFail)
-      return
-   }
-   type CtxKey int
-   var pkey CtxKey = 0
-   fakeCtx := stdcontext.WithValue(newReq.Context(), pkey, parentProxyURL)
-   newReq = newReq.Clone(fakeCtx)
-   ctx.reqLength += newReq.ContentLength
-   tr := p.transport
-   tr.Proxy = func(req *http.Request) (*url.URL, error) {
-      ctx := req.Context()
-      pURL := ctx.Value(pkey).(*url.URL)
-      trace := &httptrace.ClientTrace{
-      GotConn: func(connInfo httptrace.GotConnInfo) {
-      fmt.Printf("Got conn: %+v", connInfo)
-      },
-      DNSDone: func(dnsInfo httptrace.DNSDoneInfo) {
-      fmt.Printf("DNS done, info: %+v", dnsInfo)
-      },
-      GotFirstResponseByte: func() {
-      fmt.Printf("GotFirstResponseByte: %+v", time.Now())
-      },
-      }
-      req.Clone(httptrace.WithClientTrace(stdcontext.Background(), trace))
-      return pURL, err
-   }
-   resp, err := tr.RoundTrip(newReq)
-   if ctx.abort {
-      ctx.setContextErrType(BeforeResponseFail)
-      return
-   }
-   if err == nil {
-      removeConnectionHeaders(resp.Header)
-      removeHopHeaders(resp.Header)
-   }
-   responseFunc(resp, err)
-}
-
 // hijacker gets the underlying connection of an http.ResponseWriter
 func hijacker(rw http.ResponseWriter) (net.Conn, error) {
 	hijacker, ok := rw.(http.Hijacker)
@@ -342,67 +253,6 @@ func hijacker(rw http.ResponseWriter) (net.Conn, error) {
 	}
 
 	return conn, nil
-}
-
-var hopHeaders = []string{
-	"Connection",
-	"Proxy-Connection",
-	"Keep-Alive",
-	"Proxy-Authenticate",
-	"Proxy-Authorization",
-	"Te",
-	"Trailer",
-	"Transfer-Encoding",
-	"Upgrade",
-}
-
-func removeConnectionHeaders(h http.Header) {
-	if c := h.Get("Connection"); c != "" {
-		for _, f := range strings.Split(c, ",") {
-			if f = strings.TrimSpace(f); f != "" {
-				h.Del(f)
-			}
-		}
-	}
-}
-
-func removeHopHeaders(h http.Header) {
-	for _, item := range hopHeaders {
-		if h.Get(item) != "" {
-			h.Del(item)
-		}
-	}
-}
-
-func removeMITMHeaders(h http.Header) {
-	if c := h.Get("MITM"); c != "" {
-		h.Del("MITM")
-	}
-}
-
-func copyHeader(dst, src http.Header) {
-	for k, vv := range src {
-		for _, v := range vv {
-			dst.Add(k, v)
-		}
-	}
-}
-
-func cloneHeader(h http.Header) http.Header {
-	h2 := make(http.Header, len(h))
-	for k, vv := range h {
-		vv2 := make([]string, len(vv))
-		copy(vv2, vv)
-		h2[k] = vv2
-	}
-	return h2
-}
-
-func main() {
-   // Providing certain log configuration before Run() is optional e.g.
-   // ConfigLogging(lconf) where lconf is a *LogConfig
-   pc := NewProxychannel(defaultHandlerConfig, defaultServerConfig)
-   pc.runServer()
 }
 
 // FailEventType. When a request is aborted, the event should be one of the
