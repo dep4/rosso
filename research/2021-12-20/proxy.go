@@ -140,7 +140,7 @@ type Proxy struct {
 
 var _ http.Handler = &Proxy{}
 
-func NewProxy(hconf *HandlerConfig, em *ExtensionManager) *Proxy {
+func NewProxy(hconf *handlerConfig, em *ExtensionManager) *Proxy {
 	p := &Proxy{}
 
 	if hconf.Delegate == nil {
@@ -234,9 +234,7 @@ func (p *Proxy) ClientConnNum() int32 {
 	return atomic.LoadInt32(&p.clientConnNum)
 }
 
-// WriteProxyErrorToResponseBody is the standard function to call when errors occur due to this proxy's behavior,
-// which does not include the behavior of parent proxies.
-func WriteProxyErrorToResponseBody(ctx *Context, respWriter Writer, httpcode int32, msg string, optionalPrefix string) {
+func writeProxyErrorToResponseBody(ctx *Context, respWriter io.Writer, httpcode int32, msg string, optionalPrefix string) {
 	if optionalPrefix != "" {
 		m, _ := respWriter.Write([]byte(optionalPrefix))
 		ctx.RespLength += int64(m)
@@ -259,9 +257,9 @@ func (p *Proxy) proxyHTTP(ctx *Context, rw http.ResponseWriter) {
       ctx.Req.URL.Scheme = "http"
 	p.DoRequest(ctx, rw, func(resp *http.Response, err error) {
 		if err != nil {
-			//Logger.Errorf("proxyHTTP %s forward request failed: %s", ctx.Req.URL, err)
+			fmt.Printf("proxyHTTP %s forward request failed: %s", ctx.Req.URL, err)
 			rw.WriteHeader(http.StatusBadGateway)
-			WriteProxyErrorToResponseBody(ctx, rw, http.StatusBadGateway, fmt.Sprintf("proxyHTTP %s forward request failed: %s", ctx.Req.URL, err), "")
+			writeProxyErrorToResponseBody(ctx, rw, http.StatusBadGateway, fmt.Sprintf("proxyHTTP %s forward request failed: %s", ctx.Req.URL, err), "")
 			ctx.SetContextErrorWithType(err, HTTPDoRequestFail)
 			return
 		}
@@ -295,7 +293,7 @@ func (p *Proxy) proxyTunnel(ctx *Context, rw http.ResponseWriter) {
    if err != nil {
       fmt.Printf("proxyTunnel hijack client connection failed: %s", err)
       rw.WriteHeader(http.StatusBadGateway)
-      WriteProxyErrorToResponseBody(ctx, rw, http.StatusBadGateway, fmt.Sprintf("proxyTunnel hijack client connection failed: %s", err), "")
+      writeProxyErrorToResponseBody(ctx, rw, http.StatusBadGateway, fmt.Sprintf("proxyTunnel hijack client connection failed: %s", err), "")
       ctx.SetContextErrorWithType(err, TunnelHijackClientConnFail)
       return
    }
@@ -325,7 +323,7 @@ func (p *Proxy) proxyTunnel(ctx *Context, rw http.ResponseWriter) {
    }
    if err != nil {
    fmt.Printf("proxyTunnel %s dial remote server failed: %s", ctx.Req.URL.Host, err)
-   WriteProxyErrorToResponseBody(ctx, clientConn, http.StatusBadGateway, fmt.Sprintf("proxyTunnel %s dial remote server failed: %s", ctx.Req.URL.Host, err), badGateway)
+   writeProxyErrorToResponseBody(ctx, clientConn, http.StatusBadGateway, fmt.Sprintf("proxyTunnel %s dial remote server failed: %s", ctx.Req.URL.Host, err), badGateway)
    ctx.SetContextErrorWithType(err, TunnelDialRemoteServerFail)
    return
    }
@@ -349,7 +347,7 @@ func (p *Proxy) proxyTunnel(ctx *Context, rw http.ResponseWriter) {
    err := makeTunnelRequestWithAuth(ctx, parentProxyURL, targetConn)
    if err != nil {
    fmt.Printf("proxyTunnel %s make connect request to remote failed: %s", ctx.Req.URL.Host, err)
-   WriteProxyErrorToResponseBody(ctx, clientConn, http.StatusBadGateway, fmt.Sprintf("proxyTunnel %s make connect request to remote failed: %s", ctx.Req.URL.Host, err), badGateway)
+   writeProxyErrorToResponseBody(ctx, clientConn, http.StatusBadGateway, fmt.Sprintf("proxyTunnel %s make connect request to remote failed: %s", ctx.Req.URL.Host, err), badGateway)
    ctx.SetContextErrorWithType(err, TunnelConnectRemoteFail)
    return
    }

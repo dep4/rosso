@@ -12,17 +12,16 @@ import (
 )
 
 func main() {
-	// Providing certain log configuration before Run() is optional
-	// e.g. ConfigLogging(lconf) where lconf is a *LogConfig
-	pc := NewProxychannel(
-		DefaultHandlerConfig,
-		DefaultServerConfig,
-		make(map[string]Extension))
-	pc.Run()
+   // Providing certain log configuration before Run() is optional e.g.
+   // ConfigLogging(lconf) where lconf is a *LogConfig
+   pc := NewProxychannel(
+      defaultHandlerConfig, defaultServerConfig, make(map[string]Extension),
+   )
+   pc.Run()
 }
 
-// FailEventType .
-// When a request is aborted, the event should be one of the following.
+// FailEventType. When a request is aborted, the event should be one of the
+// following.
 const (
    AuthFail           = "AUTH_FAIL"
    BeforeRequestFail  = "BEFORE_REQUEST_FAIL"
@@ -30,37 +29,9 @@ const (
    ConnectFail        = "CONNECT_FAIL"
    HTTPDoRequestFail               = "HTTP_DO_REQUEST_FAIL"
    HTTPRedialCancelTimeout   = "HTTP_REDIAL_CANCEL_TIMEOUT"
-   HTTPSDoRequestFail              = "HTTPS_DO_REQUEST_FAIL"
-   HTTPSGenerateTLSConfigFail      = "HTTPS_GENERATE_TLS_CONFIG_FAIL"
-   HTTPSHijackClientConnFail       = "HTTPS_HIJACK_CLIENT_CONN_FAIL"
-   HTTPSReadReqFromBufFail         = "HTTPS_READ_REQ_FROM_BUF_FAIL"
    HTTPSRedialCancelTimeout  = "HTTPS_REDIAL_CANCEL_TIMEOUT"
-   HTTPSTLSClientConnHandshakeFail = "HTTPSTLS_CLIENT_CONN_HANDSHAKE_FAIL"
-   HTTPSWebsocketDailFail                   = "HTTPS_WEBSOCKET_DAIL_FAIL"
-   HTTPSWebsocketGenerateTLSConfigFail      = "HTTPS_WEBSOCKET_GENERATE_TLS_CONFIG_FAIL"
-   HTTPSWebsocketHandshakeFail              = "HTTPS_WEBSOCKET_HANDSHAKE_FAIL"
-   HTTPSWebsocketHijackFail                 = "HTTPS_WEBSOCKET_HIJACK_FAIL"
-   HTTPSWebsocketReadReqFromBufFail         = "HTTPS_WEBSOCKET_READ_REQ_FROM_BUF_FAIL"
-   HTTPSWebsocketTLSClientConnHandshakeFail = "HTTPS_WEBSOCKET_TLS_CLIENT_CONN_HANDSHAKE_FAIL"
-   HTTPSWebsocketWriteEstRespFail           = "HTTPS_WEBSOCKET_WRITE_EST_RESP_FAIL"
-   HTTPSWriteEstRespFail           = "HTTPS_WRITE_EST_RESP_FAIL"
-   HTTPSWriteRespFail              = "HTTPS_WRITE_RESP_FAIL"
-   HTTPWebsocketDailFail                    = "HTTP_WEBSOCKET_DAIL_FAIL"
-   HTTPWebsocketHandshakeFail               = "HTTP_WEBSOCKET_HANDSHAKE_FAIL"
-   HTTPWebsocketHijackFail                  = "HTTP_WEBSOCKET_HIJACK_FAIL"
    HTTPWriteClientFail             = "HTTP_WRITE_CLIENT_FAIL"
    ParentProxyFail    = "PARENT_PROXY_FAIL"
-   PoolGetConnFail                = "POOL_GET_CONN_FAIL"
-   PoolGetConnPoolFail            = "POOL_GET_CONN_POOL_FAIL"
-   PoolGetParentProxyFail         = "POOL_GET_PARENT_PROXY_FAIL"
-   PoolHTTPRegularFinish          = "POOL_HTTP_REGULAR_FINISH"
-   PoolNoAvailableParentProxyFail = "POOL_NO_AVAILABLE_PARENT_PROXY_FAIL"
-   PoolParentProxyFail            = "POOL_PARENT_PROXY_FAIL"
-   PoolReadRemoteFail             = "POOL_READ_REMOTE_FAIL"
-   PoolReadTargetFail             = "POOL_READ_TARGET_FAIL"
-   PoolRoundTripFail              = "POOL_ROUND_TRIP_FAIL"
-   PoolWriteClientFail            = "POOL_WRITE_CLIENT_FAIL"
-   PoolWriteTargetConnFail        = "POOL_WRITE_TARGET_CONN_FAIL"
    TunnelConnectRemoteFail         = "TUNNEL_CONNECT_REMOTE_FAIL"
    TunnelDialRemoteServerFail      = "TUNNEL_DIAL_REMOTE_SERVER_FAIL"
    TunnelHijackClientConnFail      = "TUNNEL_HIJACK_CLIENT_CONN_FAIL"
@@ -81,7 +52,7 @@ type Proxychannel struct {
 	serverDone       chan bool
 }
 
-func NewProxychannel(hconf *HandlerConfig, sconf *ServerConfig, m map[string]Extension) *Proxychannel {
+func NewProxychannel(hconf *handlerConfig, sconf *serverConfig, m map[string]Extension) *Proxychannel {
 	pc := &Proxychannel{
 		extensionManager: NewExtensionManager(m),
 		waitGroup:        &sync.WaitGroup{},
@@ -91,7 +62,7 @@ func NewProxychannel(hconf *HandlerConfig, sconf *ServerConfig, m map[string]Ext
 	return pc
 }
 
-func NewServer(hconf *HandlerConfig, sconf *ServerConfig, em *ExtensionManager) *http.Server {
+func NewServer(hconf *handlerConfig, sconf *serverConfig, em *ExtensionManager) *http.Server {
 	handler := NewProxy(hconf, em)
 	server := &http.Server{
 		Addr:         sconf.ProxyAddr,
