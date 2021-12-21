@@ -20,7 +20,7 @@ func main() {
          }
       }),
    } 
-   //err := server.ListenAndServeTLS(pemPath, keyPath)
+   //err := server.ListenAndServeTLS("cert.pem", "key.pem")
    err := server.ListenAndServe()
    if err != nil {
       panic(err)
@@ -31,23 +31,32 @@ func handleTunneling(w http.ResponseWriter, r *http.Request) {
    // net.Conn r
    dest_conn, err := net.DialTimeout("tcp", r.Host, 10*time.Second)
    if err != nil {
+      fmt.Println(err)
       http.Error(w, err.Error(), http.StatusServiceUnavailable)
       return
    }
    w.WriteHeader(http.StatusOK)
    hijacker, ok := w.(http.Hijacker)
    if !ok {
+      fmt.Println("Hijacker fail")
       http.Error(w, "Hijacking not supported", http.StatusInternalServerError)
       return
    }
    // net.Conn w
    client_conn, _, err := hijacker.Hijack()
    if err != nil {
+      fmt.Println(err)
       http.Error(w, err.Error(), http.StatusServiceUnavailable)
    }
+   /*
+   fail
    spy := spyConn{client_conn}
    go transfer(dest_conn, spy)
    go transfer(spy, dest_conn)
+   */
+   spy := spyConn{dest_conn}
+   go transfer(spy, client_conn)
+   go transfer(client_conn, spy)
 }
 
 // "\x16\x03\x01\x02\x00\x01\x00\x01\xfc"
@@ -55,12 +64,16 @@ func (s spyConn) Read(p []byte) (int, error) {
    n, err := s.Conn.Read(p)
    if p[0] == 0x16 {
       hand := crypto.Handshakes(p)[0]
-      fmt.Printf("%#v\n", hand)
       hello, err := crypto.ParseHandshake(hand)
       if err != nil {
          fmt.Println(err)
       } else {
-         hello.FormatJA3()
+         ja3, err := hello.FormatJA3()
+         if err != nil {
+            fmt.Println(err)
+         } else {
+            fmt.Println(ja3)
+         }
       }
    }
    return n, err

@@ -64,7 +64,7 @@ func NewTransport(spec *tls.ClientHelloSpec) *http.Transport {
 
 func extensionType(ext tls.TLSExtension) (uint16, error) {
    data, err := io.ReadAll(ext)
-   if err != nil {
+   if err != nil || len(data) <= 1 {
       return 0, err
    }
    return binary.BigEndian.Uint16(data), nil
