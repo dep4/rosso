@@ -41,13 +41,7 @@ func (s spyConn) Read(p []byte) (int, error) {
    return n, err
 }
 
-// Default timeout values
-const (
-   defaultClientReadWriteTimeout = 30 * time.Second
-   defaultHTTPResponsePeekSize int = 4096
-   defaultTargetConnectTimeout   = 5 * time.Second
-   defaultTargetReadWriteTimeout = 30 * time.Second
-)
+const defaultTargetConnectTimeout   = 5 * time.Second
 
 // Canned HTTP responses
 var (
@@ -58,63 +52,25 @@ var (
 
 // ProxyError specifies all the possible errors that can occur due to this proxy's behavior,
 // which does not include the behavior of parent proxies.
-type ProxyError struct {
+type proxyError struct {
 	ErrType string `json:"errType"`
 	ErrCode int32  `json:"errCode"`
 	ErrMsg  string `json:"errMsg"`
 }
 
-// TunnelConn .
-type TunnelConn struct {
-	Client net.Conn
-	Target net.Conn
-}
+const NormalMode = iota
 
-// TunnelInfo .
-type TunnelInfo struct {
-	Client      net.Conn
-	Target      net.Conn
-	Err         error
-	ParentProxy *url.URL
-	//Pool        ConnPool
-}
-
-// ResponseInfo .
-type ResponseInfo struct {
-	Resp        *http.Response
-	Err         error
-	ParentProxy *url.URL
-	//Pool        ConnPool
-}
-
-// ResponseWrapper is simply a wrapper for http.Response and error.
-type ResponseWrapper struct {
-	Resp *http.Response
-	Err  error
-}
-
-type ConnWrapper struct {
-	Conn net.Conn
-	Err  error
-}
-
-// Below are the modes supported.
-const (
-   NormalMode = iota
-   ConnPoolMode
-)
+////////////////////////////////////////////////////////////////////////////////
 
 // Proxy is a struct that implements ServeHTTP() method
-type Proxy struct {
+type proxy struct {
    clientConnNum int32
    transport     *http.Transport
    mode          int
 }
 
-var _ http.Handler = &Proxy{}
-
-func NewProxy(hconf *http.Transport) *Proxy {
-   p := &Proxy{}
+func NewProxy(hconf *http.Transport) *proxy {
+   p := &proxy{}
    if hconf == nil {
       p.transport = &http.Transport{
          TLSClientConfig: &tls.Config{
@@ -141,7 +97,7 @@ func NewProxy(hconf *http.Transport) *Proxy {
 }
 
 // ServeHTTP .
-func (p *Proxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
+func (p *proxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
    fmt.Println(req.Header)
    if req.URL.Host == "" {
       req.URL.Host = req.Host
@@ -180,7 +136,7 @@ func (p *Proxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 }
 
 // ClientConnNum gets the Client
-func (p *Proxy) ClientConnNum() int32 {
+func (p *proxy) ClientConnNum() int32 {
 	return atomic.LoadInt32(&p.clientConnNum)
 }
 
@@ -189,7 +145,7 @@ func writeProxyErrorToResponseBody(ctx *context, respWriter io.Writer, httpcode 
 		m, _ := respWriter.Write([]byte(optionalPrefix))
 		ctx.respLength += int64(m)
 	}
-	pe := &ProxyError{
+	pe := &proxyError{
 		ErrType: internalErr,
 		ErrCode: httpcode,
 		ErrMsg:  msg,
@@ -202,7 +158,7 @@ func writeProxyErrorToResponseBody(ctx *context, respWriter io.Writer, httpcode 
 	ctx.respLength += int64(n)
 }
 
-func (p *Proxy) proxyHTTP(ctx *context, rw http.ResponseWriter) {
+func (p *proxy) proxyHTTP(ctx *context, rw http.ResponseWriter) {
    fmt.Println(ctx.req.Header)
    ctx.req.URL.Scheme = "http"
    p.DoRequest(ctx, rw, func(resp *http.Response, err error) {
@@ -226,7 +182,7 @@ func (p *Proxy) proxyHTTP(ctx *context, rw http.ResponseWriter) {
    })
 }
 
-func (p *Proxy) proxyTunnel(ctx *context, rw http.ResponseWriter) {
+func (p *proxy) proxyTunnel(ctx *context, rw http.ResponseWriter) {
    if ctx.abort {
       ctx.setContextErrType(ParentProxyFail)
       return
@@ -316,7 +272,7 @@ func transfer(ctx *context, clientConn net.Conn, targetConn net.Conn, parentProx
 // DoRequest makes a request to remote server as a clent through given proxy,
 // and calls responseFunc before returning the response.
 // The "conn" is needed when it comes to https request, and only one conn is accepted.
-func (p *Proxy) DoRequest(ctx *context, rw http.ResponseWriter, responseFunc func(*http.Response, error), conn ...interface{}) {
+func (p *proxy) DoRequest(ctx *context, rw http.ResponseWriter, responseFunc func(*http.Response, error), conn ...interface{}) {
    if len(conn) > 1 {
       return
    }

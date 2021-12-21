@@ -16,7 +16,7 @@ func main() {
    // Providing certain log configuration before Run() is optional e.g.
    // ConfigLogging(lconf) where lconf is a *LogConfig
    pc := NewProxychannel(defaultHandlerConfig, defaultServerConfig)
-   pc.Run()
+   pc.runServer()
 }
 
 // FailEventType. When a request is aborted, the event should be one of the
@@ -40,48 +40,28 @@ const (
    TunnelWriteTargetConnFinish     = "TUNNEL_WRITE_TARGET_CONN_FINISH"
 )
 
-// Proxychannel is a prxoy server that manages data transmission between http
-// clients and destination servers. With the "Extensions" provided by user,
-// Proxychannel is able to do authentication, communicate with databases,
-// manipulate the requests/responses, etc.
-type Proxychannel struct {
-	server           *http.Server
-	waitGroup        *sync.WaitGroup
-	serverDone       chan bool
+type proxychannel struct {
+   server           *http.Server
+   waitGroup        *sync.WaitGroup
+   serverDone       chan bool
 }
 
-func NewProxychannel(hconf *http.Transport, sconf *serverConfig) *Proxychannel {
-	pc := &Proxychannel{
-		waitGroup:        &sync.WaitGroup{},
-		serverDone:       make(chan bool),
-	}
-	pc.server = NewServer(hconf, sconf)
-	return pc
+func NewProxychannel(hconf *http.Transport, sconf *serverConfig) *proxychannel {
+   pc := &proxychannel{
+      waitGroup:        &sync.WaitGroup{},
+      serverDone:       make(chan bool),
+   }
+   pc.server = &http.Server{
+      Addr:         sconf.ProxyAddr,
+      Handler:    NewProxy(hconf),
+      ReadTimeout:  sconf.ReadTimeout,
+      WriteTimeout: sconf.WriteTimeout,
+      TLSConfig:    sconf.TLSConfig,
+   }
+   return pc
 }
 
-func NewServer(hconf *http.Transport, sconf *serverConfig) *http.Server {
-	handler := NewProxy(hconf)
-	server := &http.Server{
-		Addr:         sconf.ProxyAddr,
-		Handler:      handler,
-		ReadTimeout:  sconf.ReadTimeout,
-		WriteTimeout: sconf.WriteTimeout,
-		TLSConfig:    sconf.TLSConfig,
-	}
-	return server
-}
-
-func (pc *Proxychannel) runExtensionManager() {
-	defer pc.waitGroup.Done()
-	signalChan := make(chan os.Signal, 1)
-	signal.Notify(signalChan)
-	// Will block until shutdown signal is received
-	<-signalChan
-	// Will block until pc.server has been shut down
-	<-pc.serverDone
-}
-
-func (pc *Proxychannel) runServer() {
+func (pc *proxychannel) runServer() {
    ctx, cancel := stdcontext.WithCancel(stdcontext.Background())
    defer cancel()
    defer close(pc.serverDone)
@@ -114,18 +94,8 @@ func (pc *Proxychannel) runServer() {
    stop()
 }
 
-// Run launches the ExtensionManager and the HTTP server
-func (pc *Proxychannel) Run() {
-	pc.waitGroup.Add(1)
-	go pc.runExtensionManager()
-	pc.runServer()
-	pc.waitGroup.Wait()
-}
-
-
 type context struct {
    abort      bool
-   closed     bool
    data       map[interface{}]interface{}
    err        error
    errType    string
@@ -138,13 +108,13 @@ type context struct {
 }
 
 func (c *context) setContextErrorWithType(err error, errType string) {
-	c.lock.Lock()
-	defer c.lock.Unlock()
-	if c.errType == HTTPRedialCancelTimeout || c.errType == HTTPSRedialCancelTimeout || c.errType == TunnelRedialCancelTimeout {
-		return
-	}
-	c.errType = errType
-	c.err = err
+   c.lock.Lock()
+   defer c.lock.Unlock()
+   if c.errType == HTTPRedialCancelTimeout || c.errType == HTTPSRedialCancelTimeout || c.errType == TunnelRedialCancelTimeout {
+      return
+   }
+   c.errType = errType
+   c.err = err
 }
 
 func (c *context) setPoolContextErrorWithType(err error, errType string, parentProxy ...string) {
