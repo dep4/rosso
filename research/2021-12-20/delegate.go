@@ -1,14 +1,12 @@
 package proxychannel
 
 import (
-	"fmt"
-	"net"
-	"net/http"
-	"net/url"
-	"sync"
-	"time"
-
-	"github.com/jmcvetta/randutil"
+   "fmt"
+   "net"
+   "net/http"
+   "net/url"
+   "sync"
+   "time"
 )
 
 // Context stores what methods of Delegate would need as input.
@@ -37,7 +35,6 @@ type Delegate interface {
 	ParentProxy(ctx *Context, i interface{}) (*url.URL, error)
 	DuringResponse(ctx *Context, i interface{})
 	Finish(ctx *Context, rw http.ResponseWriter)
-	GetConnPool(ctx *Context) ([]randutil.Choice, error)
 }
 
 var _ Delegate = &DefaultDelegate{}
@@ -77,11 +74,6 @@ func (h *DefaultDelegate) DuringResponse(ctx *Context, i interface{}) {}
 
 // Finish .
 func (h *DefaultDelegate) Finish(ctx *Context, rw http.ResponseWriter) {}
-
-// GetConnPool .
-func (h *DefaultDelegate) GetConnPool(ctx *Context) ([]randutil.Choice, error) {
-	return nil, fmt.Errorf("no conn pool available")
-}
 
 // GetContextError .
 func (c *Context) GetContextError() (errType string, err error) {
