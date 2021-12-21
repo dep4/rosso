@@ -113,36 +113,31 @@ type Proxy struct {
 
 var _ http.Handler = &Proxy{}
 
-func NewProxy(hconf *handlerConfig) *Proxy {
-	p := &Proxy{}
-	if hconf.Transport == nil {
-		p.transport = &http.Transport{
-			TLSClientConfig: &tls.Config{
-				// No need to verify because as a proxy we don't care
-				InsecureSkipVerify: true,
-			},
-			DialContext: (&net.Dialer{
-				Timeout:   30 * time.Second,
-				KeepAlive: 30 * time.Second,
-				DualStack: true,
-			}).DialContext,
-			MaxIdleConns:          100,
-			MaxIdleConnsPerHost:   10,
-			IdleConnTimeout:       90 * time.Second,
-			TLSHandshakeTimeout:   10 * time.Second,
-			ExpectContinueTimeout: 1 * time.Second,
-			ProxyConnectHeader:    make(http.Header),
-		}
-	} else {
-		p.transport = hconf.Transport
-		p.transport.ProxyConnectHeader = make(http.Header)
-	}
-	p.transport.DisableKeepAlives = hconf.DisableKeepAlive
-	p.mode = hconf.Mode
-	if p.mode == ConnPoolMode {
-		p.transport.ProxyConnectHeader.Set("MITM", "Enabled")
-	}
-	return p
+func NewProxy(hconf *http.Transport) *Proxy {
+   p := &Proxy{}
+   if hconf == nil {
+      p.transport = &http.Transport{
+         TLSClientConfig: &tls.Config{
+            // No need to verify because as a proxy we don't care
+            InsecureSkipVerify: true,
+         },
+         DialContext: (&net.Dialer{
+            Timeout:   30 * time.Second,
+            KeepAlive: 30 * time.Second,
+            DualStack: true,
+         }).DialContext,
+         MaxIdleConns:          100,
+         MaxIdleConnsPerHost:   10,
+         IdleConnTimeout:       90 * time.Second,
+         TLSHandshakeTimeout:   10 * time.Second,
+         ExpectContinueTimeout: 1 * time.Second,
+         ProxyConnectHeader:    make(http.Header),
+      }
+   } else {
+      p.transport = hconf
+      p.transport.ProxyConnectHeader = make(http.Header)
+   }
+   return p
 }
 
 // ServeHTTP .
@@ -157,12 +152,7 @@ func (p *Proxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
    }()
    ctx := &context{
       data:       make(map[interface{}]interface{}),
-      hijack:     false,
-      mitm:       false,
       req:        req,
-      reqLength:  0,
-      respLength: 0,
-      closed:     false,
    }
    if ctx.abort {
       ctx.setContextErrType(ConnectFail)

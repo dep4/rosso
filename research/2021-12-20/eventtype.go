@@ -1,7 +1,7 @@
 package main
 
 import (
-   stdcontext "context"
+   "crypto/tls"
    "fmt"
    "net"
    "net/http"
@@ -9,6 +9,7 @@ import (
    "os/signal"
    "sync"
    "time"
+   stdcontext "context"
 )
 
 func main() {
@@ -49,7 +50,7 @@ type Proxychannel struct {
 	serverDone       chan bool
 }
 
-func NewProxychannel(hconf *handlerConfig, sconf *serverConfig) *Proxychannel {
+func NewProxychannel(hconf *http.Transport, sconf *serverConfig) *Proxychannel {
 	pc := &Proxychannel{
 		waitGroup:        &sync.WaitGroup{},
 		serverDone:       make(chan bool),
@@ -58,7 +59,7 @@ func NewProxychannel(hconf *handlerConfig, sconf *serverConfig) *Proxychannel {
 	return pc
 }
 
-func NewServer(hconf *handlerConfig, sconf *serverConfig) *http.Server {
+func NewServer(hconf *http.Transport, sconf *serverConfig) *http.Server {
 	handler := NewProxy(hconf)
 	server := &http.Server{
 		Addr:         sconf.ProxyAddr,
@@ -119,4 +120,89 @@ func (pc *Proxychannel) Run() {
 	go pc.runExtensionManager()
 	pc.runServer()
 	pc.waitGroup.Wait()
+}
+
+
+type context struct {
+   abort      bool
+   closed     bool
+   data       map[interface{}]interface{}
+   err        error
+   errType    string
+   hijack     bool
+   lock       sync.RWMutex
+   mitm       bool
+   req        *http.Request
+   reqLength  int64
+   respLength int64
+}
+
+func (c *context) setContextErrorWithType(err error, errType string) {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	if c.errType == HTTPRedialCancelTimeout || c.errType == HTTPSRedialCancelTimeout || c.errType == TunnelRedialCancelTimeout {
+		return
+	}
+	c.errType = errType
+	c.err = err
+}
+
+func (c *context) setPoolContextErrorWithType(err error, errType string, parentProxy ...string) {
+   c.lock.Lock()
+   defer c.lock.Unlock()
+   switch len(parentProxy) {
+   case 0:
+      c.errType = errType
+      if err != nil {
+         if c.err != nil {
+            c.err = fmt.Errorf("%s | %s", err, c.err)
+         } else {
+            c.err = fmt.Errorf("%s", err)
+         }
+      }
+   case 1:
+      p := parentProxy[0]
+      if err != nil {
+         if c.err != nil {
+            c.err = fmt.Errorf("(%s) [%s] %s | %s", p, errType, err, c.err)
+         } else {
+            c.err = fmt.Errorf("(%s) [%s] %s", p, errType, err)
+         }
+      }
+   default:
+      return
+   }
+}
+
+func (c *context) setContextErrType(errType string) {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	if c.errType == HTTPRedialCancelTimeout || c.errType == HTTPSRedialCancelTimeout || c.errType == TunnelRedialCancelTimeout {
+		return
+	}
+	c.errType = errType
+}
+
+var defaultHandlerConfig = &http.Transport{
+   TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+   DialContext: (&net.Dialer{
+      DualStack: true,
+   }).DialContext,
+   MaxIdleConns:          100,
+   IdleConnTimeout:       90 * time.Second,
+   TLSHandshakeTimeout:   10 * time.Second,
+   ExpectContinueTimeout: 1 * time.Second,
+}
+
+var defaultServerConfig = &serverConfig{
+	ProxyAddr:    ":8080",
+	ReadTimeout:  60 * time.Second,
+	WriteTimeout: 60 * time.Second,
+}
+
+type serverConfig struct {
+	ProxyAddr    string
+	ReadTimeout  time.Duration
+	WriteTimeout time.Duration
+	TLSConfig    *tls.Config
 }
