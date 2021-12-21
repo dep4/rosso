@@ -1,4 +1,4 @@
-# December 19 2021
+# December 20 2021
 
 ~~~
 CONNECT [2607:f8b0:4000:818::2003]:443 HTTP/1.1
@@ -10,10 +10,21 @@ this works:
 curl -x https://localhost:8080 example.com
 ~~~
 
-- <https://agwa.name/blog/post/writing_an_sni_proxy_in_go>
-- https://android.stackexchange.com/questions/243184/capture-tls-handshake
-- https://github.com/mikluko/multiproxy/issues/1
-- https://go.dev/play/p/ZbLYpWWLYd
-- https://godocs.io/crypto/tls#Conn.Handshake
-- https://godocs.io/io#TeeReader
-- https://medium.com/@mlowicki/http-s-proxy-in-golang-in-less-than-100-lines-of-code-6a51c2f2c38c
+These work with MITM Proxy:
+
+~~~
+curl --cacert mitmproxy-ca-cert.pem -x localhost:8080 https://example.com
+curl --cacert mitmproxy-ca.pem -x localhost:8080 https://example.com
+~~~
+
+~~~
+generate_cert -host 127.0.0.1
+generate_cert -host 10.0.2.2
+~~~
+
+~~~
+.\openssl req -x509 -nodes -days 365 -newkey rsa:4096 -keyout my_site.key `
+-out my_site.crt -reqexts v3_req -extensions v3_ca
+
+.\openssl x509 -in my_site.crt -outform der -out my_site.der.crt
+~~~
