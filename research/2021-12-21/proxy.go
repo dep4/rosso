@@ -1,50 +1,29 @@
 package main
 
 import (
-   "crypto/tls"
    "fmt"
    "github.com/89z/parse/crypto"
    "io"
    "net"
    "net/http"
+   "strconv"
    "time"
-)
-
-func main() {
-   defaultHandlerConfig := &http.Transport{
-      DialContext: (&net.Dialer{DualStack: true}).DialContext,
-      ExpectContinueTimeout: 1 * time.Second,
-      IdleConnTimeout:       90 * time.Second,
-      MaxIdleConns:          100,
-      ProxyConnectHeader: make(http.Header),
-      TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-      TLSHandshakeTimeout:   10 * time.Second,
-   }
-   pc := &proxychannel{
-      server: &http.Server{
-         Addr:       ":8080",
-         ReadTimeout:  60 * time.Second,
-         WriteTimeout: 60 * time.Second,
-         Handler:    &proxy{defaultHandlerConfig},
-      },
-   }
-   fmt.Println("runServer")
-   pc.server.ListenAndServe()
-}
-
-const (
-   HTTPRedialCancelTimeout   = "HTTP_REDIAL_CANCEL_TIMEOUT"
-   HTTPSRedialCancelTimeout  = "HTTPS_REDIAL_CANCEL_TIMEOUT"
-   TunnelDialRemoteServerFail      = "TUNNEL_DIAL_REMOTE_SERVER_FAIL"
-   TunnelHijackClientConnFail      = "TUNNEL_HIJACK_CLIENT_CONN_FAIL"
-   TunnelRedialCancelTimeout = "TUNNEL_REDIAL_CANCEL_TIMEOUT"
-   TunnelWriteEstRespFail          = "TUNNEL_WRITE_EST_RESP_FAIL"
 )
 
 const defaultTargetConnectTimeout   = 5 * time.Second
 
-// Canned HTTP responses
-var tunnelEstablishedResponseLine = []byte(fmt.Sprintf("HTTP/1.1 %d Connection established\r\n\r\n", http.StatusOK))
+type proxy struct{}
+
+func main() {
+   serve := http.Server{
+      Addr:       ":8080",
+      ReadTimeout:  60 * time.Second,
+      WriteTimeout: 60 * time.Second,
+      Handler:    &proxy{},
+   }
+   fmt.Println("runServer")
+   serve.ListenAndServe()
+}
 
 type spyConn struct {
    net.Conn
@@ -69,111 +48,54 @@ func (s spyConn) Read(p []byte) (int, error) {
    return n, err
 }
 
-// Proxy is a struct that implements ServeHTTP() method
-type proxy struct {
-   transport     *http.Transport
-}
-
-func (p *proxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
-   fmt.Println(req.Header)
+func (proxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
    if req.URL.Host == "" {
       req.URL.Host = req.Host
    }
-   ctx := &context{
-      data:       make(map[interface{}]interface{}),
-      req:        req,
-   }
-   if ctx.req.Method == http.MethodConnect {
-      h := ctx.req.Header.Get("MITM")
-      if h == "Enabled" {
-         ctx.mitm = true
-      } else {
-         p.proxyTunnel(ctx, rw)
-      }
+   if req.Method == http.MethodConnect {
+      proxyTunnel(req, rw)
    }
 }
 
-func (p *proxy) proxyTunnel(ctx *context, rw http.ResponseWriter) {
-   clientConn, err := hijacker(rw)
-   if err != nil {
-      fmt.Printf("proxyTunnel hijack client connection failed: %s", err)
-      rw.WriteHeader(http.StatusBadGateway)
+func proxyTunnel(req *http.Request, rw http.ResponseWriter) {
+   hijacker, ok := rw.(http.Hijacker)
+   if !ok {
+      fmt.Println("hijacker is not supported")
       return
    }
-   ctx.hijack = true
-   defer func() {
-      err := clientConn.Close()
-      if err != nil {
-         fmt.Printf("defer client close err: %s", err)
-      } else {
-         fmt.Println("defer client close done")
-      }
-   }()
-   targetAddr := ctx.req.URL.Host
-   targetConn, err := net.DialTimeout("tcp", targetAddr, defaultTargetConnectTimeout)
+   clientConn, _, err := hijacker.Hijack()
    if err != nil {
-      fmt.Printf("proxyTunnel %s dial remote server failed: %s", ctx.req.URL.Host, err)
+      fmt.Printf("hijacker failed: %s", err)
       return
    }
-   defer func() {
-      err := targetConn.Close()
-      if err != nil {
-         fmt.Printf("defer target close err: %s", err)
-      } else {
-         fmt.Println("defer target close done")
-      }
-   }()
-   _, err = clientConn.Write(tunnelEstablishedResponseLine)
+   defer clientConn.Close()
+   targetConn, err := net.DialTimeout("tcp", req.URL.Host, defaultTargetConnectTimeout)
    if err != nil {
-      fmt.Printf("proxyTunnel %s write message failed: %s", ctx.req.URL.Host, err)
+      fmt.Printf("proxyTunnel %s dial remote server failed: %s", req.URL, err)
       return
    }
-   transfer(ctx, clientConn, targetConn)
-}
-
-func transfer(ctx *context, clientConn net.Conn, targetConn net.Conn, parentProxy ...string) {
+   defer targetConn.Close()
+   buf := []byte("HTTP/1.1 ")
+   buf = strconv.AppendInt(buf, http.StatusOK, 10)
+   buf = append(buf, " Connection established\r\n\r\n"...)
+   _, err = clientConn.Write(buf)
+   if err != nil {
+      fmt.Printf("proxyTunnel %s write message failed: %s", req.URL.Host, err)
+      return
+   }
    go func() {
-      written1, err1 := io.Copy(clientConn, targetConn)
+      _, err1 := io.Copy(clientConn, targetConn)
       if err1 != nil {
-         fmt.Printf("io.Copy write clientConn failed: %s", err1)
+         fmt.Println("io.Copy write clientConn failed:", err1)
       }
-      ctx.respLength += written1
       clientConn.Close()
       targetConn.Close()
    }()
    spy := spyConn{clientConn}
-   written2, err2 := io.Copy(targetConn, spy)
+   _, err2 := io.Copy(targetConn, spy)
    if err2 != nil {
-      fmt.Printf("io.Copy write targetConn failed: %s", err2)
+      fmt.Println("io.Copy write targetConn failed:", err2)
    }
-   ctx.reqLength += written2
    targetConn.Close()
    clientConn.Close()
-}
-
-func hijacker(rw http.ResponseWriter) (net.Conn, error) {
-   hijacker, ok := rw.(http.Hijacker)
-   if !ok {
-      return nil, fmt.Errorf("hijacker is not supported")
-   }
-   conn, _, err := hijacker.Hijack()
-   if err != nil {
-      return nil, fmt.Errorf("hijacker failed: %s", err)
-   }
-   return conn, nil
-}
-
-type proxychannel struct {
-   server           *http.Server
-}
-
-type context struct {
-   data       map[interface{}]interface{}
-   err        error
-   errType    string
-   hijack     bool
-   mitm       bool
-   req        *http.Request
-   reqLength  int64
-   respLength int64
 }
