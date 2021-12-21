@@ -10,6 +10,28 @@ import (
    "time"
 )
 
+func main() {
+   defaultHandlerConfig := &http.Transport{
+      DialContext: (&net.Dialer{DualStack: true}).DialContext,
+      ExpectContinueTimeout: 1 * time.Second,
+      IdleConnTimeout:       90 * time.Second,
+      MaxIdleConns:          100,
+      ProxyConnectHeader: make(http.Header),
+      TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+      TLSHandshakeTimeout:   10 * time.Second,
+   }
+   pc := &proxychannel{
+      server: &http.Server{
+         Addr:       ":8080",
+         ReadTimeout:  60 * time.Second,
+         WriteTimeout: 60 * time.Second,
+         Handler:    &proxy{defaultHandlerConfig},
+      },
+   }
+   fmt.Println("runServer")
+   pc.server.ListenAndServe()
+}
+
 const (
    HTTPRedialCancelTimeout   = "HTTP_REDIAL_CANCEL_TIMEOUT"
    HTTPSRedialCancelTimeout  = "HTTPS_REDIAL_CANCEL_TIMEOUT"
@@ -18,57 +40,6 @@ const (
    TunnelRedialCancelTimeout = "TUNNEL_REDIAL_CANCEL_TIMEOUT"
    TunnelWriteEstRespFail          = "TUNNEL_WRITE_EST_RESP_FAIL"
 )
-
-func newProxy(hconf *http.Transport) *proxy {
-   p := &proxy{}
-   if hconf == nil {
-      p.transport = &http.Transport{
-         TLSClientConfig: &tls.Config{
-            // No need to verify because as a proxy we don't care
-            InsecureSkipVerify: true,
-         },
-         DialContext: (&net.Dialer{
-            Timeout:   30 * time.Second,
-            KeepAlive: 30 * time.Second,
-            DualStack: true,
-         }).DialContext,
-         MaxIdleConns:          100,
-         MaxIdleConnsPerHost:   10,
-         IdleConnTimeout:       90 * time.Second,
-         TLSHandshakeTimeout:   10 * time.Second,
-         ExpectContinueTimeout: 1 * time.Second,
-         ProxyConnectHeader:    make(http.Header),
-      }
-   } else {
-      p.transport = hconf
-      p.transport.ProxyConnectHeader = make(http.Header)
-   }
-   return p
-}
-
-func main() {
-   defaultHandlerConfig := &http.Transport{
-      TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-      DialContext: (&net.Dialer{
-         DualStack: true,
-      }).DialContext,
-      MaxIdleConns:          100,
-      IdleConnTimeout:       90 * time.Second,
-      TLSHandshakeTimeout:   10 * time.Second,
-      ExpectContinueTimeout: 1 * time.Second,
-   }
-   pc := &proxychannel{
-      server: &http.Server{
-         Addr:         defaultServerConfig.ProxyAddr,
-         Handler:    newProxy(defaultHandlerConfig),
-         ReadTimeout:  defaultServerConfig.ReadTimeout,
-         WriteTimeout: defaultServerConfig.WriteTimeout,
-         TLSConfig:    defaultServerConfig.TLSConfig,
-      },
-   }
-   fmt.Println("runServer")
-   pc.server.ListenAndServe()
-}
 
 const defaultTargetConnectTimeout   = 5 * time.Second
 
@@ -127,7 +98,6 @@ func (p *proxy) proxyTunnel(ctx *context, rw http.ResponseWriter) {
    if err != nil {
       fmt.Printf("proxyTunnel hijack client connection failed: %s", err)
       rw.WriteHeader(http.StatusBadGateway)
-      ctx.setContextErrorWithType(err, TunnelHijackClientConnFail)
       return
    }
    ctx.hijack = true
@@ -143,7 +113,6 @@ func (p *proxy) proxyTunnel(ctx *context, rw http.ResponseWriter) {
    targetConn, err := net.DialTimeout("tcp", targetAddr, defaultTargetConnectTimeout)
    if err != nil {
       fmt.Printf("proxyTunnel %s dial remote server failed: %s", ctx.req.URL.Host, err)
-      ctx.setContextErrorWithType(err, TunnelDialRemoteServerFail)
       return
    }
    defer func() {
@@ -157,7 +126,6 @@ func (p *proxy) proxyTunnel(ctx *context, rw http.ResponseWriter) {
    _, err = clientConn.Write(tunnelEstablishedResponseLine)
    if err != nil {
       fmt.Printf("proxyTunnel %s write message failed: %s", ctx.req.URL.Host, err)
-      ctx.setContextErrorWithType(err, TunnelWriteEstRespFail)
       return
    }
    transfer(ctx, clientConn, targetConn)
@@ -208,57 +176,4 @@ type context struct {
    req        *http.Request
    reqLength  int64
    respLength int64
-}
-
-func (c *context) setContextErrorWithType(err error, errType string) {
-   if c.errType == HTTPRedialCancelTimeout || c.errType == HTTPSRedialCancelTimeout || c.errType == TunnelRedialCancelTimeout {
-      return
-   }
-   c.errType = errType
-   c.err = err
-}
-
-func (c *context) setPoolContextErrorWithType(err error, errType string, parentProxy ...string) {
-   switch len(parentProxy) {
-   case 0:
-      c.errType = errType
-      if err != nil {
-         if c.err != nil {
-            c.err = fmt.Errorf("%s | %s", err, c.err)
-         } else {
-            c.err = fmt.Errorf("%s", err)
-         }
-      }
-   case 1:
-      p := parentProxy[0]
-      if err != nil {
-         if c.err != nil {
-            c.err = fmt.Errorf("(%s) [%s] %s | %s", p, errType, err, c.err)
-         } else {
-            c.err = fmt.Errorf("(%s) [%s] %s", p, errType, err)
-         }
-      }
-   default:
-      return
-   }
-}
-
-func (c *context) setContextErrType(errType string) {
-   if c.errType == HTTPRedialCancelTimeout || c.errType == HTTPSRedialCancelTimeout || c.errType == TunnelRedialCancelTimeout {
-      return
-   }
-   c.errType = errType
-}
-
-var defaultServerConfig = &serverConfig{
-	ProxyAddr:    ":8080",
-	ReadTimeout:  60 * time.Second,
-	WriteTimeout: 60 * time.Second,
-}
-
-type serverConfig struct {
-	ProxyAddr    string
-	ReadTimeout  time.Duration
-	WriteTimeout time.Duration
-	TLSConfig    *tls.Config
 }
