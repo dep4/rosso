@@ -86,17 +86,6 @@ type Writer interface {
 	Write([]byte) (int, error)
 }
 
-// WriterWithProtocol .
-type WriterWithProtocol struct {
-	length int
-}
-
-func (w *WriterWithProtocol) Write(b []byte) (n int, err error) {
-	n, err = w.Write(b)
-	w.length += n
-	return n, err
-}
-
 // WriterWithLength .
 type WriterWithLength struct {
 	writer        interface{} // io.Writer or http.ResponseWriter
@@ -135,20 +124,6 @@ type Reader interface {
 	Read([]byte) (int, error)
 }
 
-// ReaderWithProtocol .
-type ReaderWithProtocol struct {
-	reader Reader
-	length int
-}
-
-func (r *ReaderWithProtocol) Read(b []byte) (n int, err error) {
-	n, err = r.Read(b)
-	r.length += n
-	return n, err
-}
-
-var rootLoggerName string = "ProxyChannel"
-
 // Default Settings
 const (
 	DefaultLoggerName    = "ProxyChannel"
@@ -176,11 +151,11 @@ func NewExtensionManager(m map[string]Extension) *ExtensionManager {
 
 // GetExtension get extension by name
 func (em *ExtensionManager) GetExtension(name string) (Extension, error) {
-	ext, ok := em.extensions[name]
-	if !ok {
-		return nil, fmt.Errorf("No extension named %s", name)
-	}
-	return ext, nil
+   ext, ok := em.extensions[name]
+   if !ok {
+      return nil, fmt.Errorf("no extension named %s", name)
+   }
+   return ext, nil
 }
 
 // Setup setup all extensions one by one

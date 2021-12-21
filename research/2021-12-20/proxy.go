@@ -44,19 +44,18 @@ func (s spyConn) Read(p []byte) (int, error) {
 
 // Default timeout values
 const (
-	defaultTargetConnectTimeout   = 5 * time.Second
-	defaultTargetReadWriteTimeout = 30 * time.Second
-	defaultClientReadWriteTimeout = 30 * time.Second
+   defaultClientReadWriteTimeout = 30 * time.Second
+   defaultHTTPResponsePeekSize int = 4096
+   defaultTargetConnectTimeout   = 5 * time.Second
+   defaultTargetReadWriteTimeout = 30 * time.Second
 )
 
-const defaultHTTPResponsePeekSize int = 4096
-
 // Canned HTTP responses
-var tunnelEstablishedResponseLine = []byte(fmt.Sprintf("HTTP/1.1 %d Connection established\r\n\r\n", http.StatusOK))
-var badGateway = fmt.Sprintf("HTTP/1.1 %d %s\r\n\r\n", http.StatusBadGateway, http.StatusText(http.StatusBadGateway))
-var tooManyRequests = fmt.Sprintf("HTTP/1.1 %d %s\r\n\r\n", http.StatusTooManyRequests, http.StatusText(http.StatusTooManyRequests))
-
-var internalErr = "PROXY_CHANNEL_INTERNAL_ERR"
+var (
+   badGateway = fmt.Sprintf("HTTP/1.1 %d %s\r\n\r\n", http.StatusBadGateway, http.StatusText(http.StatusBadGateway))
+   internalErr = "PROXY_CHANNEL_INTERNAL_ERR"
+   tunnelEstablishedResponseLine = []byte(fmt.Sprintf("HTTP/1.1 %d Connection established\r\n\r\n", http.StatusOK))
+)
 
 // ProxyError specifies all the possible errors that can occur due to this proxy's behavior,
 // which does not include the behavior of parent proxies.
@@ -103,13 +102,9 @@ type ConnWrapper struct {
 
 // Below are the modes supported.
 const (
-	NormalMode = iota
-	ConnPoolMode
+   NormalMode = iota
+   ConnPoolMode
 )
-
-func makeTunnelRequestLine(addr string) string {
-	return fmt.Sprintf("CONNECT %s HTTP/1.1\r\n\r\n", addr)
-}
 
 func makeTunnelRequestWithAuth(ctx *Context, parentProxyURL *url.URL, targetConn net.Conn) error {
 	connectReq := &http.Request{
@@ -138,8 +133,7 @@ func makeTunnelRequestWithAuth(ctx *Context, parentProxyURL *url.URL, targetConn
 type Proxy struct {
 	delegate      Delegate
 	clientConnNum int32
-	decryptHTTPS  bool
-	//cert          *cert.Certificate
+	//decryptHTTPS  bool
 	transport     *http.Transport
 	mode          int
 }
@@ -190,61 +184,49 @@ func NewProxy(hconf *HandlerConfig, em *ExtensionManager) *Proxy {
 
 // ServeHTTP .
 func (p *Proxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
-         fmt.Println(req.Header)
-         if req.URL.Host == "" {
-		req.URL.Host = req.Host
-	}
-	atomic.AddInt32(&p.clientConnNum, 1)
-	defer func() {
-		atomic.AddInt32(&p.clientConnNum, -1)
-	}()
-	ctx := &Context{
-		Req:        req,
-		Data:       make(map[interface{}]interface{}),
-		Hijack:     false,
-		MITM:       false,
-		ReqLength:  0,
-		RespLength: 0,
-		Closed:     false,
-	}
-	defer p.delegate.Finish(ctx, rw)
-	p.delegate.Connect(ctx, rw)
-	if ctx.abort {
-		ctx.SetContextErrType(ConnectFail)
-		return
-	}
-	p.delegate.Auth(ctx, rw)
-	if ctx.abort {
-		ctx.SetContextErrType(AuthFail)
-		return
-	}
-
-	// NormalMode:
-	// This proxy will forward requests to parent proxy, and return whatever it gets
-	// from parent proxy back to requestor.
-
-	// ConnPoolMode:
-	// This proxy chooses a TCP connection by given probability from the ConnPool,
-	// which is specified by p.delegate.GetConnPool(ctx).
-	// If this proxy fails to connect parent proxy or gets a response body in JSON
-	// format that has an "ErrType" of "PROXY_CHANNEL_INTERNAL_ERR"(especially when
-	// the parent proxy is also a proxychannel instance), it retries the proxy request
-	// with another proxy chosen from ConnPool by given probability.
-	// The retry goes on until any parent proxy returns a 200 response code or every
-	// connection has been chosen.
-	switch p.mode {
-	case NormalMode:
-               if ctx.Req.Method == http.MethodConnect {
-			h := ctx.Req.Header.Get("MITM")
-			if h == "Enabled" {
-				ctx.MITM = true
-			} else {
-				p.proxyTunnel(ctx, rw)
-			}
-		} else {
-			   p.proxyHTTP(ctx, rw)
-		}
-	}
+   fmt.Println(req.Header)
+   if req.URL.Host == "" {
+   req.URL.Host = req.Host
+   }
+   atomic.AddInt32(&p.clientConnNum, 1)
+   defer func() {
+   atomic.AddInt32(&p.clientConnNum, -1)
+   }()
+   ctx := &Context{
+   Req:        req,
+   Data:       make(map[interface{}]interface{}),
+   Hijack:     false,
+   MITM:       false,
+   ReqLength:  0,
+   RespLength: 0,
+   Closed:     false,
+   }
+   defer p.delegate.Finish(ctx, rw)
+   p.delegate.Connect(ctx, rw)
+   if ctx.abort {
+   ctx.SetContextErrType(ConnectFail)
+   return
+   }
+   p.delegate.Auth(ctx, rw)
+   if ctx.abort {
+   ctx.SetContextErrType(AuthFail)
+   return
+   }
+   // NormalMode: This proxy will forward requests to parent proxy, and return
+   // whatever it gets from parent proxy back to requestor.
+   switch p.mode {
+   case NormalMode:
+   if ctx.Req.Method == http.MethodConnect {
+   h := ctx.Req.Header.Get("MITM")
+   if h == "Enabled" {
+   ctx.MITM = true
+   } else {
+   p.proxyTunnel(ctx, rw)
+   }
+   } else {
+   p.proxyHTTP(ctx, rw)
+   }
+   }
 }
 
 // ClientConnNum gets the Client
@@ -302,35 +284,36 @@ func (p *Proxy) proxyHTTP(ctx *Context, rw http.ResponseWriter) {
 
 func (p *Proxy) proxyTunnel(ctx *Context, rw http.ResponseWriter) {
    parentProxyURL, err := p.delegate.ParentProxy(ctx, rw)
+   if err != nil {
+      fmt.Println(err)
+   }
    if ctx.abort {
-   ctx.SetContextErrType(ParentProxyFail)
-   return
+      ctx.SetContextErrType(ParentProxyFail)
+      return
    }
    clientConn, err := hijacker(rw)
    if err != nil {
-   //Logger.Errorf("proxyTunnel hijack client connection failed: %s", err)
-   rw.WriteHeader(http.StatusBadGateway)
-   WriteProxyErrorToResponseBody(ctx, rw, http.StatusBadGateway, fmt.Sprintf("proxyTunnel hijack client connection failed: %s", err), "")
-   ctx.SetContextErrorWithType(err, TunnelHijackClientConnFail)
-   return
+      fmt.Printf("proxyTunnel hijack client connection failed: %s", err)
+      rw.WriteHeader(http.StatusBadGateway)
+      WriteProxyErrorToResponseBody(ctx, rw, http.StatusBadGateway, fmt.Sprintf("proxyTunnel hijack client connection failed: %s", err), "")
+      ctx.SetContextErrorWithType(err, TunnelHijackClientConnFail)
+      return
    }
    ctx.Hijack = true
    defer func() {
-   err := clientConn.Close()
-   if err != nil {
-   //Logger.Infof("defer client close err: %s", err)
-   } else {
-   //Logger.Infof("defer client close done")
-   }
+      err := clientConn.Close()
+      if err != nil {
+         fmt.Printf("defer client close err: %s", err)
+      } else {
+         fmt.Println("defer client close done")
+      }
    }()
    fmt.Println(ctx.Req.Header)
    targetAddr := ctx.Req.URL.Host
    if parentProxyURL != nil {
    targetAddr = parentProxyURL.Host
    }
-
    targetConn, err := net.DialTimeout("tcp", targetAddr, defaultTargetConnectTimeout)
-
    connWrapper := &ConnWrapper{
    Conn: targetConn,
    Err:  err,
