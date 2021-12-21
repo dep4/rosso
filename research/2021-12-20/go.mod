@@ -2,10 +2,7 @@ module proxychannel
 
 go 1.17
 
-require (
-	github.com/89z/parse v1.14.5
-	github.com/op/go-logging v0.0.0-20160315200505-970db520ece7
-)
+require github.com/89z/parse v1.14.5
 
 require (
 	github.com/refraction-networking/utls v1.0.0 // indirect
