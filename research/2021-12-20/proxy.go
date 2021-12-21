@@ -420,103 +420,87 @@ func transfer(ctx *Context, clientConn net.Conn, targetConn net.Conn, parentProx
 // and calls responseFunc before returning the response.
 // The "conn" is needed when it comes to https request, and only one conn is accepted.
 func (p *Proxy) DoRequest(ctx *Context, rw http.ResponseWriter, responseFunc func(*http.Response, error), conn ...interface{}) {
-	if len(conn) > 1 {
-		return
-	}
-	var clientConn *tls.Conn
-	if len(conn) == 1 {
-		c := conn[0]
-		clientConn, _ = c.(*tls.Conn)
-	}
-
-	if ctx.Data == nil {
-		ctx.Data = make(map[interface{}]interface{})
-	}
-	p.delegate.BeforeRequest(ctx)
-	if ctx.abort {
-		ctx.SetContextErrType(BeforeRequestFail)
-		return
-	}
-	newReq := new(http.Request)
-	*newReq = *ctx.Req
-      fmt.Println(newReq.Header)
-	newReq.Header = CloneHeader(newReq.Header)
-	// When server reads http request it sets req.Close to true if
-	// "Connection" header contains "close".
-	// https://github.com/golang/go/blob/master/src/net/http/request.go#L1080
-	// Later, transfer.go adds "Connection: close" back when req.Close is true
-	// https://github.com/golang/go/blob/master/src/net/http/transfer.go#L275
-	// That's why tests that checks "Connection: close" removal fail
-	if newReq.Header.Get("Connection") == "close" {
-		newReq.Close = false
-	}
-	removeMITMHeaders(newReq.Header)
-	removeConnectionHeaders(newReq.Header)
-	removeHopHeaders(newReq.Header)
-
-	// p.transport.ForceAttemptHTTP2 = true // for HTTP/2 test
-	var parentProxyURL *url.URL
-	var err error
-	if ctx.Hijack {
-		parentProxyURL, err = p.delegate.ParentProxy(ctx, clientConn)
-	} else {
-		parentProxyURL, err = p.delegate.ParentProxy(ctx, rw)
-	}
-	if ctx.abort {
-		ctx.SetContextErrType(ParentProxyFail)
-		return
-	}
-
-	type CtxKey int
-	var pkey CtxKey = 0
-	fakeCtx := context.WithValue(newReq.Context(), pkey, parentProxyURL)
-	newReq = newReq.Clone(fakeCtx)
-
-	ctx.ReqLength += newReq.ContentLength
-	// dump, dumperr := httputil.DumpRequestOut(newReq, true)
-	// if dumperr != nil {
-	// 	Logger.Errorf("DumpRequestOut failed %s", dumperr)
-	// } else {
-	// 	ctx.ReqLength += int64(len(dump))
-	// }
-
-	tr := p.transport
-	tr.Proxy = func(req *http.Request) (*url.URL, error) {
-		ctx := req.Context()
-		pURL := ctx.Value(pkey).(*url.URL)
-		// req = req.Clone(context.Background())
-		trace := &httptrace.ClientTrace{
-			GotConn: func(connInfo httptrace.GotConnInfo) {
-				//Logger.Infof("Got conn: %+v", connInfo)
-			},
-			DNSDone: func(dnsInfo httptrace.DNSDoneInfo) {
-				//Logger.Infof("DNS done, info: %+v", dnsInfo)
-			},
-			GotFirstResponseByte: func() {
-				//Logger.Infof("GotFirstResponseByte: %+v", time.Now())
-			},
-		}
-		req = req.Clone(httptrace.WithClientTrace(context.Background(), trace))
-		return pURL, err
-	}
-
-	resp, err := tr.RoundTrip(newReq)
-
-	respWrapper := &ResponseWrapper{
-		Resp: resp,
-		Err:  err,
-	}
-
-	p.delegate.BeforeResponse(ctx, respWrapper)
-	if ctx.abort {
-		ctx.SetContextErrType(BeforeResponseFail)
-		return
-	}
-	if err == nil {
-		removeConnectionHeaders(resp.Header)
-		removeHopHeaders(resp.Header)
-	}
-	responseFunc(resp, err)
+   if len(conn) > 1 {
+   return
+   }
+   var clientConn *tls.Conn
+   if len(conn) == 1 {
+   c := conn[0]
+   clientConn, _ = c.(*tls.Conn)
+   }
+   if ctx.Data == nil {
+   ctx.Data = make(map[interface{}]interface{})
+   }
+   p.delegate.BeforeRequest(ctx)
+   if ctx.abort {
+   ctx.SetContextErrType(BeforeRequestFail)
+   return
+   }
+   newReq := new(http.Request)
+   *newReq = *ctx.Req
+   fmt.Println(newReq.Header)
+   newReq.Header = CloneHeader(newReq.Header)
+   // When server reads http request it sets req.Close to true if "Connection"
+   // header contains "close".
+   // https://github.com/golang/go/blob/master/src/net/http/request.go#L1080
+   // Later, transfer.go adds "Connection: close" back when req.Close is true
+   // https://github.com/golang/go/blob/master/src/net/http/transfer.go#L275
+   // That's why tests that checks "Connection: close" removal fail
+   if newReq.Header.Get("Connection") == "close" {
+   newReq.Close = false
+   }
+   removeMITMHeaders(newReq.Header)
+   removeConnectionHeaders(newReq.Header)
+   removeHopHeaders(newReq.Header)
+   var parentProxyURL *url.URL
+   var err error
+   if ctx.Hijack {
+   parentProxyURL, err = p.delegate.ParentProxy(ctx, clientConn)
+   } else {
+   parentProxyURL, err = p.delegate.ParentProxy(ctx, rw)
+   }
+   if ctx.abort {
+   ctx.SetContextErrType(ParentProxyFail)
+   return
+   }
+   type CtxKey int
+   var pkey CtxKey = 0
+   fakeCtx := context.WithValue(newReq.Context(), pkey, parentProxyURL)
+   newReq = newReq.Clone(fakeCtx)
+   ctx.ReqLength += newReq.ContentLength
+   tr := p.transport
+   tr.Proxy = func(req *http.Request) (*url.URL, error) {
+   ctx := req.Context()
+   pURL := ctx.Value(pkey).(*url.URL)
+   trace := &httptrace.ClientTrace{
+   GotConn: func(connInfo httptrace.GotConnInfo) {
+   fmt.Printf("Got conn: %+v", connInfo)
+   },
+   DNSDone: func(dnsInfo httptrace.DNSDoneInfo) {
+   fmt.Printf("DNS done, info: %+v", dnsInfo)
+   },
+   GotFirstResponseByte: func() {
+   fmt.Printf("GotFirstResponseByte: %+v", time.Now())
+   },
+   }
+   req.Clone(httptrace.WithClientTrace(context.Background(), trace))
+   return pURL, err
+   }
+   resp, err := tr.RoundTrip(newReq)
+   respWrapper := &ResponseWrapper{
+   Resp: resp,
+   Err:  err,
+   }
+   p.delegate.BeforeResponse(ctx, respWrapper)
+   if ctx.abort {
+   ctx.SetContextErrType(BeforeResponseFail)
+   return
+   }
+   if err == nil {
+   removeConnectionHeaders(resp.Header)
+   removeHopHeaders(resp.Header)
+   }
+   responseFunc(resp, err)
 }
 
 // hijacker gets the underlying connection of an http.ResponseWriter
@@ -601,15 +585,4 @@ func CloneBody(b io.ReadCloser) (r io.ReadCloser, body []byte, err error) {
 	r = ioutil.NopCloser(bytes.NewReader(body))
 
 	return r, body, nil
-}
-
-func headerContains(header http.Header, name string, value string) bool {
-	for _, v := range header[name] {
-		for _, s := range strings.Split(v, ",") {
-			if strings.EqualFold(value, strings.TrimSpace(s)) {
-				return true
-			}
-		}
-	}
-	return false
 }
