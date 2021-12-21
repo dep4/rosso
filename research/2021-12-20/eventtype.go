@@ -14,9 +14,7 @@ import (
 func main() {
    // Providing certain log configuration before Run() is optional e.g.
    // ConfigLogging(lconf) where lconf is a *LogConfig
-   pc := NewProxychannel(
-      defaultHandlerConfig, defaultServerConfig, make(map[string]Extension),
-   )
+   pc := NewProxychannel(defaultHandlerConfig, defaultServerConfig)
    pc.Run()
 }
 
@@ -46,24 +44,22 @@ const (
 // Proxychannel is able to do authentication, communicate with databases,
 // manipulate the requests/responses, etc.
 type Proxychannel struct {
-	extensionManager *ExtensionManager
 	server           *http.Server
 	waitGroup        *sync.WaitGroup
 	serverDone       chan bool
 }
 
-func NewProxychannel(hconf *handlerConfig, sconf *serverConfig, m map[string]Extension) *Proxychannel {
+func NewProxychannel(hconf *handlerConfig, sconf *serverConfig) *Proxychannel {
 	pc := &Proxychannel{
-		extensionManager: NewExtensionManager(m),
 		waitGroup:        &sync.WaitGroup{},
 		serverDone:       make(chan bool),
 	}
-	pc.server = NewServer(hconf, sconf, pc.extensionManager)
+	pc.server = NewServer(hconf, sconf)
 	return pc
 }
 
-func NewServer(hconf *handlerConfig, sconf *serverConfig, em *ExtensionManager) *http.Server {
-	handler := NewProxy(hconf, em)
+func NewServer(hconf *handlerConfig, sconf *serverConfig) *http.Server {
+	handler := NewProxy(hconf)
 	server := &http.Server{
 		Addr:         sconf.ProxyAddr,
 		Handler:      handler,
@@ -76,14 +72,12 @@ func NewServer(hconf *handlerConfig, sconf *serverConfig, em *ExtensionManager) 
 
 func (pc *Proxychannel) runExtensionManager() {
 	defer pc.waitGroup.Done()
-	go pc.extensionManager.Setup() // TODO: modify setup and error handling
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan)
 	// Will block until shutdown signal is received
 	<-signalChan
 	// Will block until pc.server has been shut down
 	<-pc.serverDone
-	pc.extensionManager.Cleanup()
 }
 
 func (pc *Proxychannel) runServer() {

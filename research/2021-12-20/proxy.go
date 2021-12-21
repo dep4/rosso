@@ -4,7 +4,6 @@ import (
    "bytes"
    "context"
    "crypto/tls"
-   "encoding/base64"
    "encoding/json"
    "fmt"
    "io"
@@ -77,7 +76,7 @@ type TunnelInfo struct {
 	Target      net.Conn
 	Err         error
 	ParentProxy *url.URL
-	Pool        ConnPool
+	//Pool        ConnPool
 }
 
 // ResponseInfo .
@@ -85,7 +84,7 @@ type ResponseInfo struct {
 	Resp        *http.Response
 	Err         error
 	ParentProxy *url.URL
-	Pool        ConnPool
+	//Pool        ConnPool
 }
 
 // ResponseWrapper is simply a wrapper for http.Response and error.
@@ -94,7 +93,6 @@ type ResponseWrapper struct {
 	Err  error
 }
 
-// ConnWrapper .
 type ConnWrapper struct {
 	Conn net.Conn
 	Err  error
@@ -106,52 +104,17 @@ const (
    ConnPoolMode
 )
 
-func makeTunnelRequestWithAuth(ctx *Context, parentProxyURL *url.URL, targetConn net.Conn) error {
-	connectReq := &http.Request{
-		Proto:      ctx.Req.Proto,
-		ProtoMajor: ctx.Req.ProtoMajor,
-		ProtoMinor: ctx.Req.ProtoMinor,
-		Method:     "CONNECT",
-		URL:        &url.URL{Opaque: ctx.Req.URL.Host},
-		Host:       ctx.Req.URL.Host,
-		Header:     CloneHeader(ctx.Req.Header),
-	}
-	if connectReq.Proto == "HTTP/1.0" {
-		connectReq.Header.Del("Connection")
-	}
-	u := parentProxyURL.User
-	if u != nil {
-		username := u.Username()
-		password, _ := u.Password()
-		basicAuth := "Basic " + base64.StdEncoding.EncodeToString([]byte(username+":"+password))
-		connectReq.Header.Set("Proxy-Authorization", basicAuth)
-	}
-	return connectReq.Write(targetConn)
-}
-
 // Proxy is a struct that implements ServeHTTP() method
 type Proxy struct {
-	delegate      Delegate
-	clientConnNum int32
-	//decryptHTTPS  bool
-	transport     *http.Transport
-	mode          int
+   clientConnNum int32
+   transport     *http.Transport
+   mode          int
 }
 
 var _ http.Handler = &Proxy{}
 
-func NewProxy(hconf *handlerConfig, em *ExtensionManager) *Proxy {
+func NewProxy(hconf *handlerConfig) *Proxy {
 	p := &Proxy{}
-
-	if hconf.Delegate == nil {
-		p.delegate = &DefaultDelegate{}
-	} else {
-		p.delegate = hconf.Delegate
-	}
-	p.delegate.SetExtensionManager(em)
-
-	//p.cert = cert.NewCertificate(hconf.CertCache)
-
 	if hconf.Transport == nil {
 		p.transport = &http.Transport{
 			TLSClientConfig: &tls.Config{
@@ -186,46 +149,43 @@ func NewProxy(hconf *handlerConfig, em *ExtensionManager) *Proxy {
 func (p *Proxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
    fmt.Println(req.Header)
    if req.URL.Host == "" {
-   req.URL.Host = req.Host
+      req.URL.Host = req.Host
    }
    atomic.AddInt32(&p.clientConnNum, 1)
    defer func() {
-   atomic.AddInt32(&p.clientConnNum, -1)
+      atomic.AddInt32(&p.clientConnNum, -1)
    }()
    ctx := &Context{
-   Req:        req,
-   Data:       make(map[interface{}]interface{}),
-   Hijack:     false,
-   MITM:       false,
-   ReqLength:  0,
-   RespLength: 0,
-   Closed:     false,
+      Req:        req,
+      Data:       make(map[interface{}]interface{}),
+      Hijack:     false,
+      MITM:       false,
+      ReqLength:  0,
+      RespLength: 0,
+      Closed:     false,
    }
-   defer p.delegate.Finish(ctx, rw)
-   p.delegate.Connect(ctx, rw)
    if ctx.abort {
-   ctx.SetContextErrType(ConnectFail)
-   return
+      ctx.SetContextErrType(ConnectFail)
+      return
    }
-   p.delegate.Auth(ctx, rw)
    if ctx.abort {
-   ctx.SetContextErrType(AuthFail)
-   return
+      ctx.SetContextErrType(AuthFail)
+      return
    }
    // NormalMode: This proxy will forward requests to parent proxy, and return
    // whatever it gets from parent proxy back to requestor.
    switch p.mode {
    case NormalMode:
-   if ctx.Req.Method == http.MethodConnect {
-   h := ctx.Req.Header.Get("MITM")
-   if h == "Enabled" {
-   ctx.MITM = true
-   } else {
-   p.proxyTunnel(ctx, rw)
-   }
-   } else {
-   p.proxyHTTP(ctx, rw)
-   }
+      if ctx.Req.Method == http.MethodConnect {
+         h := ctx.Req.Header.Get("MITM")
+         if h == "Enabled" {
+            ctx.MITM = true
+         } else {
+            p.proxyTunnel(ctx, rw)
+         }
+      } else {
+         p.proxyHTTP(ctx, rw)
+      }
    }
 }
 
@@ -253,38 +213,30 @@ func writeProxyErrorToResponseBody(ctx *Context, respWriter io.Writer, httpcode 
 }
 
 func (p *Proxy) proxyHTTP(ctx *Context, rw http.ResponseWriter) {
-      fmt.Println(ctx.Req.Header)
-      ctx.Req.URL.Scheme = "http"
-	p.DoRequest(ctx, rw, func(resp *http.Response, err error) {
-		if err != nil {
-			fmt.Printf("proxyHTTP %s forward request failed: %s", ctx.Req.URL, err)
-			rw.WriteHeader(http.StatusBadGateway)
-			writeProxyErrorToResponseBody(ctx, rw, http.StatusBadGateway, fmt.Sprintf("proxyHTTP %s forward request failed: %s", ctx.Req.URL, err), "")
-			ctx.SetContextErrorWithType(err, HTTPDoRequestFail)
-			return
-		}
-
-		defer resp.Body.Close()
-		p.delegate.DuringResponse(ctx, resp)
-
-		CopyHeader(rw.Header(), resp.Header)
-		rw.WriteHeader(resp.StatusCode)
-
-		written, err := io.Copy(rw, resp.Body)
-		ctx.RespLength += written
-		if err != nil {
-			//Logger.Errorf("proxyHTTP %s write client failed: %s", ctx.Req.URL, err)
-			ctx.SetContextErrorWithType(err, HTTPWriteClientFail)
-			return
-		}
-	})
+   fmt.Println(ctx.Req.Header)
+   ctx.Req.URL.Scheme = "http"
+   p.DoRequest(ctx, rw, func(resp *http.Response, err error) {
+      if err != nil {
+         fmt.Printf("proxyHTTP %s forward request failed: %s", ctx.Req.URL, err)
+         rw.WriteHeader(http.StatusBadGateway)
+         writeProxyErrorToResponseBody(ctx, rw, http.StatusBadGateway, fmt.Sprintf("proxyHTTP %s forward request failed: %s", ctx.Req.URL, err), "")
+         ctx.SetContextErrorWithType(err, HTTPDoRequestFail)
+         return
+      }
+      defer resp.Body.Close()
+      CopyHeader(rw.Header(), resp.Header)
+      rw.WriteHeader(resp.StatusCode)
+      written, err := io.Copy(rw, resp.Body)
+      ctx.RespLength += written
+      if err != nil {
+         fmt.Printf("proxyHTTP %s write client failed: %s", ctx.Req.URL, err)
+         ctx.SetContextErrorWithType(err, HTTPWriteClientFail)
+         return
+      }
+   })
 }
 
 func (p *Proxy) proxyTunnel(ctx *Context, rw http.ResponseWriter) {
-   parentProxyURL, err := p.delegate.ParentProxy(ctx, rw)
-   if err != nil {
-      fmt.Println(err)
-   }
    if ctx.abort {
       ctx.SetContextErrType(ParentProxyFail)
       return
@@ -308,49 +260,30 @@ func (p *Proxy) proxyTunnel(ctx *Context, rw http.ResponseWriter) {
    }()
    fmt.Println(ctx.Req.Header)
    targetAddr := ctx.Req.URL.Host
-   if parentProxyURL != nil {
-   targetAddr = parentProxyURL.Host
-   }
    targetConn, err := net.DialTimeout("tcp", targetAddr, defaultTargetConnectTimeout)
-   connWrapper := &ConnWrapper{
-   Conn: targetConn,
-   Err:  err,
-   }
-   p.delegate.BeforeResponse(ctx, connWrapper)
    if ctx.abort {
-   ctx.SetContextErrType(BeforeResponseFail)
-   return
+      ctx.SetContextErrType(BeforeResponseFail)
+      return
    }
    if err != nil {
-   fmt.Printf("proxyTunnel %s dial remote server failed: %s", ctx.Req.URL.Host, err)
-   writeProxyErrorToResponseBody(ctx, clientConn, http.StatusBadGateway, fmt.Sprintf("proxyTunnel %s dial remote server failed: %s", ctx.Req.URL.Host, err), badGateway)
-   ctx.SetContextErrorWithType(err, TunnelDialRemoteServerFail)
-   return
+      fmt.Printf("proxyTunnel %s dial remote server failed: %s", ctx.Req.URL.Host, err)
+      writeProxyErrorToResponseBody(ctx, clientConn, http.StatusBadGateway, fmt.Sprintf("proxyTunnel %s dial remote server failed: %s", ctx.Req.URL.Host, err), badGateway)
+      ctx.SetContextErrorWithType(err, TunnelDialRemoteServerFail)
+      return
    }
    defer func() {
-   err := targetConn.Close()
-   if err != nil {
-   fmt.Printf("defer target close err: %s", err)
-   } else {
-   fmt.Println("defer target close done")
-   }
+      err := targetConn.Close()
+      if err != nil {
+         fmt.Printf("defer target close err: %s", err)
+      } else {
+         fmt.Println("defer target close done")
+      }
    }()
-   p.delegate.DuringResponse(ctx, &TunnelConn{Client: clientConn, Target: targetConn}) // targetConn could be closed in this method
-   if parentProxyURL == nil {
    _, err = clientConn.Write(tunnelEstablishedResponseLine)
    if err != nil {
-   fmt.Printf("proxyTunnel %s write message failed: %s", ctx.Req.URL.Host, err)
-   ctx.SetContextErrorWithType(err, TunnelWriteEstRespFail)
-   return
-   }
-   } else {
-   err := makeTunnelRequestWithAuth(ctx, parentProxyURL, targetConn)
-   if err != nil {
-   fmt.Printf("proxyTunnel %s make connect request to remote failed: %s", ctx.Req.URL.Host, err)
-   writeProxyErrorToResponseBody(ctx, clientConn, http.StatusBadGateway, fmt.Sprintf("proxyTunnel %s make connect request to remote failed: %s", ctx.Req.URL.Host, err), badGateway)
-   ctx.SetContextErrorWithType(err, TunnelConnectRemoteFail)
-   return
-   }
+      fmt.Printf("proxyTunnel %s write message failed: %s", ctx.Req.URL.Host, err)
+      ctx.SetContextErrorWithType(err, TunnelWriteEstRespFail)
+      return
    }
    transfer(ctx, clientConn, targetConn)
 }
@@ -390,26 +323,19 @@ func transfer(ctx *Context, clientConn net.Conn, targetConn net.Conn, parentProx
 	clientConn.Close()
 }
 
-
 // DoRequest makes a request to remote server as a clent through given proxy,
 // and calls responseFunc before returning the response.
 // The "conn" is needed when it comes to https request, and only one conn is accepted.
 func (p *Proxy) DoRequest(ctx *Context, rw http.ResponseWriter, responseFunc func(*http.Response, error), conn ...interface{}) {
    if len(conn) > 1 {
-   return
-   }
-   var clientConn *tls.Conn
-   if len(conn) == 1 {
-   c := conn[0]
-   clientConn, _ = c.(*tls.Conn)
+      return
    }
    if ctx.Data == nil {
-   ctx.Data = make(map[interface{}]interface{})
+      ctx.Data = make(map[interface{}]interface{})
    }
-   p.delegate.BeforeRequest(ctx)
    if ctx.abort {
-   ctx.SetContextErrType(BeforeRequestFail)
-   return
+      ctx.SetContextErrType(BeforeRequestFail)
+      return
    }
    newReq := new(http.Request)
    *newReq = *ctx.Req
@@ -422,21 +348,16 @@ func (p *Proxy) DoRequest(ctx *Context, rw http.ResponseWriter, responseFunc fun
    // https://github.com/golang/go/blob/master/src/net/http/transfer.go#L275
    // That's why tests that checks "Connection: close" removal fail
    if newReq.Header.Get("Connection") == "close" {
-   newReq.Close = false
+      newReq.Close = false
    }
    removeMITMHeaders(newReq.Header)
    removeConnectionHeaders(newReq.Header)
    removeHopHeaders(newReq.Header)
    var parentProxyURL *url.URL
    var err error
-   if ctx.Hijack {
-   parentProxyURL, err = p.delegate.ParentProxy(ctx, clientConn)
-   } else {
-   parentProxyURL, err = p.delegate.ParentProxy(ctx, rw)
-   }
    if ctx.abort {
-   ctx.SetContextErrType(ParentProxyFail)
-   return
+      ctx.SetContextErrType(ParentProxyFail)
+      return
    }
    type CtxKey int
    var pkey CtxKey = 0
@@ -445,35 +366,30 @@ func (p *Proxy) DoRequest(ctx *Context, rw http.ResponseWriter, responseFunc fun
    ctx.ReqLength += newReq.ContentLength
    tr := p.transport
    tr.Proxy = func(req *http.Request) (*url.URL, error) {
-   ctx := req.Context()
-   pURL := ctx.Value(pkey).(*url.URL)
-   trace := &httptrace.ClientTrace{
-   GotConn: func(connInfo httptrace.GotConnInfo) {
-   fmt.Printf("Got conn: %+v", connInfo)
-   },
-   DNSDone: func(dnsInfo httptrace.DNSDoneInfo) {
-   fmt.Printf("DNS done, info: %+v", dnsInfo)
-   },
-   GotFirstResponseByte: func() {
-   fmt.Printf("GotFirstResponseByte: %+v", time.Now())
-   },
-   }
-   req.Clone(httptrace.WithClientTrace(context.Background(), trace))
-   return pURL, err
+      ctx := req.Context()
+      pURL := ctx.Value(pkey).(*url.URL)
+      trace := &httptrace.ClientTrace{
+      GotConn: func(connInfo httptrace.GotConnInfo) {
+      fmt.Printf("Got conn: %+v", connInfo)
+      },
+      DNSDone: func(dnsInfo httptrace.DNSDoneInfo) {
+      fmt.Printf("DNS done, info: %+v", dnsInfo)
+      },
+      GotFirstResponseByte: func() {
+      fmt.Printf("GotFirstResponseByte: %+v", time.Now())
+      },
+      }
+      req.Clone(httptrace.WithClientTrace(context.Background(), trace))
+      return pURL, err
    }
    resp, err := tr.RoundTrip(newReq)
-   respWrapper := &ResponseWrapper{
-   Resp: resp,
-   Err:  err,
-   }
-   p.delegate.BeforeResponse(ctx, respWrapper)
    if ctx.abort {
-   ctx.SetContextErrType(BeforeResponseFail)
-   return
+      ctx.SetContextErrType(BeforeResponseFail)
+      return
    }
    if err == nil {
-   removeConnectionHeaders(resp.Header)
-   removeHopHeaders(resp.Header)
+      removeConnectionHeaders(resp.Header)
+      removeHopHeaders(resp.Header)
    }
    responseFunc(resp, err)
 }

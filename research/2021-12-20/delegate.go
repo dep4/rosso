@@ -1,10 +1,10 @@
 package main
 
 import (
+   "crypto/tls"
    "fmt"
    "net"
    "net/http"
-   "net/url"
    "sync"
    "time"
 )
@@ -24,65 +24,12 @@ type Context struct {
 	Lock       sync.RWMutex
 }
 
-// Delegate defines some extra manipulation on requests set by user.
-type Delegate interface {
-	GetExtensionManager() *ExtensionManager
-	SetExtensionManager(*ExtensionManager)
-	Connect(ctx *Context, rw http.ResponseWriter)
-	Auth(ctx *Context, rw http.ResponseWriter)
-	BeforeRequest(ctx *Context)
-	BeforeResponse(ctx *Context, i interface{})
-	ParentProxy(ctx *Context, i interface{}) (*url.URL, error)
-	DuringResponse(ctx *Context, i interface{})
-	Finish(ctx *Context, rw http.ResponseWriter)
-}
-
-var _ Delegate = &DefaultDelegate{}
-
-// DefaultDelegate basically does nothing.
-type DefaultDelegate struct {
-	Delegate
-}
-
-// GetExtensionManager .
-func (h *DefaultDelegate) GetExtensionManager() *ExtensionManager {
-	return nil
-}
-
-// SetExtensionManager .
-func (h *DefaultDelegate) SetExtensionManager(em *ExtensionManager) {}
-
-// Connect .
-func (h *DefaultDelegate) Connect(ctx *Context, rw http.ResponseWriter) {}
-
-// Auth .
-func (h *DefaultDelegate) Auth(ctx *Context, rw http.ResponseWriter) {}
-
-// BeforeRequest .
-func (h *DefaultDelegate) BeforeRequest(ctx *Context) {}
-
-// BeforeResponse .
-func (h *DefaultDelegate) BeforeResponse(ctx *Context, i interface{}) {}
-
-// ParentProxy .
-func (h *DefaultDelegate) ParentProxy(ctx *Context, i interface{}) (*url.URL, error) {
-	return http.ProxyFromEnvironment(ctx.Req)
-}
-
-// DuringResponse .
-func (h *DefaultDelegate) DuringResponse(ctx *Context, i interface{}) {}
-
-// Finish .
-func (h *DefaultDelegate) Finish(ctx *Context, rw http.ResponseWriter) {}
-
-// GetContextError .
 func (c *Context) GetContextError() (errType string, err error) {
 	c.Lock.RLock()
 	defer c.Lock.RUnlock()
 	return c.ErrType, c.Err
 }
 
-// SetContextErrorWithType .
 func (c *Context) SetContextErrorWithType(err error, errType string) {
 	c.Lock.Lock()
 	defer c.Lock.Unlock()
@@ -157,12 +104,41 @@ func (c *Context) IsAborted() bool {
 	return c.abort
 }
 
-// ConnPool .
-type ConnPool interface {
-	Get() (net.Conn, error)
-	GetWithTimeout(timeout time.Duration) (net.Conn, error)
-	Close() error
-	GetTag() string             // get the human readable tag of the remote
-	GetWeight() int             // get the weight of this connection pool
-	GetRemoteAddrURL() *url.URL // get the remote addr of this connection pool
+type handlerConfig struct {
+	DisableKeepAlive bool
+	//Delegate         Delegate
+	DecryptHTTPS     bool
+	Transport        *http.Transport
+	Mode             int
+}
+
+var defaultHandlerConfig = &handlerConfig{
+	DisableKeepAlive: false,
+	//Delegate:         &DefaultDelegate{},
+	DecryptHTTPS:     false,
+	Transport: &http.Transport{
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: true,
+		},
+		DialContext: (&net.Dialer{
+			DualStack: true,
+		}).DialContext,
+		MaxIdleConns:          100,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+	},
+}
+
+var defaultServerConfig = &serverConfig{
+	ProxyAddr:    ":8080",
+	ReadTimeout:  60 * time.Second,
+	WriteTimeout: 60 * time.Second,
+}
+
+type serverConfig struct {
+	ProxyAddr    string
+	ReadTimeout  time.Duration
+	WriteTimeout time.Duration
+	TLSConfig    *tls.Config
 }
