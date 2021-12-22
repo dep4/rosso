@@ -3,20 +3,9 @@ package crypto
 import (
    "encoding/hex"
    "fmt"
-   "os"
+   "net/http"
    "testing"
 )
-
-func TestBytes(t *testing.T) {
-   var b []byte
-   b = append(b, 0,0,0,5, 'h', 'e', 'l', 'l', 'o')
-   b = append(b, 0,0,0,5, 'w', 'o', 'r', 'l', 'd')
-   buf := NewBuffer(b)
-   one, two, ok := buf.ReadUint32LengthPrefixed()
-   fmt.Printf("%v %s %v\n", one, two, ok)
-   one, two, ok = buf.ReadUint32LengthPrefixed()
-   fmt.Printf("%v %s %v\n", one, two, ok)
-}
 
 const androidHandshake =
    "16030100bb010000b703034420d198e7852decbc117dc7f90550b98f2d643c954bf3361d" +
@@ -42,6 +31,22 @@ const curlHandshake =
    "000000000000000000000000000000000000000000000000000000000000000000000000" +
    "000000000000000000000000000000000000000000000000000000000000000000000000" +
    "00000000000000000000000000"
+
+func TestTransport(t *testing.T) {
+   hello, err := ParseJA3(AndroidJA3)
+   if err != nil {
+      t.Fatal(err)
+   }
+   req, err := http.NewRequest("HEAD", "https://example.com", nil)
+   if err != nil {
+      t.Fatal(err)
+   }
+   res, err := hello.Transport().RoundTrip(req)
+   if err != nil {
+      t.Fatal(err)
+   }
+   fmt.Printf("%+v\n", res)
+}
 
 func TestFormatHandshake(t *testing.T) {
    hands := []string{androidHandshake, curlHandshake}
@@ -76,18 +81,5 @@ func TestFormatJA3(t *testing.T) {
    }
    if ja3 != AndroidJA3 {
       t.Fatal(ja3)
-   }
-}
-
-func TestHandshakes(t *testing.T) {
-   pcap, err := os.ReadFile("PCAPdroid_25_Oct_21_53_41.pcap")
-   if err != nil {
-      t.Fatal(err)
-   }
-   for _, hand := range Handshakes(pcap) {
-      hello, err := ParseHandshake(hand)
-      if err == nil {
-         fmt.Printf("%+v\n", hello)
-      }
    }
 }

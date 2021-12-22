@@ -1,69 +1,34 @@
 package crypto
 
 import (
-   "bytes"
+   "encoding/binary"
    "fmt"
    "github.com/refraction-networking/utls"
+   "io"
    "net"
    "net/http"
+   "strconv"
    "strings"
 )
 
-type Buffer struct {
-   buf []byte
-}
+const AndroidJA3 =
+   "769,49195-49196-52393-49199-49200-52392-158-159-49161-49162-49171-49172-" +
+   "51-57-156-157-47-53,65281-0-23-35-13-16-11-10,23,0"
 
-func NewBuffer(buf []byte) *Buffer {
-   return &Buffer{buf}
-}
-
-func (b *Buffer) Next(i int) ([]byte, bool) {
-   if i < 0 || i > len(b.buf) {
-      return nil, false
+func extensionType(ext tls.TLSExtension) (uint16, error) {
+   data, err := io.ReadAll(ext)
+   if err != nil || len(data) <= 1 {
+      return 0, err
    }
-   buf := b.buf[:i]
-   b.buf = b.buf[i:]
-   return buf, true
+   return binary.BigEndian.Uint16(data), nil
 }
 
-func (b *Buffer) ReadBytes(delim byte) ([]byte, bool) {
-   i := bytes.IndexByte(b.buf, delim)
-   if i == -1 {
-      return nil, false
-   }
-   buf := b.buf[:i+1]
-   b.buf = b.buf[i+1:]
-   return buf, true
+type ClientHello struct {
+   *tls.ClientHelloSpec
+   Version uint16
 }
 
-func Handshakes(pcap []byte) [][]byte {
-   var hands [][]byte
-   for {
-      var hand []byte
-      buf := NewBuffer(pcap)
-      // Content Type
-      junk, ok := buf.ReadBytes(0x16)
-      if !ok {
-         return hands
-      }
-      hand = append(hand, 0x16)
-      // Version
-      ver, ok := buf.Next(2)
-      if ok {
-         hand = append(hand, ver...)
-      }
-      // Length, Handshake Protocol
-      pre, pro, ok := buf.ReadUint16LengthPrefixed()
-      if ok {
-         hand = append(hand, pre...)
-         hand = append(hand, pro...)
-         hands = append(hands, hand)
-      }
-      pcap = pcap[len(junk):]
-   }
-}
-
-func NewTransport(spec *tls.ClientHelloSpec) *http.Transport {
+func (c ClientHello) Transport() *http.Transport {
    return &http.Transport{
       DialTLS: func(network, addr string) (net.Conn, error) {
          conn, err := net.Dial(network, addr)
@@ -76,7 +41,7 @@ func NewTransport(spec *tls.ClientHelloSpec) *http.Transport {
          }
          config := &tls.Config{ServerName: host}
          uconn := tls.UClient(conn, config, tls.HelloCustom)
-         if err := uconn.ApplyPreset(spec); err != nil {
+         if err := uconn.ApplyPreset(c.ClientHelloSpec); err != nil {
             return nil, err
          }
          if err := uconn.Handshake(); err != nil {
@@ -87,9 +52,19 @@ func NewTransport(spec *tls.ClientHelloSpec) *http.Transport {
    }
 }
 
-type ClientHello struct {
-   *tls.ClientHelloSpec
-   Version uint16
+func ParseHandshake(data []byte) (*ClientHello, error) {
+   // Content Type, Version
+   if dLen := len(data); dLen <= 2 {
+      return nil, invalidSlice{2, dLen}
+   }
+   version := binary.BigEndian.Uint16(data[1:])
+   // unsupported extension 0x16
+   fin := tls.Fingerprinter{AllowBluntMimicry: true}
+   spec, err := fin.FingerprintClientHello(data)
+   if err != nil {
+      return nil, err
+   }
+   return &ClientHello{spec, version}, nil
 }
 
 func ParseJA3(str string) (*ClientHello, error) {
@@ -222,4 +197,18 @@ func (h ClientHello) FormatJA3() (string, error) {
       fmt.Fprint(buf, val)
    }
    return buf.String(), nil
+}
+
+type invalidSlice struct {
+   index, length int
+}
+
+func (i invalidSlice) Error() string {
+   index, length := int64(i.index), int64(i.length)
+   var buf []byte
+   buf = append(buf, "index out of range ["...)
+   buf = strconv.AppendInt(buf, index, 10)
+   buf = append(buf, "] with length "...)
+   buf = strconv.AppendInt(buf, length, 10)
+   return string(buf)
 }
