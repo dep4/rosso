@@ -11,16 +11,17 @@ import (
    "strings"
 )
 
+// 2454fe66222e468b886b8e552b5e2f3b
 const AndroidJA3 =
    "769,49195-49196-52393-49199-49200-52392-158-159-49161-49162-49171-49172-" +
    "51-57-156-157-47-53,65281-0-23-35-13-16-11-10,23,0"
 
 func extensionType(ext tls.TLSExtension) (uint16, error) {
-   data, err := io.ReadAll(ext)
-   if err != nil || len(data) <= 1 {
+   buf, err := io.ReadAll(ext)
+   if err != nil || len(buf) <= 1 {
       return 0, err
    }
-   return binary.BigEndian.Uint16(data), nil
+   return binary.BigEndian.Uint16(buf), nil
 }
 
 type ClientHello struct {
@@ -28,39 +29,15 @@ type ClientHello struct {
    Version uint16
 }
 
-func (c ClientHello) Transport() *http.Transport {
-   return &http.Transport{
-      DialTLS: func(network, addr string) (net.Conn, error) {
-         conn, err := net.Dial(network, addr)
-         if err != nil {
-            return nil, err
-         }
-         host, _, err := net.SplitHostPort(addr)
-         if err != nil {
-            return nil, err
-         }
-         config := &tls.Config{ServerName: host}
-         uconn := tls.UClient(conn, config, tls.HelloCustom)
-         if err := uconn.ApplyPreset(c.ClientHelloSpec); err != nil {
-            return nil, err
-         }
-         if err := uconn.Handshake(); err != nil {
-            return nil, err
-         }
-         return uconn, nil
-      },
-   }
-}
-
-func ParseHandshake(data []byte) (*ClientHello, error) {
+func ParseHandshake(buf []byte) (*ClientHello, error) {
    // Content Type, Version
-   if dLen := len(data); dLen <= 2 {
+   if dLen := len(buf); dLen <= 2 {
       return nil, invalidSlice{2, dLen}
    }
-   version := binary.BigEndian.Uint16(data[1:])
+   version := binary.BigEndian.Uint16(buf[1:])
    // unsupported extension 0x16
    fin := tls.Fingerprinter{AllowBluntMimicry: true}
-   spec, err := fin.FingerprintClientHello(data)
+   spec, err := fin.FingerprintClientHello(buf)
    if err != nil {
       return nil, err
    }
@@ -146,13 +123,13 @@ func ParseJA3(str string) (*ClientHello, error) {
    return &hello, nil
 }
 
-func (h ClientHello) FormatJA3() (string, error) {
+func (c ClientHello) FormatJA3() (string, error) {
    buf := new(strings.Builder)
    // Version
-   fmt.Fprint(buf, h.Version)
+   fmt.Fprint(buf, c.Version)
    // Cipher Suites
    buf.WriteByte(',')
-   for key, val := range h.CipherSuites {
+   for key, val := range c.CipherSuites {
       if key >= 1 {
          buf.WriteByte('-')
       }
@@ -164,7 +141,7 @@ func (h ClientHello) FormatJA3() (string, error) {
       curves []tls.CurveID
       points []uint8
    )
-   for key, val := range h.Extensions {
+   for key, val := range c.Extensions {
       if key >= 1 {
          buf.WriteByte('-')
       }
@@ -197,6 +174,30 @@ func (h ClientHello) FormatJA3() (string, error) {
       fmt.Fprint(buf, val)
    }
    return buf.String(), nil
+}
+
+func (c ClientHello) Transport() *http.Transport {
+   return &http.Transport{
+      DialTLS: func(network, addr string) (net.Conn, error) {
+         conn, err := net.Dial(network, addr)
+         if err != nil {
+            return nil, err
+         }
+         host, _, err := net.SplitHostPort(addr)
+         if err != nil {
+            return nil, err
+         }
+         config := &tls.Config{ServerName: host}
+         uconn := tls.UClient(conn, config, tls.HelloCustom)
+         if err := uconn.ApplyPreset(c.ClientHelloSpec); err != nil {
+            return nil, err
+         }
+         if err := uconn.Handshake(); err != nil {
+            return nil, err
+         }
+         return uconn, nil
+      },
+   }
 }
 
 type invalidSlice struct {

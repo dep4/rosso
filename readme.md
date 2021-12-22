@@ -27,7 +27,6 @@ Parsers for web formats
 - JSON
 - M3U
 - Protobuf
-- pcap
 
 ## Repo
 
