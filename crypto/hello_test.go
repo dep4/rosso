@@ -55,7 +55,7 @@ func TestFormatHandshake(t *testing.T) {
       if err != nil {
          t.Fatal(err)
       }
-      hello, err := ParseHandshake(data)
+      hello, err := ParseTLS(data)
       if err != nil {
          t.Fatal(err)
       }

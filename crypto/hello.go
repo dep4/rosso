@@ -29,7 +29,7 @@ type ClientHello struct {
    Version uint16
 }
 
-func ParseHandshake(buf []byte) (*ClientHello, error) {
+func ParseTLS(buf []byte) (*ClientHello, error) {
    // Content Type, Version
    if dLen := len(buf); dLen <= 2 {
       return nil, invalidSlice{2, dLen}
