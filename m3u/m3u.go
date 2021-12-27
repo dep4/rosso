@@ -1,3 +1,4 @@
+// M3U parser
 package m3u
 
 import (
