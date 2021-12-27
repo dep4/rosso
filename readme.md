@@ -1,4 +1,4 @@
-# Parse
+# Std
 
 > Yeah so it sounds like you and me had the same journey here, and uh yeah I'm
 > glad to find someone who's on the other side of it. So uh tell me what did you
@@ -17,18 +17,16 @@
 >
 > [Joel Haver (2021)](//youtube.com/watch?v=hnUpTyKSjag)
 
-Parsers for web formats
+My standard library
 
-## Formats
-
-- HTML
-- HTTP
-- JA3
-- JSON
-- M3U
-- Protobuf
-- TLS
+Path     | Synopsis
+---------|--------------------
+crypto   | TLS and JA3 parsers
+json     | JSON parser
+m3u      | M3U parser
+net      | HTML and HTTP parsers
+protobuf | Protocol Buffers
 
 ## Repo
 
-https://github.com/89z/parse
+https://github.com/89z/std

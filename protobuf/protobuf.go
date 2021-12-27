@@ -1,3 +1,4 @@
+// Protocol Buffers
 package protobuf
 
 import (
