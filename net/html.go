@@ -1,4 +1,4 @@
-// HTML, HTTP and URL functions.
+// HTML and HTTP parsers.
 //
 // Why use "github.com/tdewolff/parse/v2/html" instead of
 // "golang.org/x/net/html"?

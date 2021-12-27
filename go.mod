@@ -1,4 +1,4 @@
-module github.com/89z/parse
+module github.com/89z/format
 
 go 1.17
 

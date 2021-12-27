@@ -1,3 +1,4 @@
+// JSON parser
 package json
 
 import (

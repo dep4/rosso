@@ -6,4 +6,4 @@
 
 ## How to get Android JA3?
 
-https://github.com/89z/parse/tree/master/cmd/proxy
+Check out the `cmd/proxy` folder.
