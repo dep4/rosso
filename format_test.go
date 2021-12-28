@@ -1,4 +1,4 @@
-package measure
+package format
 
 import (
    "fmt"
@@ -14,6 +14,9 @@ func TestPercent(t *testing.T) {
 }
 
 func TestSymbol(t *testing.T) {
-   num := Number.FormatInt(1_234_567_890)
-   fmt.Println(num)
+   nums := []int64{999, 1_234_567_890}
+   for _, num := range nums {
+      val := Number.LabelInt(num)
+      fmt.Println(val)
+   }
 }
