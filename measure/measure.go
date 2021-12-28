@@ -21,12 +21,18 @@ func Percent(value, total int64) string {
 type Symbols []string
 
 func (s Symbols) FormatFloat(f float64) string {
-   var symbol string
-   for _, symbol = range s {
+   var (
+      i int
+      symbol string
+   )
+   for i, symbol = range s {
       if f < 1000 {
          break
       }
       f /= 1000
+   }
+   if i == 0 {
+      return strconv.FormatFloat(f, 'f', 0, 64) + symbol
    }
    return strconv.FormatFloat(f, 'f', 3, 64) + symbol
 }
