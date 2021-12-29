@@ -70,3 +70,5 @@ func (s Symbols) LabelUint(i uint64) string {
    f := float64(i)
    return s.Label(f)
 }
+
+
