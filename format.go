@@ -31,14 +31,6 @@ func PercentInt64(value, total int64) string {
    return Percent(val, tot)
 }
 
-// github.com/golang/text/blob/18b340fc/encoding/internal/enctest/enctest.go#L175-L180
-func Trim(s string) string {
-   if len(s) <= 99 {
-      return s
-   }
-   return s[:48] + "..." + s[len(s)-48:]
-}
-
 type Symbols []string
 
 // godocs.io/github.com/google/pprof/internal/measurement#Label
