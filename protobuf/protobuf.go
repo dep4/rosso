@@ -116,18 +116,6 @@ func Unmarshal(buf []byte) (Message, error) {
                mes.add(num, mNew)
             }
          }
-         /*
-         mNew, err := Unmarshal(buf)
-         if err != nil {
-            if isBinary(buf) {
-               mes.addBytes(num, buf)
-            } else {
-               mes.addString(num, string(buf))
-            }
-         } else {
-            mes.add(num, mNew)
-         }
-         */
       case protowire.StartGroupType:
          buf, err := consumeGroup(num, bVal)
          if err != nil {
