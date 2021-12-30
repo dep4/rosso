@@ -4,11 +4,11 @@ package crypto
 import (
    "encoding/binary"
    "fmt"
+   "github.com/89z/format"
    "github.com/refraction-networking/utls"
    "io"
    "net"
    "net/http"
-   "strconv"
    "strings"
 )
 
@@ -33,7 +33,7 @@ type ClientHello struct {
 func ParseTLS(buf []byte) (*ClientHello, error) {
    // Content Type, Version
    if dLen := len(buf); dLen <= 2 {
-      return nil, invalidSlice{2, dLen}
+      return nil, format.InvalidSlice{2, dLen}
    }
    version := binary.BigEndian.Uint16(buf[1:])
    // unsupported extension 0x16
@@ -48,7 +48,7 @@ func ParseTLS(buf []byte) (*ClientHello, error) {
 func ParseJA3(str string) (*ClientHello, error) {
    tokens := strings.Split(str, ",")
    if tLen := len(tokens); tLen <= 4 {
-      return nil, invalidSlice{4, tLen}
+      return nil, format.InvalidSlice{4, tLen}
    }
    var version uint16
    _, err := fmt.Sscan(tokens[0], &version)
@@ -199,18 +199,4 @@ func (c ClientHello) Transport() *http.Transport {
          return uconn, nil
       },
    }
-}
-
-type invalidSlice struct {
-   index, length int
-}
-
-func (i invalidSlice) Error() string {
-   index, length := int64(i.index), int64(i.length)
-   var buf []byte
-   buf = append(buf, "index out of range ["...)
-   buf = strconv.AppendInt(buf, index, 10)
-   buf = append(buf, "] with length "...)
-   buf = strconv.AppendInt(buf, length, 10)
-   return string(buf)
 }
