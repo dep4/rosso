@@ -7,6 +7,7 @@ import (
    "net/http/httputil"
    "os"
    "strconv"
+   "strings"
    "time"
 )
 
@@ -15,6 +16,13 @@ var (
    Size = Symbols{" B", " kB", " MB", " GB", " TB"}
    Rate = Symbols{" B/s", " kB/s", " MB/s", " GB/s", " TB/s"}
 )
+
+func Clean(char rune) rune {
+   if strings.ContainsRune(`"*/:<>?\|`, char) {
+      return -1
+   }
+   return char
+}
 
 // godocs.io/github.com/google/pprof/internal/measurement#Percentage
 func Percent(value, total float64) string {
