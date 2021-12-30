@@ -3,10 +3,12 @@ package format
 import (
    "bytes"
    "fmt"
+   "mime"
    "net/http"
    "net/http/httputil"
    "os"
    "strconv"
+   "strings"
    "time"
 )
 
@@ -15,6 +17,32 @@ var (
    Size = Symbols{" B", " kB", " MB", " GB", " TB"}
    Rate = Symbols{" B/s", " kB/s", " MB/s", " GB/s", " TB/s"}
 )
+
+func Clean(char rune) rune {
+   if strings.ContainsRune(`"*/:<>?\|`, char) {
+      return -1
+   }
+   return char
+}
+
+// github.com/golang/go/issues/22318
+func ExtensionByType(typ string) (string, error) {
+   justType, _, err := mime.ParseMediaType(typ)
+   if err != nil {
+      return "", err
+   }
+   switch justType {
+   case "audio/mp4":
+      return ".m4a", nil
+   case "audio/webm":
+      return ".weba", nil
+   case "video/mp4":
+      return ".m4v", nil
+   case "video/webm":
+      return ".webm", nil
+   }
+   return "", notFound{justType}
+}
 
 // godocs.io/github.com/google/pprof/internal/measurement#Percentage
 func Percent(value, total float64) string {
@@ -68,6 +96,14 @@ func (l LogLevel) Dump(req *http.Request) error {
       os.Stdout.Write(buf)
    }
    return nil
+}
+
+type notFound struct {
+   input string
+}
+
+func (n notFound) Error() string {
+   return strconv.Quote(n.input) + " not found"
 }
 
 type Progress struct {
