@@ -18,11 +18,10 @@ content-length: 54
 {"isStationStart":true,"stationId":126608766085892525}`
 
 func TestRequest(t *testing.T) {
-   req, err := ReadRequest(strings.NewReader(post))
+   req, err := ReadRequest(strings.NewReader(post), false)
    if err != nil {
       t.Fatal(err)
    }
-   req.URL.Scheme = "http"
    buf, err := httputil.DumpRequestOut(req, true)
    if err != nil {
       t.Fatal(err)

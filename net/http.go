@@ -10,7 +10,7 @@ import (
    "strings"
 )
 
-func ReadRequest(src io.Reader) (*http.Request, error) {
+func ReadRequest(src io.Reader, https bool) (*http.Request, error) {
    var req http.Request
    text := textproto.NewReader(bufio.NewReader(src))
    // .Method
@@ -18,7 +18,6 @@ func ReadRequest(src io.Reader) (*http.Request, error) {
    if err != nil {
       return nil, err
    }
-   // GET /fdfe/details?doc=com.instagram.android HTTP/1.1
    methodPath := strings.Fields(sMethodPath)
    if len(methodPath) != 3 {
       return nil, textproto.ProtocolError(sMethodPath)
@@ -30,6 +29,12 @@ func ReadRequest(src io.Reader) (*http.Request, error) {
       return nil, err
    }
    req.URL = addr
+   // .URL.Scheme
+   if https {
+      req.URL.Scheme = "https"
+   } else {
+      req.URL.Scheme = "http"
+   }
    // .URL.Host
    head, err := text.ReadMIMEHeader()
    if err != nil {
