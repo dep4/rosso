@@ -6,7 +6,6 @@ import (
    "mime"
    "net/http"
    "net/http/httputil"
-   "os"
    "strconv"
    "strings"
    "time"
@@ -42,6 +41,20 @@ func ExtensionByType(typ string) (string, error) {
       return ".webm", nil
    }
    return "", notFound{justType}
+}
+
+// mimesniff.spec.whatwg.org#binary-data-byte
+func IsBinary(buf []byte) bool {
+   for _, b := range buf {
+      switch {
+      case b <= 0x08,
+      b == 0x0B,
+      0x0E <= b && b <= 0x1A,
+      0x1C <= b && b <= 0x1F:
+         return true
+      }
+   }
+   return false
 }
 
 // godocs.io/github.com/google/pprof/internal/measurement#Percentage
@@ -86,28 +99,28 @@ func (i InvalidSlice) Error() string {
    return string(buf)
 }
 
+// Use 0 for INFO, 1 for VERBOSE and any other value for QUIET.
 type LogLevel int
 
 func (l LogLevel) Dump(req *http.Request) error {
-   switch l {
+   switch 1 {
    case 0:
-      loc := Trim(req.URL.String())
+      loc := req.URL.String()
+      loc = Trim(loc)
       fmt.Println(req.Method, loc)
    case 1:
       buf, err := httputil.DumpRequest(req, true)
       if err != nil {
          return err
       }
-      os.Stdout.Write(buf)
+      if IsBinary(buf) {
+         fmt.Printf("%q", buf)
+      } else {
+         fmt.Printf("%s", buf)
+      }
       if !bytes.HasSuffix(buf, []byte{'\n'}) {
-         os.Stdout.WriteString("\n")
+         fmt.Println()
       }
-   case 2:
-      buf, err := httputil.DumpRequestOut(req, true)
-      if err != nil {
-         return err
-      }
-      os.Stdout.Write(buf)
    }
    return nil
 }
@@ -120,7 +133,7 @@ type Progress struct {
 
 func Content(length int64) Progress {
    pro := Progress{PartLength: 10_000_000}
-   pro.ContentLength = length
+   pro.Response = &http.Response{ContentLength: length}
    pro.Time = time.Now()
    return pro
 }

@@ -4,6 +4,7 @@ package protobuf
 import (
    "bytes"
    "fmt"
+   "github.com/89z/format"
    "google.golang.org/protobuf/encoding/protowire"
    "io"
    "strconv"
@@ -41,20 +42,6 @@ func appendField(buf []byte, num protowire.Number, val interface{}) []byte {
       }
    }
    return buf
-}
-
-// mimesniff.spec.whatwg.org#binary-data-byte
-func isBinary(buf []byte) bool {
-   for _, b := range buf {
-      switch {
-      case b <= 0x08,
-      b == 0x0B,
-      0x0E <= b && b <= 0x1A,
-      0x1C <= b && b <= 0x1F:
-         return true
-      }
-   }
-   return false
 }
 
 type Message map[Tag]interface{}
@@ -106,7 +93,7 @@ func Unmarshal(buf []byte) (Message, error) {
          if err != nil {
             return nil, err
          }
-         if !isBinary(buf) {
+         if !format.IsBinary(buf) {
             mes.addString(num, string(buf))
          } else {
             mNew, err := Unmarshal(buf)
