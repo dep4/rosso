@@ -120,7 +120,7 @@ type Progress struct {
 
 func Content(length int64) Progress {
    pro := Progress{PartLength: 10_000_000}
-   pro.ContentLength = length
+   pro.Response = &http.Response{ContentLength: length}
    pro.Time = time.Now()
    return pro
 }
