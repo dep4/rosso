@@ -2,6 +2,7 @@ package net
 
 import (
    "bufio"
+   "fmt"
    "io"
    "net/http"
    "net/textproto"
@@ -10,7 +11,28 @@ import (
    "strings"
 )
 
-func ReadRequest(src io.Reader) (*http.Request, error) {
+func WriteRequest(dst io.Writer, req *http.Request) error {
+   fmt.Fprint(dst, "&http.Request{")
+   // .Method
+   fmt.Fprintf(dst, "Method:%q", req.Method)
+   // .URL
+   fmt.Fprintf(dst, ", URL:%#v", req.URL)
+   // .Header
+   fmt.Fprintf(dst, ", Header:%#v", req.Header)
+   // .Body
+   if req.Method == "POST" {
+      buf, err := io.ReadAll(req.Body)
+      if err != nil {
+         return err
+      }
+      fmt.Fprintf(dst, ", Body:io.NopCloser(strings.NewReader(%q))", buf)
+   }
+   // return
+   fmt.Fprintln(dst, "}")
+   return nil
+}
+
+func ReadRequest(src io.Reader, https bool) (*http.Request, error) {
    var req http.Request
    text := textproto.NewReader(bufio.NewReader(src))
    // .Method
@@ -18,7 +40,6 @@ func ReadRequest(src io.Reader) (*http.Request, error) {
    if err != nil {
       return nil, err
    }
-   // GET /fdfe/details?doc=com.instagram.android HTTP/1.1
    methodPath := strings.Fields(sMethodPath)
    if len(methodPath) != 3 {
       return nil, textproto.ProtocolError(sMethodPath)
@@ -30,6 +51,12 @@ func ReadRequest(src io.Reader) (*http.Request, error) {
       return nil, err
    }
    req.URL = addr
+   // .URL.Scheme
+   if https {
+      req.URL.Scheme = "https"
+   } else {
+      req.URL.Scheme = "http"
+   }
    // .URL.Host
    head, err := text.ReadMIMEHeader()
    if err != nil {

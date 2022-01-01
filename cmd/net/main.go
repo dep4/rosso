@@ -30,18 +30,13 @@ func main() {
       panic(err)
    }
    defer read.Close()
-   req, err := net.ReadRequest(read)
+   req, err := net.ReadRequest(read, https)
    if err != nil {
       panic(err)
    }
    if info {
       fmt.Printf("%#v\n", req.URL.Query())
       fmt.Printf("%#v\n", req.Header)
-   }
-   if https {
-      req.URL.Scheme = "https"
-   } else {
-      req.URL.Scheme = "http"
    }
    res, err := new(http.Transport).RoundTrip(req)
    if err != nil {
