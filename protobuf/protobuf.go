@@ -100,7 +100,7 @@ func Unmarshal(buf []byte) (Message, error) {
             if err != nil {
                mes.addBytes(num, buf)
             } else {
-               mes.add(num, mNew)
+               mes.Add(num, mNew)
             }
          }
       case protowire.StartGroupType:
@@ -112,7 +112,7 @@ func Unmarshal(buf []byte) (Message, error) {
          if err != nil {
             return nil, err
          }
-         mes.add(num, mNew)
+         mes.Add(num, mNew)
       }
       buf = buf[fLen:]
    }

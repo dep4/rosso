@@ -103,7 +103,7 @@ func (i InvalidSlice) Error() string {
 type LogLevel int
 
 func (l LogLevel) Dump(req *http.Request) error {
-   switch 1 {
+   switch l {
    case 0:
       loc := req.URL.String()
       loc = Trim(loc)
