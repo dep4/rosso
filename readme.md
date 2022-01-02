@@ -17,11 +17,11 @@
 >
 > [Joel Haver (2021)](//youtube.com/watch?v=hnUpTyKSjag)
 
-Parsers and formatters for different data types
+Data parsers and formatters
 
 Path     | Synopsis
 ---------|--------------------
-crypto   | TLS and JA3 parsers
+crypto   | JA3 and TLS fingerprint
 json     | JSON parser
 m3u      | M3U parser
 net      | HTML and HTTP parsers
