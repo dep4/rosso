@@ -15,16 +15,20 @@ func readFrom(src io.Reader, output string, proto bool) error {
    }
    defer dst.Close()
    if proto {
-      mes, err := protobuf.Decode(src)
+      bProto, err := io.ReadAll(src)
       if err != nil {
          return err
       }
-      buf, err := json.Marshal(mes)
+      mes, err := protobuf.Unmarshal(bProto)
+      if err != nil {
+         return err
+      }
+      bJSON, err := json.Marshal(mes)
       if err != nil {
          return err
       }
       indent := new(bytes.Buffer)
-      if err := json.Indent(indent, buf, "", " "); err != nil {
+      if err := json.Indent(indent, bJSON, "", " "); err != nil {
          return err
       }
       if _, err := dst.ReadFrom(indent); err != nil {

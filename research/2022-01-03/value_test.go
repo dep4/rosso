@@ -10,6 +10,9 @@ var checkin = Message{
       Tag{1, "build"}:Message{
          Tag{10, "sdkVersion"}: uint64(29),
       },
+      Tag{2, ""}:Message{
+         Tag{10, "sdkVersion"}: uint64(29),
+      },
    },
 }
 
@@ -19,11 +22,7 @@ func TestGet(t *testing.T) {
       fmt.Println(get)
    }
    {
-      get := checkin.Get2(Tag{4, "checkin"}, Tag{1, "build"})
-      fmt.Println(get)
-   }
-   {
-      get := checkin.Get3([]Tag{{4, "checkin"}, {1, "build"}})
+      get := checkin.Get(4, "checkin").Get(2, "hello")
       fmt.Println(get)
    }
 }
