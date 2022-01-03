@@ -67,6 +67,56 @@ func consumeVarint(b []byte) (uint64, error) {
    return val, nil
 }
 
+func (m Message) addBytes(key protowire.Number, val []byte) {
+   tag := Tag{Number: key}
+   switch typ := m[tag].(type) {
+   case nil:
+      m[tag] = val
+   case []byte:
+      m[tag] = [][]byte{typ, val}
+   case [][]byte:
+      m[tag] = append(typ, val)
+   }
+}
+
+func (m Message) addString(key protowire.Number, val string) {
+   tag := Tag{Number: key}
+   switch typ := m[tag].(type) {
+   case nil:
+      m[tag] = val
+   case string:
+      m[tag] = []string{typ, val}
+   case []string:
+      m[tag] = append(typ, val)
+   }
+}
+
+func (m Message) addUint32(key protowire.Number, val uint32) {
+   tag := Tag{Number: key}
+   switch typ := m[tag].(type) {
+   case nil:
+      m[tag] = val
+   case uint32:
+      m[tag] = []uint32{typ, val}
+   case []uint32:
+      m[tag] = append(typ, val)
+   }
+}
+
+func (m Message) addUint64(key protowire.Number, val uint64) {
+   tag := Tag{Number: key}
+   switch typ := m[tag].(type) {
+   case nil:
+      m[tag] = val
+   case uint64:
+      m[tag] = []uint64{typ, val}
+   case []uint64:
+      m[tag] = append(typ, val)
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
 func (m Message) Add(key protowire.Number, val Message) {
    tag := Tag{Number: key}
    switch typ := m[tag].(type) {
@@ -150,53 +200,5 @@ func (m Message) Set(key protowire.Number, val Message) {
 func (m Message) SetUint64(key protowire.Number, val uint64) {
    tag := Tag{Number: key}
    m[tag] = val
-}
-
-func (m Message) addBytes(key protowire.Number, val []byte) {
-   tag := Tag{Number: key}
-   switch typ := m[tag].(type) {
-   case nil:
-      m[tag] = val
-   case []byte:
-      m[tag] = [][]byte{typ, val}
-   case [][]byte:
-      m[tag] = append(typ, val)
-   }
-}
-
-func (m Message) addString(key protowire.Number, val string) {
-   tag := Tag{Number: key}
-   switch typ := m[tag].(type) {
-   case nil:
-      m[tag] = val
-   case string:
-      m[tag] = []string{typ, val}
-   case []string:
-      m[tag] = append(typ, val)
-   }
-}
-
-func (m Message) addUint32(key protowire.Number, val uint32) {
-   tag := Tag{Number: key}
-   switch typ := m[tag].(type) {
-   case nil:
-      m[tag] = val
-   case uint32:
-      m[tag] = []uint32{typ, val}
-   case []uint32:
-      m[tag] = append(typ, val)
-   }
-}
-
-func (m Message) addUint64(key protowire.Number, val uint64) {
-   tag := Tag{Number: key}
-   switch typ := m[tag].(type) {
-   case nil:
-      m[tag] = val
-   case uint64:
-      m[tag] = []uint64{typ, val}
-   case []uint64:
-      m[tag] = append(typ, val)
-   }
 }
 
