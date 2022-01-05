@@ -6,10 +6,13 @@ import (
    "mime"
    "net/http"
    "net/http/httputil"
+   "os"
    "strconv"
    "strings"
    "time"
 )
+
+var Log = Logger{Writer: os.Stderr}
 
 var (
    Number = Symbols{"", " K", " M", " B", " T"}
@@ -105,12 +108,12 @@ func (i InvalidSlice) Error() string {
 }
 
 // Use 0 for INFO, 1 for VERBOSE and any other value for QUIET.
-type Log struct {
-   Level int
+type Logger struct {
    io.Writer
+   Level int
 }
 
-func (l Log) Dump(req *http.Request) error {
+func (l Logger) Dump(req *http.Request) error {
    switch l.Level {
    case 0:
       s := req.Method + " " + req.URL.String() + "\n"
