@@ -6,10 +6,12 @@ import (
    "mime"
    "net/http"
    "net/http/httputil"
+   "os"
    "strconv"
    "strings"
-   "time"
 )
+
+var Log = Logger{Writer: os.Stderr}
 
 var (
    Number = Symbols{"", " K", " M", " B", " T"}
@@ -105,12 +107,12 @@ func (i InvalidSlice) Error() string {
 }
 
 // Use 0 for INFO, 1 for VERBOSE and any other value for QUIET.
-type Log struct {
-   Level int
+type Logger struct {
    io.Writer
+   Level int
 }
 
-func (l Log) Dump(req *http.Request) error {
+func (l Logger) Dump(req *http.Request) error {
    switch l.Level {
    case 0:
       s := req.Method + " " + req.URL.String() + "\n"
@@ -131,46 +133,6 @@ func (l Log) Dump(req *http.Request) error {
       }
    }
    return nil
-}
-
-type Progress struct {
-   *http.Response
-   content, partLength, part int64
-   io.Writer
-   time.Time
-}
-
-func NewProgress(src *http.Response, dst io.Writer) *Progress {
-   var pro Progress
-   pro.Response = src
-   pro.Time = time.Now()
-   pro.Writer = dst
-   pro.partLength = 10_000_000
-   return &pro
-}
-
-func (p *Progress) Read(buf []byte) (int, error) {
-   if p.part == 0 {
-      end := time.Since(p.Time).Milliseconds()
-      if end >= 1 {
-         PercentInt64(p.Writer, p.content, p.ContentLength)
-         io.WriteString(p.Writer, "\t")
-         Size.LabelInt64(p.Writer, p.content)
-         io.WriteString(p.Writer, "\t")
-         Rate.LabelInt64(p.Writer, 1000 * p.content / end)
-         io.WriteString(p.Writer, "\n")
-      }
-   }
-   read, err := p.Body.Read(buf)
-   if err != nil {
-      return 0, err
-   }
-   p.content += int64(read)
-   p.part += int64(read)
-   if p.part >= p.partLength {
-      p.part = 0
-   }
-   return read, nil
 }
 
 type Symbols []string

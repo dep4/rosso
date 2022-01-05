@@ -2,6 +2,7 @@
 package protobuf
 
 import (
+   "bytes"
    "fmt"
    "github.com/89z/format"
    "google.golang.org/protobuf/encoding/protowire"
@@ -44,6 +45,14 @@ func appendField(buf []byte, num protowire.Number, val interface{}) []byte {
 }
 
 type Message map[Tag]interface{}
+
+func Decode(src io.Reader) (Message, error) {
+   buf, err := io.ReadAll(src)
+   if err != nil {
+      return nil, err
+   }
+   return Unmarshal(buf)
+}
 
 func Unmarshal(buf []byte) (Message, error) {
    if len(buf) == 0 {
@@ -108,6 +117,11 @@ func Unmarshal(buf []byte) (Message, error) {
       buf = buf[fLen:]
    }
    return mes, nil
+}
+
+func (m Message) Encode() io.Reader {
+   buf := m.Marshal()
+   return bytes.NewReader(buf)
 }
 
 func (m Message) GoString() string {

@@ -12,43 +12,10 @@ import (
    "strings"
 )
 
-func Transport(spec *tls.ClientHelloSpec) *http.Transport {
-   return &http.Transport{
-      DialTLS: func(network, addr string) (net.Conn, error) {
-         conn, err := net.Dial(network, addr)
-         if err != nil {
-            return nil, err
-         }
-         host, _, err := net.SplitHostPort(addr)
-         if err != nil {
-            return nil, err
-         }
-         config := &tls.Config{ServerName: host}
-         uconn := tls.UClient(conn, config, tls.HelloCustom)
-         if err := uconn.ApplyPreset(spec); err != nil {
-            return nil, err
-         }
-         if err := uconn.Handshake(); err != nil {
-            return nil, err
-         }
-         return uconn, nil
-      },
-   }
-}
-
-func extensionType(ext tls.TLSExtension) (uint16, error) {
-   buf, err := io.ReadAll(ext)
-   if err != nil || len(buf) <= 1 {
-      return 0, err
-   }
-   return binary.BigEndian.Uint16(buf), nil
-}
-
-func ParseTLS(buf []byte) (*tls.ClientHelloSpec, error) {
-   // unsupported extension 0x16
-   fin := tls.Fingerprinter{AllowBluntMimicry: true}
-   return fin.FingerprintClientHello(buf)
-}
+// 8fcaa9e4a15f48af0a7d396e3fa5c5eb
+const AndroidJA3 =
+   "771,49195-49196-52393-49199-49200-52392-158-159-49161-49162-49171-49172-" +
+   "51-57-156-157-47-53,65281-0-23-35-13-16-11-10,23,0"
 
 func FormatJA3(spec *tls.ClientHelloSpec) (string, error) {
    buf := new(strings.Builder)
@@ -103,20 +70,17 @@ func FormatJA3(spec *tls.ClientHelloSpec) (string, error) {
    return buf.String(), nil
 }
 
-////////////////////////////////////////////////////////////////////////////////
-
-func ParseJA3(str string) (*ClientHello, error) {
+func ParseJA3(str string) (*tls.ClientHelloSpec, error) {
    tokens := strings.Split(str, ",")
    if tLen := len(tokens); tLen <= 4 {
       return nil, format.InvalidSlice{4, tLen}
    }
-   var version uint16
-   _, err := fmt.Sscan(tokens[0], &version)
+   // uTLS does not support 0x0 as min version
+   hello := tls.ClientHelloSpec{TLSVersMin: tls.VersionTLS10}
+   // TLSVersMin is the record version, TLSVersMax is the handshake version
+   _, err := fmt.Sscan(tokens[0], &hello.TLSVersMax)
    if err != nil {
       return nil, err
-   }
-   hello := ClientHello{
-      new(tls.ClientHelloSpec), version,
    }
    // build CipherSuites
    cipherKeys := strings.Split(tokens[1], "-")
@@ -184,12 +148,40 @@ func ParseJA3(str string) (*ClientHello, error) {
    return &hello, nil
 }
 
-type ClientHello struct {
-   *tls.ClientHelloSpec
-   Version uint16
+func ParseTLS(buf []byte) (*tls.ClientHelloSpec, error) {
+   // unsupported extension 0x16
+   fin := tls.Fingerprinter{AllowBluntMimicry: true}
+   return fin.FingerprintClientHello(buf)
 }
 
-// 2454fe66222e468b886b8e552b5e2f3b
-const AndroidJA3 =
-   "769,49195-49196-52393-49199-49200-52392-158-159-49161-49162-49171-49172-" +
-   "51-57-156-157-47-53,65281-0-23-35-13-16-11-10,23,0"
+func Transport(spec *tls.ClientHelloSpec) *http.Transport {
+   return &http.Transport{
+      DialTLS: func(network, addr string) (net.Conn, error) {
+         conn, err := net.Dial(network, addr)
+         if err != nil {
+            return nil, err
+         }
+         host, _, err := net.SplitHostPort(addr)
+         if err != nil {
+            return nil, err
+         }
+         config := &tls.Config{ServerName: host}
+         uconn := tls.UClient(conn, config, tls.HelloCustom)
+         if err := uconn.ApplyPreset(spec); err != nil {
+            return nil, err
+         }
+         if err := uconn.Handshake(); err != nil {
+            return nil, err
+         }
+         return uconn, nil
+      },
+   }
+}
+
+func extensionType(ext tls.TLSExtension) (uint16, error) {
+   buf, err := io.ReadAll(ext)
+   if err != nil || len(buf) <= 1 {
+      return 0, err
+   }
+   return binary.BigEndian.Uint16(buf), nil
+}
