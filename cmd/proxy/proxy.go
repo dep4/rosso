@@ -46,7 +46,7 @@ type spyConn struct {
 func (s spyConn) Read(p []byte) (int, error) {
    n, err := s.Conn.Read(p)
    if hello, err := crypto.ParseTLS(p[:n]); err == nil {
-      ja3, err := hello.FormatJA3()
+      ja3, err := crypto.FormatJA3(hello)
       if err == nil {
          fmt.Println(ja3)
       }
