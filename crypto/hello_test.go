@@ -7,6 +7,25 @@ import (
    "testing"
 )
 
+func TestFormatHandshake(t *testing.T) {
+   hands := []string{androidHandshake, curlHandshake}
+   for _, hand := range hands {
+      data, err := hex.DecodeString(hand)
+      if err != nil {
+         t.Fatal(err)
+      }
+      hello, err := ParseTLS(data)
+      if err != nil {
+         t.Fatal(err)
+      }
+      ja3, err := FormatJA3(hello)
+      if err != nil {
+         t.Fatal(err)
+      }
+      fmt.Println(ja3)
+   }
+}
+
 const androidHandshake =
    "16030100bb010000b703034420d198e7852decbc117dc7f90550b98f2d643c954bf3361d" +
    "daf127ff921b04000024c02bc02ccca9c02fc030cca8009e009fc009c00ac013c0140033" +
@@ -48,34 +67,15 @@ func TestTransport(t *testing.T) {
    fmt.Printf("%+v\n", res)
 }
 
-func TestFormatHandshake(t *testing.T) {
-   hands := []string{androidHandshake, curlHandshake}
-   for _, hand := range hands {
-      data, err := hex.DecodeString(hand)
-      if err != nil {
-         t.Fatal(err)
-      }
-      hello, err := ParseTLS(data)
-      if err != nil {
-         t.Fatal(err)
-      }
-      ja3, err := hello.FormatJA3()
-      if err != nil {
-         t.Fatal(err)
-      }
-      fmt.Println(ja3)
-   }
-}
-
 func TestFormatJA3(t *testing.T) {
    hello, err := ParseJA3(AndroidJA3)
    if err != nil {
       t.Fatal(err)
    }
-   for _, ext := range hello.ClientHelloSpec.Extensions {
+   for _, ext := range hello.Extensions {
       fmt.Printf("%#v\n", ext)
    }
-   ja3, err := hello.FormatJA3()
+   ja3, err := FormatJA3(hello.ClientHelloSpec)
    if err != nil {
       t.Fatal(err)
    }
