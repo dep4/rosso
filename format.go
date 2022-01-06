@@ -9,6 +9,7 @@ import (
    "os"
    "strconv"
    "strings"
+   "time"
 )
 
 var Log = Logger{Writer: os.Stderr}
@@ -57,32 +58,6 @@ func IsBinary(buf []byte) bool {
       }
    }
    return false
-}
-
-func Percent(w io.Writer, value, total float64) (int, error) {
-   var s string
-   if total != 0 {
-      ratio := 100 * value / total
-      s = strconv.FormatFloat(ratio, 'f', 1, 64)
-   } else {
-      s = "0"
-   }
-   return io.WriteString(w, s + "%")
-}
-
-func PercentInt(w io.Writer, value, total int) (int, error) {
-   val, tot := float64(value), float64(total)
-   return Percent(w, val, tot)
-}
-
-func PercentInt64(w io.Writer, value, total int64) (int, error) {
-   val, tot := float64(value), float64(total)
-   return Percent(w, val, tot)
-}
-
-func PercentUint64(w io.Writer, value, total uint64) (int, error) {
-   val, tot := float64(value), float64(total)
-   return Percent(w, val, tot)
 }
 
 func Trim(w io.Writer, s string) (int, error) {
@@ -135,9 +110,56 @@ func (l Logger) Dump(req *http.Request) error {
    return nil
 }
 
+type Progress struct {
+   *http.Response
+   content, partLength, part int64
+   io.Writer
+   time.Time
+}
+
+func NewProgress(src *http.Response, dst io.Writer) *Progress {
+   var pro Progress
+   pro.Response = src
+   pro.Time = time.Now()
+   pro.Writer = dst
+   pro.partLength = 10_000_000
+   return &pro
+}
+
+func (p *Progress) Read(buf []byte) (int, error) {
+   if p.part == 0 {
+      end := time.Since(p.Time).Milliseconds()
+      if end >= 1 {
+         PercentInt64(p.Writer, p.content, p.ContentLength)
+         io.WriteString(p.Writer, "\t")
+         Size.Int64(p.Writer, p.content)
+         io.WriteString(p.Writer, "\t")
+         Rate.Int64(p.Writer, 1000 * p.content / end)
+         io.WriteString(p.Writer, "\n")
+      }
+   }
+   // Callers should always process the n > 0 bytes returned before considering
+   // the error err.
+   read, err := p.Body.Read(buf)
+   p.content += int64(read)
+   p.part += int64(read)
+   if p.part >= p.partLength {
+      p.part = 0
+   }
+   return read, err
+}
+
+type notFound struct {
+   input string
+}
+
+func (n notFound) Error() string {
+   return strconv.Quote(n.input) + " not found"
+}
+
 type Symbols []string
 
-func (s Symbols) Label(w io.Writer, f float64) (int, error) {
+func (s Symbols) Float64(w io.Writer, f float64) (int, error) {
    var (
       i int
       symbol string
@@ -155,25 +177,43 @@ func (s Symbols) Label(w io.Writer, f float64) (int, error) {
    return io.WriteString(w, symbol)
 }
 
-func (s Symbols) LabelInt(w io.Writer, i int) (int, error) {
+func (s Symbols) Int(w io.Writer, i int) (int, error) {
    f := float64(i)
-   return s.Label(w, f)
+   return s.Float64(w, f)
 }
 
-func (s Symbols) LabelInt64(w io.Writer, i int64) (int, error) {
+func (s Symbols) Int64(w io.Writer, i int64) (int, error) {
    f := float64(i)
-   return s.Label(w, f)
+   return s.Float64(w, f)
 }
 
-func (s Symbols) LabelUint64(w io.Writer, i uint64) (int, error) {
+func (s Symbols) Uint64(w io.Writer, i uint64) (int, error) {
    f := float64(i)
-   return s.Label(w, f)
+   return s.Float64(w, f)
 }
 
-type notFound struct {
-   input string
+func Percent(w io.Writer, value, total float64) (int, error) {
+   var s string
+   if total != 0 {
+      ratio := 100 * value / total
+      s = strconv.FormatFloat(ratio, 'f', 1, 64)
+   } else {
+      s = "0"
+   }
+   return io.WriteString(w, s + "%")
 }
 
-func (n notFound) Error() string {
-   return strconv.Quote(n.input) + " not found"
+func PercentInt(w io.Writer, value, total int) (int, error) {
+   val, tot := float64(value), float64(total)
+   return Percent(w, val, tot)
+}
+
+func PercentInt64(w io.Writer, value, total int64) (int, error) {
+   val, tot := float64(value), float64(total)
+   return Percent(w, val, tot)
+}
+
+func PercentUint64(w io.Writer, value, total uint64) (int, error) {
+   val, tot := float64(value), float64(total)
+   return Percent(w, val, tot)
 }

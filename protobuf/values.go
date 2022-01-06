@@ -103,7 +103,7 @@ func (m Message) GetString(num protowire.Number, str string) string {
    return ""
 }
 
-func (m Message) GetUint(num protowire.Number, str string) uint64 {
+func (m Message) GetUint64(num protowire.Number, str string) uint64 {
    val, ok := m[Tag{num, str}].(uint64)
    if ok {
       return val

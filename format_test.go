@@ -14,7 +14,7 @@ func TestPercent(t *testing.T) {
 func TestSymbol(t *testing.T) {
    nums := []int64{999, 1_234_567_890}
    for _, num := range nums {
-      Number.LabelInt64(os.Stdout, num)
+      Number.Int64(os.Stdout, num)
       fmt.Println()
    }
 }
