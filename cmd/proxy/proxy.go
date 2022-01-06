@@ -9,6 +9,17 @@ import (
    "strconv"
 )
 
+func (s spyConn) Read(p []byte) (int, error) {
+   n, err := s.Conn.Read(p)
+   if hello, err := crypto.ParseTLS(p[:n]); err == nil {
+      ja3, err := crypto.FormatJA3(hello)
+      if err == nil {
+         fmt.Println(crypto.Fingerprint(ja3), ja3)
+      }
+   }
+   return n, err
+}
+
 type proxy struct{}
 
 func (proxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
@@ -43,19 +54,11 @@ type spyConn struct {
    net.Conn
 }
 
-func (s spyConn) Read(p []byte) (int, error) {
-   n, err := s.Conn.Read(p)
-   if hello, err := crypto.ParseTLS(p[:n]); err == nil {
-      ja3, err := crypto.FormatJA3(hello)
-      if err == nil {
-         fmt.Println(ja3)
-      }
-   }
-   return n, err
-}
-
 func main() {
-   var hand proxy
-   fmt.Println("ListenAndServe")
-   http.ListenAndServe(":8080", hand)
+   var (
+      addr = ":8080"
+      handler proxy
+   )
+   fmt.Println(addr)
+   http.ListenAndServe(addr, handler)
 }

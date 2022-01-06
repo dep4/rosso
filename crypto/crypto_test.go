@@ -7,6 +7,17 @@ import (
    "testing"
 )
 
+func TestBytes(t *testing.T) {
+   var b []byte
+   b = append(b, 0,0,0,5, 'h', 'e', 'l', 'l', 'o')
+   b = append(b, 0,0,0,5, 'w', 'o', 'r', 'l', 'd')
+   buf := NewBuffer(b)
+   one, two, ok := buf.ReadUint32LengthPrefixed()
+   fmt.Printf("%v %s %v\n", one, two, ok)
+   one, two, ok = buf.ReadUint32LengthPrefixed()
+   fmt.Printf("%v %s %v\n", one, two, ok)
+}
+
 const androidHandshake =
    "16030100bb010000b703034420d198e7852decbc117dc7f90550b98f2d643c954bf3361d" +
    "daf127ff921b04000024c02bc02ccca9c02fc030cca8009e009fc009c00ac013c0140033" +
