@@ -8,17 +8,3 @@
 ## How to get Android JA3?
 
 Check out the `cmd/proxy` folder.
-
-## Android API 32
-
-## Android API 31
-
-## Android API 30
-
-## Android API 29
-
-~~~
-SNI: clientservices.googleapis.com
-771,4865-4866-4867-49195-49196-52393-49199-49200-52392-49161-49162-49171-49172-156-157-47-53,0-23-65281-10-11-35-16-5-13-51-45-43-21,29-23-24,0
-9b02ebd3a43b62d825e1ac605b621dc8
-~~~

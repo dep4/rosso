@@ -1,7 +1,6 @@
 package main
 
 import (
-   "bytes"
    "fmt"
    "github.com/89z/format/crypto"
    "io"
@@ -12,15 +11,13 @@ import (
 
 func (s spyConn) Read(buf []byte) (int, error) {
    num, err := s.Conn.Read(buf)
-   if bytes.Contains(buf, []byte(s.SNI)) {
-      hello, err := crypto.ParseTLS(buf[:num])
+   hello, err := crypto.ParseTLS(buf[:num])
+   if err == nil {
+      ja3, err := crypto.FormatJA3(hello)
       if err == nil {
-         ja3, err := crypto.FormatJA3(hello)
-         if err == nil {
-            fmt.Printf("%q\n", buf[:num])
-            fmt.Print("\t", ja3, "\n")
-            fmt.Print("\t", crypto.Fingerprint(ja3), "\n")
-         }
+         fmt.Printf("%q\n", buf[:num])
+         fmt.Print("\t", ja3, "\n")
+         fmt.Print("\t", crypto.Fingerprint(ja3), "\n")
       }
    }
    return num, err
@@ -51,7 +48,6 @@ func (proxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
       buf = strconv.AppendInt(buf, http.StatusOK, 10)
       buf = append(buf, "\n\n"...)
       clientConn.Write(buf)
-      //spy := spyConn{Conn: clientConn, SNI: "clientservices.googleapis.com"}
       spy := spyConn{Conn: clientConn}
       io.Copy(targetConn, spy)
    }

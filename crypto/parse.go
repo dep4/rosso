@@ -7,6 +7,8 @@ import (
    "strings"
 )
 
+const AndroidAPI32 = AndroidAPI29
+
 // 9b02ebd3a43b62d825e1ac605b621dc8
 const AndroidAPI29 =
    "771,4865-4866-4867-49195-49196-52393-49199-49200-52392-49161-49162-49171-" +
@@ -41,6 +43,7 @@ func ParseJA3(str string) (*tls.ClientHelloSpec, error) {
    }
    // build CipherSuites
    cipherKeys := strings.Split(tokens[1], "-")
+   //hello.CipherSuites = []uint16{tls.GREASE_PLACEHOLDER}
    for _, cipherKey := range cipherKeys {
       var cipher uint16
       _, err := fmt.Sscan(cipherKey, &cipher)
@@ -51,6 +54,9 @@ func ParseJA3(str string) (*tls.ClientHelloSpec, error) {
    }
    // build extenions list
    extKeys := strings.Split(tokens[2], "-")
+   hello.Extensions = []tls.TLSExtension{
+      //&tls.UtlsGREASEExtension{},
+   }
    for _, extKey := range extKeys {
       var ext tls.TLSExtension
       switch extKey {
@@ -61,6 +67,7 @@ func ParseJA3(str string) (*tls.ClientHelloSpec, error) {
          // Android API 26
          ext = &tls.StatusRequestExtension{}
       case "10":
+         //curves := []tls.CurveID{tls.GREASE_PLACEHOLDER}
          var curves []tls.CurveID
          curveKeys := strings.Split(tokens[3], "-")
          for _, curveKey := range curveKeys {
@@ -89,6 +96,14 @@ func ParseJA3(str string) (*tls.ClientHelloSpec, error) {
             SupportedSignatureAlgorithms: []tls.SignatureScheme{
                // Android API 24
                tls.ECDSAWithP256AndSHA256,
+               tls.PSSWithSHA256,
+               tls.PKCS1WithSHA256,
+               tls.ECDSAWithP384AndSHA384,
+               tls.PSSWithSHA384,
+               tls.PKCS1WithSHA384,
+               tls.PSSWithSHA512,
+               tls.PKCS1WithSHA512,
+               tls.PKCS1WithSHA1,
             },
          }
       case "16":
@@ -98,13 +113,28 @@ func ParseJA3(str string) (*tls.ClientHelloSpec, error) {
                "http/1.1",
             },
          }
+      case "18":
+         ext = &tls.SCTExtension{}
+      case "21":
+         ext = &tls.UtlsPaddingExtension{GetPaddingLen: tls.BoringPaddingStyle}
+      case "35":
+         ext = &tls.SessionTicketExtension{}
+      case "27":
+         ext = &tls.FakeCertCompressionAlgsExtension{}
+      case "51":
+         ext = &tls.KeyShareExtension{KeyShares: []tls.KeyShare{}}
       case "23":
          // Android API 24
          ext = &tls.UtlsExtendedMasterSecretExtension{}
       case "43":
          ext = &tls.SupportedVersionsExtension{
-            // Android API 29
-            Versions: []uint16{tls.VersionTLS12},
+            Versions: []uint16{
+               //tls.GREASE_PLACEHOLDER,
+               // Android API 29
+               tls.VersionTLS12,
+               tls.VersionTLS11,
+               tls.VersionTLS10,
+            },
          }
       case "45":
          ext = &tls.PSKKeyExchangeModesExtension{
@@ -113,7 +143,9 @@ func ParseJA3(str string) (*tls.ClientHelloSpec, error) {
          }
       case "65281":
          // Android API 24
-         ext = &tls.RenegotiationInfoExtension{}
+         ext = &tls.RenegotiationInfoExtension{
+         Renegotiation: tls.RenegotiateOnceAsClient,
+         }
       default:
          var id uint16
          _, err := fmt.Sscan(extKey, &id)

@@ -3,7 +3,7 @@ module research
 go 1.17
 
 require (
-	github.com/89z/format v1.18.9
+	github.com/89z/format v1.19.0
 	github.com/dreadl0ck/ja3 v1.0.2
 	github.com/dreadl0ck/tlsx v1.0.1-google-gopacket
 )

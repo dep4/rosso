@@ -1,5 +1,5 @@
-github.com/89z/format v1.18.9 h1:p+Lx/mCSmAHQwivVDh/TwHPu74dkr8sNUIE4rgMm+1A=
-github.com/89z/format v1.18.9/go.mod h1:pYQxDbs1bd/F5HnQN6TkZKT1cyOuKQiyXgAGzsLujis=
+github.com/89z/format v1.19.0 h1:vkK6TbYUMfk2OYNvN3f2g3zhdCuvfvEqUoNwJ8y3OMI=
+github.com/89z/format v1.19.0/go.mod h1:pYQxDbs1bd/F5HnQN6TkZKT1cyOuKQiyXgAGzsLujis=
 github.com/dreadl0ck/ja3 v1.0.2 h1:N2ieBkpsLyfnModpIJIrfKnoW8xLxaSiHyWMUbhZ87E=
 github.com/dreadl0ck/ja3 v1.0.2/go.mod h1:jATodgf1qBzTGieskRF2O1DXEwDgzEdqQjVcMMrCNpI=
 github.com/dreadl0ck/tlsx v1.0.1-google-gopacket h1:/P3y+CGRiCQbW0nZU2jWkEwKfXLkpEgHNhbbqlnrTTM=
