@@ -27,8 +27,6 @@ Same as 26.
 
 ## Android API 26
 
-Pass:
-
 ~~~
 SNI: clientservices.googleapis.com
 d8c87b9bfde38897979e41242626c2f3
@@ -37,8 +35,6 @@ d8c87b9bfde38897979e41242626c2f3
 
 ## Android API 25
 
-Pass:
-
 ~~~
 SNI: clientservices.googleapis.com
 9fc6ef6efc99b933c5e2d8fcf4f68955
@@ -46,8 +42,6 @@ SNI: clientservices.googleapis.com
 ~~~
 
 ## Android API 24
-
-Pass:
 
 ~~~
 SNI: clientservices.googleapis.com
