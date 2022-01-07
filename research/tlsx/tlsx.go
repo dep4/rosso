@@ -25,9 +25,6 @@ func main() {
       if err != nil {
          panic(err)
       }
-      for _, ext := range hello.Extensions {
-         fmt.Printf("%#v\n", ext)
-      }
       ja3, err := crypto.FormatJA3(hello)
       if err != nil {
          panic(err)

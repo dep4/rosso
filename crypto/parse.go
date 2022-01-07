@@ -65,19 +65,25 @@ func ParseJA3(str string) (*tls.ClientHelloSpec, error) {
       case "13":
          ext = &tls.SignatureAlgorithmsExtension{
             SupportedSignatureAlgorithms: []tls.SignatureScheme{
-               // android.clients.google.com
-               tls.ECDSAWithSHA1,
+               tls.ECDSAWithP256AndSHA256,
             },
          }
       case "16":
          ext = &tls.ALPNExtension{
             AlpnProtocols: []string{
-               // android.clients.google.com
                "http/1.1",
             },
          }
       case "23":
          ext = &tls.UtlsExtendedMasterSecretExtension{}
+      case "43":
+         ext = &tls.SupportedVersionsExtension{
+            Versions: []uint16{tls.VersionTLS12},
+         }
+      case "45":
+         ext = &tls.PSKKeyExchangeModesExtension{
+            Modes: []uint8{tls.PskModeDHE},
+         }
       case "65281":
          ext = &tls.RenegotiationInfoExtension{}
       default:
