@@ -14,18 +14,6 @@ import (
    "strings"
 )
 
-// 8fcaa9e4a15f48af0a7d396e3fa5c5eb
-const AndroidJA3 =
-   "771,49195-49196-52393-49199-49200-52392-158-159-49161-49162-49171-49172-" +
-   "51-57-156-157-47-53,65281-0-23-35-13-16-11-10,23,0"
-
-func Fingerprint(ja3 string) string {
-   hash := md5.New()
-   io.WriteString(hash, ja3)
-   sum := hash.Sum(nil)
-   return hex.EncodeToString(sum)
-}
-
 func FormatJA3(spec *tls.ClientHelloSpec) (string, error) {
    buf := new(strings.Builder)
    // TLSVersMin is the record version, TLSVersMax is the handshake version
@@ -33,10 +21,12 @@ func FormatJA3(spec *tls.ClientHelloSpec) (string, error) {
    // Cipher Suites
    buf.WriteByte(',')
    for key, val := range spec.CipherSuites {
-      if key >= 1 {
-         buf.WriteByte('-')
+      if val != tls.GREASE_PLACEHOLDER {
+         if key >= 1 {
+            buf.WriteByte('-')
+         }
+         fmt.Fprint(buf, val)
       }
-      fmt.Fprint(buf, val)
    }
    // Extensions
    buf.WriteByte(',')
@@ -45,28 +35,32 @@ func FormatJA3(spec *tls.ClientHelloSpec) (string, error) {
       points []uint8
    )
    for key, val := range spec.Extensions {
-      if key >= 1 {
-         buf.WriteByte('-')
-      }
-      typ, err := extensionType(val)
-      if err != nil {
-         return "", err
-      }
-      fmt.Fprint(buf, typ)
       switch ext := val.(type) {
       case *tls.SupportedCurvesExtension:
          curves = ext.Curves
       case *tls.SupportedPointsExtension:
          points = ext.SupportedPoints
       }
+      typ, err := extensionType(val)
+      if err != nil {
+         return "", err
+      }
+      if typ != tls.GREASE_PLACEHOLDER {
+         if key >= 1 {
+            buf.WriteByte('-')
+         }
+         fmt.Fprint(buf, typ)
+      }
    }
    // Elliptic curves
    buf.WriteByte(',')
    for key, val := range curves {
-      if key >= 1 {
-         buf.WriteByte('-')
+      if val != tls.GREASE_PLACEHOLDER {
+         if key >= 1 {
+            buf.WriteByte('-')
+         }
+         fmt.Fprint(buf, val)
       }
-      fmt.Fprint(buf, val)
    }
    // ECPF
    buf.WriteByte(',')
@@ -77,6 +71,13 @@ func FormatJA3(spec *tls.ClientHelloSpec) (string, error) {
       fmt.Fprint(buf, val)
    }
    return buf.String(), nil
+}
+
+func Fingerprint(ja3 string) string {
+   hash := md5.New()
+   io.WriteString(hash, ja3)
+   sum := hash.Sum(nil)
+   return hex.EncodeToString(sum)
 }
 
 func ParseTLS(buf []byte) (*tls.ClientHelloSpec, error) {

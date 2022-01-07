@@ -7,6 +7,26 @@ import (
    "strings"
 )
 
+// 9b02ebd3a43b62d825e1ac605b621dc8
+const AndroidAPI29 =
+   "771,4865-4866-4867-49195-49196-52393-49199-49200-52392-49161-49162-49171-" +
+   "49172-156-157-47-53,0-23-65281-10-11-35-16-5-13-51-45-43-21,29-23-24,0"
+
+// d8c87b9bfde38897979e41242626c2f3
+const AndroidAPI26 =
+   "771,49195-49196-52393-49199-49200-52392-49161-49162-49171-" +
+   "49172-156-157-47-53,65281-0-23-35-13-5-16-11-10,29-23-24,0"
+
+// 9fc6ef6efc99b933c5e2d8fcf4f68955
+const AndroidAPI25 =
+   "771,49195-49196-52393-49199-49200-52392-158-159-49161-49162-49171-" +
+   "49172-51-57-156-157-47-53,65281-0-23-35-13-16-11-10,23-24-25,0"
+
+// 8fcaa9e4a15f48af0a7d396e3fa5c5eb
+const AndroidAPI24 =
+   "771,49195-49196-52393-49199-49200-52392-158-159-49161-49162-49171-" +
+   "49172-51-57-156-157-47-53,65281-0-23-35-13-16-11-10,23,0"
+
 func ParseJA3(str string) (*tls.ClientHelloSpec, error) {
    tokens := strings.Split(str, ",")
    if tLen := len(tokens); tLen <= 4 {
@@ -35,8 +55,10 @@ func ParseJA3(str string) (*tls.ClientHelloSpec, error) {
       var ext tls.TLSExtension
       switch extKey {
       case "0":
+         // Android API 24
          ext = &tls.SNIExtension{}
       case "5":
+         // Android API 26
          ext = &tls.StatusRequestExtension{}
       case "10":
          var curves []tls.CurveID
@@ -65,26 +87,32 @@ func ParseJA3(str string) (*tls.ClientHelloSpec, error) {
       case "13":
          ext = &tls.SignatureAlgorithmsExtension{
             SupportedSignatureAlgorithms: []tls.SignatureScheme{
+               // Android API 24
                tls.ECDSAWithP256AndSHA256,
             },
          }
       case "16":
          ext = &tls.ALPNExtension{
             AlpnProtocols: []string{
+               // Android API 24
                "http/1.1",
             },
          }
       case "23":
+         // Android API 24
          ext = &tls.UtlsExtendedMasterSecretExtension{}
       case "43":
          ext = &tls.SupportedVersionsExtension{
+            // Android API 29
             Versions: []uint16{tls.VersionTLS12},
          }
       case "45":
          ext = &tls.PSKKeyExchangeModesExtension{
+            // Android API 29
             Modes: []uint8{tls.PskModeDHE},
          }
       case "65281":
+         // Android API 24
          ext = &tls.RenegotiationInfoExtension{}
       default:
          var id uint16
