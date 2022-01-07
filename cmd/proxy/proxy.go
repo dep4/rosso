@@ -12,12 +12,14 @@ import (
 
 func (s spyConn) Read(buf []byte) (int, error) {
    num, err := s.Conn.Read(buf)
-   if bytes.Contains(buf, []byte("clientservices.googleapis.com")) {
+   if bytes.Contains(buf, []byte(s.SNI)) {
       hello, err := crypto.ParseTLS(buf[:num])
       if err == nil {
          ja3, err := crypto.FormatJA3(hello)
          if err == nil {
-            fmt.Printf("%q\n\t%v\n\t%v\n", buf[:num], ja3, crypto.Fingerprint(ja3))
+            fmt.Printf("%q\n", buf[:num])
+            fmt.Print("\t", ja3, "\n")
+            fmt.Print("\t", crypto.Fingerprint(ja3), "\n")
          }
       }
    }
@@ -49,13 +51,15 @@ func (proxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
       buf = strconv.AppendInt(buf, http.StatusOK, 10)
       buf = append(buf, "\n\n"...)
       clientConn.Write(buf)
-      spy := spyConn{clientConn}
+      //spy := spyConn{Conn: clientConn, SNI: "clientservices.googleapis.com"}
+      spy := spyConn{Conn: clientConn}
       io.Copy(targetConn, spy)
    }
 }
 
 type spyConn struct {
    net.Conn
+   SNI string
 }
 
 func main() {

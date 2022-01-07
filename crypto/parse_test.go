@@ -10,8 +10,10 @@ import (
 )
 
 var hellos = []string{
-   AndroidJA3,
-   "771,4865-4866-4867-49195-49196-52393-49199-49200-52392-49161-49162-49171-49172-156-157-47-53,0-23-65281-10-11-35-16-5-13-51-45-43-21,29-23-24,0",
+   AndroidAPI24,
+   AndroidAPI25,
+   AndroidAPI26,
+   AndroidAPI29,
 }
 
 func TestParse(t *testing.T) {

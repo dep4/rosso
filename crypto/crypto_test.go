@@ -63,7 +63,7 @@ func TestHandshake(t *testing.T) {
 }
 
 func TestJA3(t *testing.T) {
-   hello, err := ParseJA3(AndroidJA3)
+   hello, err := ParseJA3(AndroidAPI24)
    if err != nil {
       t.Fatal(err)
    }
@@ -74,13 +74,13 @@ func TestJA3(t *testing.T) {
    if err != nil {
       t.Fatal(err)
    }
-   if ja3 != AndroidJA3 {
+   if ja3 != AndroidAPI24 {
       t.Fatal(ja3)
    }
 }
 
 func TestTransport(t *testing.T) {
-   hello, err := ParseJA3(AndroidJA3)
+   hello, err := ParseJA3(AndroidAPI24)
    if err != nil {
       t.Fatal(err)
    }
