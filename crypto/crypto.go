@@ -6,7 +6,6 @@ import (
    "encoding/binary"
    "encoding/hex"
    "fmt"
-   "github.com/89z/format"
    "github.com/refraction-networking/utls"
    "io"
    "net"
@@ -14,12 +13,71 @@ import (
    "strings"
 )
 
-func ParseTLS(buf []byte) (*tls.ClientHelloSpec, error) {
-   if sLen := len(buf); sLen <= 10 {
-      return nil, format.InvalidSlice{10, sLen}
+func Fingerprint(ja3 string) string {
+   hash := md5.New()
+   io.WriteString(hash, ja3)
+   sum := hash.Sum(nil)
+   return hex.EncodeToString(sum)
+}
+
+func FormatJA3(spec *tls.ClientHelloSpec) (string, error) {
+   buf := new(strings.Builder)
+   // TLSVersMin is the record version, TLSVersMax is the handshake version
+   fmt.Fprint(buf, spec.TLSVersMax)
+   // Cipher Suites
+   buf.WriteByte(',')
+   for key, val := range spec.CipherSuites {
+      if key >= 1 {
+         buf.WriteByte('-')
+      }
+      fmt.Fprint(buf, val)
    }
+   // Extensions
+   buf.WriteByte(',')
+   var (
+      curves []tls.CurveID
+      points []uint8
+   )
+   for key, val := range spec.Extensions {
+      switch ext := val.(type) {
+      case *tls.SupportedCurvesExtension:
+         curves = ext.Curves
+      case *tls.SupportedPointsExtension:
+         points = ext.SupportedPoints
+      }
+      typ, err := extensionType(val)
+      if err != nil {
+         return "", err
+      }
+      if key >= 1 {
+         buf.WriteByte('-')
+      }
+      fmt.Fprint(buf, typ)
+   }
+   // Elliptic curves
+   buf.WriteByte(',')
+   for key, val := range curves {
+      if key >= 1 {
+         buf.WriteByte('-')
+      }
+      fmt.Fprint(buf, val)
+   }
+   // ECPF
+   buf.WriteByte(',')
+   for key, val := range points {
+      if key >= 1 {
+         buf.WriteByte('-')
+      }
+      fmt.Fprint(buf, val)
+   }
+   return buf.String(), nil
+}
+
+func ParseTLS(buf []byte) (*tls.ClientHelloSpec, error) {
    // unsupported extension 0x16
    printer := tls.Fingerprinter{AllowBluntMimicry: true}
+   // FingerprintClientHello does bounds checking, so we dont need to worry
+   // about it in this function.
    spec, err := printer.FingerprintClientHello(buf)
    if err != nil {
       return nil, err
@@ -31,13 +89,6 @@ func ParseTLS(buf []byte) (*tls.ClientHelloSpec, error) {
       spec.TLSVersMax = binary.BigEndian.Uint16(buf[9:])
    }
    return spec, nil
-}
-
-func Fingerprint(ja3 string) string {
-   hash := md5.New()
-   io.WriteString(hash, ja3)
-   sum := hash.Sum(nil)
-   return hex.EncodeToString(sum)
 }
 
 func Transport(spec *tls.ClientHelloSpec) *http.Transport {
@@ -98,57 +149,4 @@ func (b *Buffer) ReadUint32LengthPrefixed() ([]byte, []byte, bool) {
    pre, buf := b.buf[:low], b.buf[low:high]
    b.buf = b.buf[high:]
    return pre, buf, true
-}
-
-func FormatJA3(spec *tls.ClientHelloSpec) (string, error) {
-   buf := new(strings.Builder)
-   // TLSVersMin is the record version, TLSVersMax is the handshake version
-   fmt.Fprint(buf, spec.TLSVersMax)
-   // Cipher Suites
-   buf.WriteByte(',')
-   for key, val := range spec.CipherSuites {
-      if key >= 1 {
-         buf.WriteByte('-')
-      }
-      fmt.Fprint(buf, val)
-   }
-   // Extensions
-   buf.WriteByte(',')
-   var (
-      curves []tls.CurveID
-      points []uint8
-   )
-   for key, val := range spec.Extensions {
-      switch ext := val.(type) {
-      case *tls.SupportedCurvesExtension:
-         curves = ext.Curves
-      case *tls.SupportedPointsExtension:
-         points = ext.SupportedPoints
-      }
-      typ, err := extensionType(val)
-      if err != nil {
-         return "", err
-      }
-      if key >= 1 {
-         buf.WriteByte('-')
-      }
-      fmt.Fprint(buf, typ)
-   }
-   // Elliptic curves
-   buf.WriteByte(',')
-   for key, val := range curves {
-      if key >= 1 {
-         buf.WriteByte('-')
-      }
-      fmt.Fprint(buf, val)
-   }
-   // ECPF
-   buf.WriteByte(',')
-   for key, val := range points {
-      if key >= 1 {
-         buf.WriteByte('-')
-      }
-      fmt.Fprint(buf, val)
-   }
-   return buf.String(), nil
 }
