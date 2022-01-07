@@ -14,7 +14,7 @@ func (s spyConn) Read(p []byte) (int, error) {
    if hello, err := crypto.ParseTLS(p[:n]); err == nil {
       ja3, err := crypto.FormatJA3(hello)
       if err == nil {
-         fmt.Println(crypto.Fingerprint(ja3), ja3)
+         fmt.Print(crypto.Fingerprint(ja3), ":\n", ja3, "\n")
       }
    }
    return n, err

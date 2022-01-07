@@ -36,6 +36,8 @@ func ParseJA3(str string) (*tls.ClientHelloSpec, error) {
       switch extKey {
       case "0":
          ext = &tls.SNIExtension{}
+      case "5":
+         ext = &tls.StatusRequestExtension{}
       case "10":
          var curves []tls.CurveID
          curveKeys := strings.Split(tokens[3], "-")
@@ -61,24 +63,30 @@ func ParseJA3(str string) (*tls.ClientHelloSpec, error) {
          }
          ext = &tls.SupportedPointsExtension{points}
       case "13":
-         // this cant be empty, so just use the Go default
          ext = &tls.SignatureAlgorithmsExtension{
-            []tls.SignatureScheme{
-               0x804, 0x403, 0x807, 0x805, 0x806, 0x401,
-               0x501, 0x601, 0x503, 0x603, 0x201, 0x203,
+            SupportedSignatureAlgorithms: []tls.SignatureScheme{
+               // android.clients.google.com
+               tls.ECDSAWithSHA1,
             },
          }
       case "16":
-         // if we leave this empty, it will fail on any HTTP/2 servers
          ext = &tls.ALPNExtension{
-            []string{"http/1.1"},
+            AlpnProtocols: []string{
+               // android.clients.google.com
+               "http/1.1",
+            },
          }
       case "23":
          ext = &tls.UtlsExtendedMasterSecretExtension{}
-      case "35":
-         ext = &tls.SessionTicketExtension{}
       case "65281":
          ext = &tls.RenegotiationInfoExtension{}
+      default:
+         var id uint16
+         _, err := fmt.Sscan(extKey, &id)
+         if err != nil {
+            return nil, err
+         }
+         ext = &tls.GenericExtension{Id: id}
       }
       hello.Extensions = append(hello.Extensions, ext)
    }
