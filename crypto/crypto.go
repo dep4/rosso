@@ -6,35 +6,13 @@ import (
    "encoding/binary"
    "encoding/hex"
    "fmt"
+   "github.com/89z/format"
    "github.com/refraction-networking/utls"
    "io"
    "net"
    "net/http"
    "strings"
 )
-
-type Buffer struct {
-   buf []byte
-}
-
-func NewBuffer(buf []byte) *Buffer {
-   return &Buffer{buf}
-}
-
-// github.com/golang/go/issues/49227
-func (b *Buffer) ReadUint32LengthPrefixed() ([]byte, []byte, bool) {
-   low := 4
-   if len(b.buf) < low {
-      return nil, nil, false
-   }
-   high := low + int(binary.BigEndian.Uint32(b.buf))
-   if len(b.buf) < high {
-      return nil, nil, false
-   }
-   pre, buf := b.buf[:low], b.buf[low:high]
-   b.buf = b.buf[high:]
-   return pre, buf, true
-}
 
 // 8fcaa9e4a15f48af0a7d396e3fa5c5eb
 const AndroidJA3 =
@@ -101,11 +79,23 @@ func FormatJA3(spec *tls.ClientHelloSpec) (string, error) {
    return buf.String(), nil
 }
 
-
 func ParseTLS(buf []byte) (*tls.ClientHelloSpec, error) {
+   if sLen := len(buf); sLen <= 10 {
+      return nil, format.InvalidSlice{10, sLen}
+   }
    // unsupported extension 0x16
-   fin := tls.Fingerprinter{AllowBluntMimicry: true}
-   return fin.FingerprintClientHello(buf)
+   printer := tls.Fingerprinter{AllowBluntMimicry: true}
+   spec, err := printer.FingerprintClientHello(buf)
+   if err != nil {
+      return nil, err
+   }
+   // If SupportedVersionsExtension is present, then TLSVersMax is set to zero.
+   // In which case we need to manually read the bytes.
+   if spec.TLSVersMax == 0 {
+      // \x16\x03\x01\x00\xbc\x01\x00\x00\xb8\x03\x03
+      spec.TLSVersMax = binary.BigEndian.Uint16(buf[9:])
+   }
+   return spec, nil
 }
 
 func Transport(spec *tls.ClientHelloSpec) *http.Transport {
@@ -138,4 +128,27 @@ func extensionType(ext tls.TLSExtension) (uint16, error) {
       return 0, err
    }
    return binary.BigEndian.Uint16(buf), nil
+}
+
+type Buffer struct {
+   buf []byte
+}
+
+func NewBuffer(buf []byte) *Buffer {
+   return &Buffer{buf}
+}
+
+// github.com/golang/go/issues/49227
+func (b *Buffer) ReadUint32LengthPrefixed() ([]byte, []byte, bool) {
+   low := 4
+   if len(b.buf) < low {
+      return nil, nil, false
+   }
+   high := low + int(binary.BigEndian.Uint32(b.buf))
+   if len(b.buf) < high {
+      return nil, nil, false
+   }
+   pre, buf := b.buf[:low], b.buf[low:high]
+   b.buf = b.buf[high:]
+   return pre, buf, true
 }

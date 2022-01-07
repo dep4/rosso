@@ -1,6 +1,7 @@
 package main
 
 import (
+   "bytes"
    "fmt"
    "github.com/89z/format/crypto"
    "io"
@@ -9,15 +10,18 @@ import (
    "strconv"
 )
 
-func (s spyConn) Read(p []byte) (int, error) {
-   n, err := s.Conn.Read(p)
-   if hello, err := crypto.ParseTLS(p[:n]); err == nil {
-      ja3, err := crypto.FormatJA3(hello)
+func (s spyConn) Read(buf []byte) (int, error) {
+   num, err := s.Conn.Read(buf)
+   if bytes.Contains(buf, []byte("clientservices.googleapis.com")) {
+      hello, err := crypto.ParseTLS(buf[:num])
       if err == nil {
-         fmt.Print(crypto.Fingerprint(ja3), ":\n", ja3, "\n")
+         ja3, err := crypto.FormatJA3(hello)
+         if err == nil {
+            fmt.Printf("%q\n\t%v\n\t%v\n", buf[:num], ja3, crypto.Fingerprint(ja3))
+         }
       }
    }
-   return n, err
+   return num, err
 }
 
 type proxy struct{}
