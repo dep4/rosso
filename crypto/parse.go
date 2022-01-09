@@ -1,6 +1,8 @@
+// TLS and JA3 parsers
 package crypto
 
 import (
+   "encoding/binary"
    "fmt"
    "github.com/89z/format"
    "github.com/refraction-networking/utls"
@@ -127,4 +129,22 @@ func ParseJA3(str string) (*tls.ClientHelloSpec, error) {
       hello.Extensions = append(hello.Extensions, ext)
    }
    return &hello, nil
+}
+
+func ParseTLS(buf []byte) (*tls.ClientHelloSpec, error) {
+   // unsupported extension 0x16
+   printer := tls.Fingerprinter{AllowBluntMimicry: true}
+   // FingerprintClientHello does bounds checking, so we dont need to worry
+   // about it in this function.
+   spec, err := printer.FingerprintClientHello(buf)
+   if err != nil {
+      return nil, err
+   }
+   // If SupportedVersionsExtension is present, then TLSVersMax is set to zero.
+   // In which case we need to manually read the bytes.
+   if spec.TLSVersMax == 0 {
+      // \x16\x03\x01\x00\xbc\x01\x00\x00\xb8\x03\x03
+      spec.TLSVersMax = binary.BigEndian.Uint16(buf[9:])
+   }
+   return spec, nil
 }

@@ -25,12 +25,14 @@ import (
    "github.com/tdewolff/parse/v2"
    "github.com/tdewolff/parse/v2/html"
    "io"
+   stdhtml "html"
 )
 
 func attrVal(lex *html.Lexer) string {
-   attr := lex.AttrVal()
-   trim := bytes.Trim(attr, `"`)
-   return string(trim)
+   buf := lex.AttrVal()
+   buf = bytes.Trim(buf, `"`)
+   str := string(buf)
+   return stdhtml.UnescapeString(str)
 }
 
 func text(lex *html.Lexer) string {

@@ -12,8 +12,6 @@ import (
    "strings"
 )
 
-var ident int
-
 func ReadRequest(src io.Reader, https bool) (*http.Request, error) {
    var req http.Request
    text := textproto.NewReader(bufio.NewReader(src))
@@ -61,27 +59,48 @@ func ReadRequest(src io.Reader, https bool) (*http.Request, error) {
    return &req, nil
 }
 
-func WriteRequest(dst io.Writer, req *http.Request) error {
-   if req.Body != nil && req.Method == "POST" {
-      buf, err := io.ReadAll(req.Body)
+func WriteRequest(w io.Writer, q *http.Request) error {
+   fmt.Fprintln(w, "package main")
+   fmt.Fprintln(w, `import "net/http"`)
+   fmt.Fprintln(w, `import "net/http/httputil"`)
+   fmt.Fprintln(w, `import "net/url"`)
+   fmt.Fprintln(w, `import "os"`)
+   if q.Body != nil && q.Method == "POST" {
+      buf, err := io.ReadAll(q.Body)
       if err != nil {
          return err
       }
-      req.Body = io.NopCloser(bytes.NewReader(buf))
-      fmt.Fprintf(dst, "var body%v = strings.NewReader(%q)\n", ident, buf)
+      q.Body = io.NopCloser(bytes.NewReader(buf))
+      fmt.Fprintln(w, `import "io"`)
+      fmt.Fprintln(w, `import "strings"`)
+      fmt.Fprintf(w, "var body = strings.NewReader(%q)\n", buf)
    }
-   fmt.Fprintf(dst, "var req%v = &http.Request{", ident)
-   // .Method
-   fmt.Fprintf(dst, "Method:%q", req.Method)
-   // .URL
-   fmt.Fprintf(dst, ", URL:%#v", req.URL)
-   // .Header
-   fmt.Fprintf(dst, ", Header:%#v", req.Header)
-   // .Body
-   if req.Body != nil && req.Method == "POST" {
-      fmt.Fprintf(dst, ", Body:io.NopCloser(body%v)", ident)
+   fmt.Fprintln(w, "func main() {")
+   fmt.Fprintln(w, "var q http.Request")
+   if q.Body != nil && q.Method == "POST" {
+      fmt.Fprintln(w, "q.Body=io.NopCloser(body)")
    }
-   fmt.Fprintln(dst, "}")
-   ident++
+   fmt.Fprintf(w, "q.Method=%q\n", q.Method)
+   fmt.Fprintln(w, "q.URL=new(url.URL)")
+   if q.URL.RawQuery != "" {
+      val, err := url.ParseQuery(q.URL.RawQuery)
+      if err != nil {
+         return err
+      }
+      fmt.Fprintf(w, "q.URL.RawQuery=%#v.Encode()\n", val)
+   }
+   fmt.Fprintf(w, "q.URL.Host=%q\n", q.URL.Host)
+   fmt.Fprintf(w, "q.URL.Path=%q\n", q.URL.Path)
+   fmt.Fprintf(w, "q.URL.Scheme=%q\n", q.URL.Scheme)
+   fmt.Fprintln(w, "q.Header=make(http.Header)")
+   for key, val := range q.Header {
+      fmt.Fprintf(w, "q.Header[%q]=%#v\n", key, val)
+   }
+   fmt.Fprintln(w, "s, err := new(http.Transport).RoundTrip(&q)")
+   fmt.Fprintln(w, "if err != nil { panic(err) }")
+   fmt.Fprintln(w, "defer s.Body.Close()")
+   fmt.Fprintln(w, "buf, err := httputil.DumpResponse(s, true)")
+   fmt.Fprintln(w, "if err != nil { panic(err) }")
+   fmt.Fprintln(w, "os.Stdout.Write(buf)}")
    return nil
 }

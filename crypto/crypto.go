@@ -73,24 +73,6 @@ func FormatJA3(spec *tls.ClientHelloSpec) (string, error) {
    return buf.String(), nil
 }
 
-func ParseTLS(buf []byte) (*tls.ClientHelloSpec, error) {
-   // unsupported extension 0x16
-   printer := tls.Fingerprinter{AllowBluntMimicry: true}
-   // FingerprintClientHello does bounds checking, so we dont need to worry
-   // about it in this function.
-   spec, err := printer.FingerprintClientHello(buf)
-   if err != nil {
-      return nil, err
-   }
-   // If SupportedVersionsExtension is present, then TLSVersMax is set to zero.
-   // In which case we need to manually read the bytes.
-   if spec.TLSVersMax == 0 {
-      // \x16\x03\x01\x00\xbc\x01\x00\x00\xb8\x03\x03
-      spec.TLSVersMax = binary.BigEndian.Uint16(buf[9:])
-   }
-   return spec, nil
-}
-
 func Transport(spec *tls.ClientHelloSpec) *http.Transport {
    return &http.Transport{
       DialTLS: func(network, addr string) (net.Conn, error) {
@@ -128,25 +110,25 @@ func extensionType(ext tls.TLSExtension) (uint16, error) {
    return binary.BigEndian.Uint16(buf), nil
 }
 
-type Buffer struct {
+type Reader struct {
    buf []byte
 }
 
-func NewBuffer(buf []byte) *Buffer {
-   return &Buffer{buf}
+func NewReader(buf []byte) *Reader {
+   return &Reader{buf}
 }
 
 // github.com/golang/go/issues/49227
-func (b *Buffer) ReadUint32LengthPrefixed() ([]byte, []byte, bool) {
+func (r *Reader) ReadUint32LengthPrefixed() ([]byte, []byte, bool) {
    low := 4
-   if len(b.buf) < low {
+   if len(r.buf) < low {
       return nil, nil, false
    }
-   high := low + int(binary.BigEndian.Uint32(b.buf))
-   if len(b.buf) < high {
+   high := low + int(binary.BigEndian.Uint32(r.buf))
+   if len(r.buf) < high {
       return nil, nil, false
    }
-   pre, buf := b.buf[:low], b.buf[low:high]
-   b.buf = b.buf[high:]
+   pre, buf := r.buf[:low], r.buf[low:high]
+   r.buf = r.buf[high:]
    return pre, buf, true
 }
