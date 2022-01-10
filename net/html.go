@@ -28,6 +28,7 @@ import (
    stdhtml "html"
 )
 
+// github.com/tdewolff/parse/issues/89
 func attrVal(lex *html.Lexer) string {
    buf := lex.AttrVal()
    buf = bytes.Trim(buf, `"`)
