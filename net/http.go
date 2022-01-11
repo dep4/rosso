@@ -3,13 +3,13 @@ package net
 import (
    "bytes"
    "bufio"
-   "fmt"
    "io"
    "net/http"
    "net/textproto"
    "net/url"
    "strconv"
    "strings"
+   "text/template"
 )
 
 func ReadRequest(src io.Reader, https bool) (*http.Request, error) {
@@ -59,48 +59,70 @@ func ReadRequest(src io.Reader, https bool) (*http.Request, error) {
    return &req, nil
 }
 
-func WriteRequest(w io.Writer, q *http.Request) error {
-   fmt.Fprintln(w, "package main")
-   fmt.Fprintln(w, `import "net/http"`)
-   fmt.Fprintln(w, `import "net/http/httputil"`)
-   fmt.Fprintln(w, `import "net/url"`)
-   fmt.Fprintln(w, `import "os"`)
-   if q.Body != nil && q.Method == "POST" {
-      buf, err := io.ReadAll(q.Body)
-      if err != nil {
-         return err
-      }
-      q.Body = io.NopCloser(bytes.NewReader(buf))
-      fmt.Fprintln(w, `import "io"`)
-      fmt.Fprintln(w, `import "strings"`)
-      fmt.Fprintf(w, "var body = strings.NewReader(%q)\n", buf)
-   }
-   fmt.Fprintln(w, "func main() {")
-   fmt.Fprintln(w, "var q http.Request")
-   if q.Body != nil && q.Method == "POST" {
-      fmt.Fprintln(w, "q.Body=io.NopCloser(body)")
-   }
-   fmt.Fprintf(w, "q.Method=%q\n", q.Method)
-   fmt.Fprintln(w, "q.URL=new(url.URL)")
-   if q.URL.RawQuery != "" {
-      val, err := url.ParseQuery(q.URL.RawQuery)
-      if err != nil {
-         return err
-      }
-      fmt.Fprintf(w, "q.URL.RawQuery=%#v.Encode()\n", val)
-   }
-   fmt.Fprintf(w, "q.URL.Host=%q\n", q.URL.Host)
-   fmt.Fprintf(w, "q.URL.Path=%q\n", q.URL.Path)
-   fmt.Fprintf(w, "q.URL.Scheme=%q\n", q.URL.Scheme)
-   fmt.Fprintln(w, "q.Header=make(http.Header)")
-   for key, val := range q.Header {
-      fmt.Fprintf(w, "q.Header[%q]=%#v\n", key, val)
-   }
-   fmt.Fprintln(w, "s, err := new(http.Transport).RoundTrip(&q)")
-   fmt.Fprintln(w, "if err != nil { panic(err) }")
-   fmt.Fprintln(w, "defer s.Body.Close()")
-   fmt.Fprintln(w, "buf, err := httputil.DumpResponse(s, true)")
-   fmt.Fprintln(w, "if err != nil { panic(err) }")
-   fmt.Fprintln(w, "os.Stdout.Write(buf)}")
-   return nil
+type requestTemplate struct {
+   *http.Request
+   BodyIO string
+   Query url.Values
+   VarBody string
 }
+
+func WriteRequest(w io.Writer, req *http.Request) error {
+   var request requestTemplate
+   if req.Body != nil && req.Method == "POST" {
+      buf, err := io.ReadAll(req.Body)
+      if err != nil {
+         return err
+      }
+      req.Body = io.NopCloser(bytes.NewReader(buf))
+      request.BodyIO = "io.NopCloser(body)"
+      request.VarBody = string(buf)
+   } else {
+      request.BodyIO = "io.ReadCloser(nil)"
+   }
+   request.Query = req.URL.Query()
+   request.Request = req
+   tem, err := new(template.Template).Parse(format)
+   if err != nil {
+      return err
+   }
+   return tem.Execute(w, request)
+}
+
+const format = `package main
+
+import (
+   "io"
+   "net/http"
+   "net/http/httputil"
+   "net/url"
+   "os"
+   "strings"
+)
+
+func main() {
+   var req http.Request
+   req.Body = {{ .BodyIO }}
+   req.Header = make(http.Header)
+   {{ range $key, $val := .Header -}}
+      req.Header[{{ printf "%q" $key }}] = {{ printf "%#v" $val }}
+   {{ end -}}
+   req.Method = {{ printf "%q" .Method }}
+   req.URL = new(url.URL)
+   req.URL.Host = {{ printf "%q" .URL.Host }}
+   req.URL.Path = {{ printf "%q" .URL.Path }}
+   req.URL.RawQuery = {{ printf "%#v" .Query }}.Encode()
+   req.URL.Scheme = {{ printf "%q" .URL.Scheme }}
+   res, err := new(http.Transport).RoundTrip(&req)
+   if err != nil {
+      panic(err)
+   }
+   defer res.Body.Close()
+   buf, err := httputil.DumpResponse(res, true)
+   if err != nil {
+      panic(err)
+   }
+   os.Stdout.Write(buf)
+}
+
+var body = strings.NewReader({{ printf "%q" .VarBody }})
+`
