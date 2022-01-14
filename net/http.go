@@ -110,7 +110,11 @@ func main() {
    req.URL = new(url.URL)
    req.URL.Host = {{ printf "%q" .URL.Host }}
    req.URL.Path = {{ printf "%q" .URL.Path }}
-   req.URL.RawQuery = {{ printf "%#v" .Query }}.Encode()
+   val := make(url.Values)
+   {{ range $key, $val := .Query -}}
+      val[{{ printf "%q" $key }}] = {{ printf "%#v" $val }}
+   {{ end -}}
+   req.URL.RawQuery = val.Encode()
    req.URL.Scheme = {{ printf "%q" .URL.Scheme }}
    res, err := new(http.Transport).RoundTrip(&req)
    if err != nil {
