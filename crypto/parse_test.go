@@ -40,8 +40,9 @@ var hellos = []string{AndroidAPI24, AndroidAPI25, AndroidAPI26, AndroidAPI29}
 func TestParseJA3(t *testing.T) {
    val := url.Values{
       "Email": {"srpen6@gmail.com"},
-      "EncryptedPasswd": {passwd},
-      "sdk_version": {"20"}, // Newer versions fail.
+      "Passwd": {password},
+      "client_sig": {""},
+      "droidguard_results": {""},
    }.Encode()
    for _, hello := range hellos {
       spec, err := ParseJA3(hello)
