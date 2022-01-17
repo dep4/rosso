@@ -12,9 +12,8 @@ import (
    "time"
 )
 
-var Log = Logger{Writer: os.Stderr}
-
 var (
+   Log = Logger{Writer: os.Stderr}
    Number = Symbols{"", " K", " M", " B", " T"}
    Rate = Symbols{" B/s", " kB/s", " MB/s", " GB/s", " TB/s"}
    Size = Symbols{" B", " kB", " MB", " GB", " TB"}
@@ -58,6 +57,32 @@ func IsBinary(buf []byte) bool {
       }
    }
    return false
+}
+
+func Percent(w io.Writer, value, total float64) (int, error) {
+   var s string
+   if total != 0 {
+      ratio := 100 * value / total
+      s = strconv.FormatFloat(ratio, 'f', 1, 64)
+   } else {
+      s = "0"
+   }
+   return io.WriteString(w, s + "%")
+}
+
+func PercentInt(w io.Writer, value, total int) (int, error) {
+   val, tot := float64(value), float64(total)
+   return Percent(w, val, tot)
+}
+
+func PercentInt64(w io.Writer, value, total int64) (int, error) {
+   val, tot := float64(value), float64(total)
+   return Percent(w, val, tot)
+}
+
+func PercentUint64(w io.Writer, value, total uint64) (int, error) {
+   val, tot := float64(value), float64(total)
+   return Percent(w, val, tot)
 }
 
 func Trim(w io.Writer, s string) (int, error) {
@@ -145,14 +170,6 @@ func (p *Progress) Read(buf []byte) (int, error) {
    return read, err
 }
 
-type notFound struct {
-   input string
-}
-
-func (n notFound) Error() string {
-   return strconv.Quote(n.input) + " not found"
-}
-
 type Symbols []string
 
 func (s Symbols) Float64(w io.Writer, f float64) (int, error) {
@@ -188,28 +205,11 @@ func (s Symbols) Uint64(w io.Writer, i uint64) (int, error) {
    return s.Float64(w, f)
 }
 
-func Percent(w io.Writer, value, total float64) (int, error) {
-   var s string
-   if total != 0 {
-      ratio := 100 * value / total
-      s = strconv.FormatFloat(ratio, 'f', 1, 64)
-   } else {
-      s = "0"
-   }
-   return io.WriteString(w, s + "%")
+// Do not export this. The method is one line, so just vendor it if need be.
+type notFound struct {
+   input string
 }
 
-func PercentInt(w io.Writer, value, total int) (int, error) {
-   val, tot := float64(value), float64(total)
-   return Percent(w, val, tot)
-}
-
-func PercentInt64(w io.Writer, value, total int64) (int, error) {
-   val, tot := float64(value), float64(total)
-   return Percent(w, val, tot)
-}
-
-func PercentUint64(w io.Writer, value, total uint64) (int, error) {
-   val, tot := float64(value), float64(total)
-   return Percent(w, val, tot)
+func (n notFound) Error() string {
+   return strconv.Quote(n.input) + " not found"
 }
