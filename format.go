@@ -85,13 +85,6 @@ func PercentUint64(w io.Writer, value, total uint64) (int, error) {
    return Percent(w, val, tot)
 }
 
-func Trim(w io.Writer, s string) (int, error) {
-   if len(s) >= 100 {
-      s = s[:48] + "..." + s[len(s)-48:]
-   }
-   return io.WriteString(w, s)
-}
-
 type InvalidSlice struct {
    Index, Length int
 }
