@@ -2,7 +2,6 @@ package format
 
 import (
    "bytes"
-   "io"
    "mime"
    "net/http"
    "net/http/httputil"
@@ -13,7 +12,6 @@ import (
 )
 
 var (
-   Log = Logger{Writer: os.Stderr}
    Number = Symbols{"", " K", " M", " B", " T"}
    Rate = Symbols{" B/s", " kB/s", " MB/s", " GB/s", " TB/s"}
    Size = Symbols{" B", " kB", " MB", " GB", " TB"}
@@ -59,30 +57,22 @@ func IsBinary(buf []byte) bool {
    return false
 }
 
-func Percent(w io.Writer, value, total float64) (int, error) {
-   var s string
+func Percent(value, total float64) string {
+   var ratio float64
    if total != 0 {
-      ratio := 100 * value / total
-      s = strconv.FormatFloat(ratio, 'f', 1, 64)
-   } else {
-      s = "0"
+      ratio = 100 * value / total
    }
-   return io.WriteString(w, s + "%")
+   return strconv.FormatFloat(ratio, 'f', 1, 64) + "%"
 }
 
-func PercentInt(w io.Writer, value, total int) (int, error) {
+func PercentInt(value, total int) string {
    val, tot := float64(value), float64(total)
-   return Percent(w, val, tot)
+   return Percent(val, tot)
 }
 
-func PercentInt64(w io.Writer, value, total int64) (int, error) {
+func PercentInt64(value, total int64) string {
    val, tot := float64(value), float64(total)
-   return Percent(w, val, tot)
-}
-
-func PercentUint64(w io.Writer, value, total uint64) (int, error) {
-   val, tot := float64(value), float64(total)
-   return Percent(w, val, tot)
+   return Percent(val, tot)
 }
 
 type InvalidSlice struct {
@@ -100,29 +90,27 @@ func (i InvalidSlice) Error() string {
 }
 
 // Use 0 for INFO, 1 for VERBOSE and any other value for QUIET.
-type Logger struct {
-   io.Writer
-   Level int
-}
+type LogLevel int
 
-func (l Logger) Dump(req *http.Request) error {
-   switch l.Level {
+func (l LogLevel) Dump(req *http.Request) error {
+   switch l {
    case 0:
-      s := req.Method + " " + req.URL.String() + "\n"
-      io.WriteString(l, s)
+      os.Stdout.WriteString(req.Method)
+      os.Stdout.WriteString(" ")
+      os.Stdout.WriteString(req.URL.String())
+      os.Stdout.WriteString("\n")
    case 1:
       buf, err := httputil.DumpRequest(req, true)
       if err != nil {
          return err
       }
       if IsBinary(buf) {
-         s := strconv.Quote(string(buf))
-         io.WriteString(l, s)
+         os.Stdout.WriteString(strconv.Quote(string(buf)))
       } else {
-         l.Write(buf)
+         os.Stdout.Write(buf)
       }
       if !bytes.HasSuffix(buf, []byte{'\n'}) {
-         io.WriteString(l, "\n")
+         os.Stdout.WriteString("\n")
       }
    }
    return nil
@@ -131,30 +119,27 @@ func (l Logger) Dump(req *http.Request) error {
 type Progress struct {
    *http.Response
    content int64
-   io.Writer
    part, partLength time.Time
 }
 
-func NewProgress(src *http.Response, dst io.Writer) *Progress {
+func NewProgress(src *http.Response) *Progress {
    var pro Progress
    pro.Response = src
-   pro.Writer = dst
    pro.part = time.Now()
    pro.partLength = time.Now()
    return &pro
 }
 
 func (p *Progress) Read(buf []byte) (int, error) {
-   dPart := time.Since(p.part)
-   if dPart >= time.Second/2 {
-      dLength := time.Since(p.partLength).Milliseconds()
-      PercentInt64(p.Writer, p.content, p.ContentLength)
-      io.WriteString(p.Writer, "\t")
-      Size.Int64(p.Writer, p.content)
-      io.WriteString(p.Writer, "\t")
-      Rate.Int64(p.Writer, p.content / dLength * 1000)
-      io.WriteString(p.Writer, "\n")
-      p.part = p.part.Add(dPart)
+   since := time.Since(p.part)
+   if since >= time.Second/2 {
+      os.Stdout.WriteString(PercentInt64(p.content, p.ContentLength))
+      os.Stdout.WriteString("\t")
+      os.Stdout.WriteString(Size.GetInt64(p.content))
+      os.Stdout.WriteString("\t")
+      os.Stdout.WriteString(p.getRate())
+      os.Stdout.WriteString("\n")
+      p.part = p.part.Add(since)
    }
    // Callers should always process the n > 0 bytes returned before considering
    // the error err.
@@ -163,9 +148,14 @@ func (p *Progress) Read(buf []byte) (int, error) {
    return read, err
 }
 
+func (p Progress) getRate() string {
+   rate := float64(p.content) / time.Since(p.partLength).Seconds()
+   return Rate.Get(rate)
+}
+
 type Symbols []string
 
-func (s Symbols) Float64(w io.Writer, f float64) (int, error) {
+func (s Symbols) Get(f float64) string {
    var (
       i int
       symbol string
@@ -179,23 +169,17 @@ func (s Symbols) Float64(w io.Writer, f float64) (int, error) {
    if i >= 1 {
       i = 3
    }
-   symbol = strconv.FormatFloat(f, 'f', i, 64) + symbol
-   return io.WriteString(w, symbol)
+   return strconv.FormatFloat(f, 'f', i, 64) + symbol
 }
 
-func (s Symbols) Int(w io.Writer, i int) (int, error) {
+func (s Symbols) GetInt64(i int64) string {
    f := float64(i)
-   return s.Float64(w, f)
+   return s.Get(f)
 }
 
-func (s Symbols) Int64(w io.Writer, i int64) (int, error) {
+func (s Symbols) GetUint64(i uint64) string {
    f := float64(i)
-   return s.Float64(w, f)
-}
-
-func (s Symbols) Uint64(w io.Writer, i uint64) (int, error) {
-   f := float64(i)
-   return s.Float64(w, f)
+   return s.Get(f)
 }
 
 // Do not export this. The method is one line, so just vendor it if need be.

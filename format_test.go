@@ -4,7 +4,6 @@ import (
    "fmt"
    "io"
    "net/http"
-   "os"
    "testing"
 )
 
@@ -14,19 +13,19 @@ func TestProgress(t *testing.T) {
       t.Fatal(err)
    }
    defer res.Body.Close()
-   pro := NewProgress(res, os.Stdout)
+   pro := NewProgress(res)
    io.ReadAll(pro)
 }
 
 func TestPercent(t *testing.T) {
-   Percent(os.Stdout, 2, 3)
-   fmt.Println()
+   per := Percent(2, 3)
+   fmt.Println(per)
 }
 
 func TestSymbol(t *testing.T) {
    nums := []int64{999, 1_234_567_890}
    for _, num := range nums {
-      Number.Int64(os.Stdout, num)
-      fmt.Println()
+      get := Number.GetInt64(num)
+      fmt.Println(get)
    }
 }

@@ -2,29 +2,22 @@ package strings
 
 import (
    "strconv"
-   "strings"
 )
 
-type Builder struct {
-   strings.Builder
+type Builder []byte
+
+func (b *Builder) Add(s string) {
+   *b = append(*b, s...)
 }
 
-// func AppendInt(dst []byte, i int64, base int) []byte
-func (b *Builder) WriteInt(i int64, base int) (int, error) {
-   s := strconv.FormatInt(i, base)
-   return b.WriteString(s)
+func (b *Builder) AddInt64(i int64, base int) {
+   *b = strconv.AppendInt(*b, i, base)
 }
 
-// func AppendQuote(dst []byte, s string) []byte
-func (b *Builder) WriteQuote(s string) (int, error) {
-   s = strconv.Quote(s)
-   return b.WriteString(s)
+func (b *Builder) AddQuote(s string) {
+   *b = strconv.AppendQuote(*b, s)
 }
 
-// func AppendUint(dst []byte, i uint64, base int) []byte
-func (b *Builder) WriteUint(i uint64, base int) (int, error) {
-   s := strconv.FormatUint(i, base)
-   return b.WriteString(s)
+func (b *Builder) AddUint64(i uint64, base int) {
+   *b = strconv.AppendUint(*b, i, base)
 }
-
-// func AppendQuoteRune(dst []byte, r rune) []byte
