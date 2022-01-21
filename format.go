@@ -57,22 +57,22 @@ func IsBinary(buf []byte) bool {
    return false
 }
 
-func Percent(value, total float64) string {
+func PercentInt(value, total int) string {
+   val, tot := float64(value), float64(total)
+   return percent(val, tot)
+}
+
+func PercentInt64(value, total int64) string {
+   val, tot := float64(value), float64(total)
+   return percent(val, tot)
+}
+
+func percent(value, total float64) string {
    var ratio float64
    if total != 0 {
       ratio = 100 * value / total
    }
    return strconv.FormatFloat(ratio, 'f', 1, 64) + "%"
-}
-
-func PercentInt(value, total int) string {
-   val, tot := float64(value), float64(total)
-   return Percent(val, tot)
-}
-
-func PercentInt64(value, total int64) string {
-   val, tot := float64(value), float64(total)
-   return Percent(val, tot)
 }
 
 type InvalidSlice struct {
@@ -105,7 +105,8 @@ func (l LogLevel) Dump(req *http.Request) error {
          return err
       }
       if IsBinary(buf) {
-         os.Stdout.WriteString(strconv.Quote(string(buf)))
+         quote := strconv.Quote(string(buf))
+         os.Stdout.WriteString(quote)
       } else {
          os.Stdout.Write(buf)
       }
