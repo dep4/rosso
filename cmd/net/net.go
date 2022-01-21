@@ -1,40 +1,69 @@
 package main
 
 import (
-   "bytes"
-   "encoding/json"
-   "github.com/89z/format/protobuf"
-   "io"
+   "flag"
+   "fmt"
+   "github.com/89z/format/net"
+   "net/http"
+   "net/http/httputil"
    "os"
 )
 
-func readFrom(src io.Reader, output string, proto bool) error {
-   dst, err := os.Create(output)
-   if err != nil {
-      dst = os.Stdout
-   }
-   defer dst.Close()
-   if proto {
-      mes, err := protobuf.Decode(src)
+func main() {
+   var (
+      https, info bool
+      output string
+   )
+   flag.BoolVar(&info, "i", false, "info")
+   flag.StringVar(&output, "o", "", "output file")
+   flag.BoolVar(&https, "s", false, "HTTPS")
+   flag.Parse()
+   if flag.NArg() == 1 {
+      input := flag.Arg(0)
+      read, err := os.Open(input)
       if err != nil {
-         return err
+         panic(err)
       }
-      buf, err := json.Marshal(mes)
+      defer read.Close()
+      req, err := net.ReadRequest(read, https)
       if err != nil {
-         return err
+         panic(err)
       }
-      indent := new(bytes.Buffer)
-      if err := json.Indent(indent, buf, "", " "); err != nil {
-         return err
-      }
-      if _, err := dst.ReadFrom(indent); err != nil {
-         return err
+      if info {
+         err := net.WriteRequest(os.Stdout, req)
+         if err != nil {
+            panic(err)
+         }
+      } else {
+         err := roundTrip(req, output)
+         if err != nil {
+            panic(err)
+         }
       }
    } else {
-      _, err := dst.ReadFrom(src)
-      if err != nil {
-         return err
-      }
+      fmt.Println("net [flags] [request file]")
+      flag.PrintDefaults()
+   }
+}
+
+func roundTrip(req *http.Request, output string) error {
+   res, err := new(http.Transport).RoundTrip(req)
+   if err != nil {
+      return err
+   }
+   defer res.Body.Close()
+   buf, err := httputil.DumpResponse(res, false)
+   if err != nil {
+      return err
+   }
+   os.Stdout.Write(buf)
+   file, err := os.Create(output)
+   if err != nil {
+      file = os.Stdout
+   }
+   defer file.Close()
+   if _, err := file.ReadFrom(res.Body); err != nil {
+      return err
    }
    return nil
 }
