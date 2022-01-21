@@ -18,7 +18,7 @@ func TestProgress(t *testing.T) {
 }
 
 func TestPercent(t *testing.T) {
-   per := Percent(2, 3)
+   per := percent(2, 3)
    fmt.Println(per)
 }
 

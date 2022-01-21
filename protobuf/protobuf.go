@@ -11,6 +11,81 @@ import (
    "strings"
 )
 
+func Unmarshal(buf []byte) (Message, error) {
+   if len(buf) == 0 {
+      return nil, io.ErrUnexpectedEOF
+   }
+   mes := make(Message)
+   for len(buf) >= 1 {
+      num, typ, fLen, err := consumeField(buf)
+      if err != nil {
+         return nil, err
+      }
+      tLen, err := consumeTag(buf[:fLen])
+      if err != nil {
+         return nil, err
+      }
+      bVal := buf[tLen:fLen]
+      switch typ {
+      case protowire.VarintType:
+         val, err := consumeVarint(bVal)
+         if err != nil {
+            return nil, err
+         }
+         mes.addUint64(num, val)
+      case protowire.Fixed64Type:
+         val, err := consumeFixed64(bVal)
+         if err != nil {
+            return nil, err
+         }
+         mes.addUint64(num, val)
+      case protowire.Fixed32Type:
+         val, err := consumeFixed32(bVal)
+         if err != nil {
+            return nil, err
+         }
+         mes.addUint32(num, val)
+      case protowire.BytesType:
+         buf, err := consumeBytes(bVal)
+         if err != nil {
+            return nil, err
+         }
+         ok := format.IsBinary(buf)
+         mNew, err := Unmarshal(buf)
+         if err != nil {
+            if ok {
+               mes.addBytes(num, buf)
+            } else {
+               mes.addString(num, string(buf))
+            }
+         } else if ok {
+            // Could be Message or []byte
+            mes.Add(num, "", mNew)
+         } else {
+            // If we have this input:
+            // []byte{0x28, 0x9}
+            // It could be a string:
+            // "(\t"
+            // or a Message:
+            // Message{{Number: 5}: 9}
+            mes.Add(num, "", mNew)
+         }
+      case protowire.StartGroupType:
+         buf, err := consumeGroup(num, bVal)
+         if err != nil {
+            return nil, err
+         }
+         mNew, err := Unmarshal(buf)
+         if err != nil {
+            return nil, err
+         }
+         mes.Add(num, "", mNew)
+      }
+      buf = buf[fLen:]
+   }
+   return mes, nil
+}
+
 func appendField(buf []byte, num protowire.Number, val interface{}) []byte {
    switch val := val.(type) {
    case uint32:
@@ -52,71 +127,6 @@ func Decode(src io.Reader) (Message, error) {
       return nil, err
    }
    return Unmarshal(buf)
-}
-
-func Unmarshal(buf []byte) (Message, error) {
-   if len(buf) == 0 {
-      return nil, io.ErrUnexpectedEOF
-   }
-   mes := make(Message)
-   for len(buf) >= 1 {
-      num, typ, fLen, err := consumeField(buf)
-      if err != nil {
-         return nil, err
-      }
-      tLen, err := consumeTag(buf[:fLen])
-      if err != nil {
-         return nil, err
-      }
-      bVal := buf[tLen:fLen]
-      switch typ {
-      case protowire.VarintType:
-         val, err := consumeVarint(bVal)
-         if err != nil {
-            return nil, err
-         }
-         mes.addUint64(num, val)
-      case protowire.Fixed64Type:
-         val, err := consumeFixed64(bVal)
-         if err != nil {
-            return nil, err
-         }
-         mes.addUint64(num, val)
-      case protowire.Fixed32Type:
-         val, err := consumeFixed32(bVal)
-         if err != nil {
-            return nil, err
-         }
-         mes.addUint32(num, val)
-      case protowire.BytesType:
-         buf, err := consumeBytes(bVal)
-         if err != nil {
-            return nil, err
-         }
-         if !format.IsBinary(buf) {
-            mes.addString(num, string(buf))
-         } else {
-            mNew, err := Unmarshal(buf)
-            if err != nil {
-               mes.addBytes(num, buf)
-            } else {
-               mes.Add(num, "", mNew)
-            }
-         }
-      case protowire.StartGroupType:
-         buf, err := consumeGroup(num, bVal)
-         if err != nil {
-            return nil, err
-         }
-         mNew, err := Unmarshal(buf)
-         if err != nil {
-            return nil, err
-         }
-         mes.Add(num, "", mNew)
-      }
-      buf = buf[fLen:]
-   }
-   return mes, nil
 }
 
 func (m Message) Encode() io.Reader {
