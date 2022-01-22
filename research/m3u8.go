@@ -1,4 +1,4 @@
-package parse
+package m3u8
 
 import (
 	"bufio"

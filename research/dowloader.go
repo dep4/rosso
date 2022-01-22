@@ -1,4 +1,4 @@
-package dl
+package m3u8
 
 import (
 	"bufio"
@@ -9,9 +9,6 @@ import (
 	"strconv"
 	"sync"
 	"sync/atomic"
-
-	"github.com/oopsguy/m3u8/parse"
-	"github.com/oopsguy/m3u8/tool"
 )
 
 const (
@@ -30,19 +27,19 @@ type Downloader struct {
 	finish   int32
 	segLen   int
 
-	result *parse.Result
+	result *Result
 }
 
 // NewTask returns a Task instance
 func NewTask(output string, url string) (*Downloader, error) {
-	result, err := parse.FromURL(url)
+	result, err := FromURL(url)
 	if err != nil {
 		return nil, err
 	}
 	var folder string
 	// If no output folder specified, use current directory
 	if output == "" {
-		current, err := tool.CurrentDir()
+		current, err := CurrentDir()
 		if err != nil {
 			return nil, err
 		}
@@ -104,7 +101,7 @@ func (d *Downloader) Start(concurrency int) error {
 func (d *Downloader) download(segIndex int) error {
 	tsFilename := tsFilename(segIndex)
 	tsUrl := d.tsURL(segIndex)
-	b, e := tool.Get(tsUrl)
+	b, e := Get(tsUrl)
 	if e != nil {
 		return fmt.Errorf("request %s, %s", tsUrl, e.Error())
 	}
@@ -126,7 +123,7 @@ func (d *Downloader) download(segIndex int) error {
 	}
 	key, ok := d.result.Keys[sf.KeyIndex]
 	if ok && key != "" {
-		bytes, err = tool.AES128Decrypt(bytes, []byte(key),
+		bytes, err = AES128Decrypt(bytes, []byte(key),
 			[]byte(d.result.M3u8.Keys[sf.KeyIndex].IV))
 		if err != nil {
 			return fmt.Errorf("decryt: %s, %s", tsUrl, err.Error())
@@ -154,7 +151,6 @@ func (d *Downloader) download(segIndex int) error {
 	}
 	// Maybe it will be safer in this way...
 	atomic.AddInt32(&d.finish, 1)
-	//tool.DrawProgressBar("Downloading", float32(d.finish)/float32(d.segLen), progressWidth)
 	fmt.Printf("[download %6.2f%%] %s\n", float32(d.finish)/float32(d.segLen)*100, tsUrl)
 	return nil
 }
@@ -220,7 +216,7 @@ func (d *Downloader) merge() error {
 			continue
 		}
 		mergedCount++
-		tool.DrawProgressBar("merge",
+		DrawProgressBar("merge",
 			float32(mergedCount)/float32(d.segLen), progressWidth)
 	}
 	_ = writer.Flush()
@@ -238,7 +234,7 @@ func (d *Downloader) merge() error {
 
 func (d *Downloader) tsURL(segIndex int) string {
 	seg := d.result.M3u8.Segments[segIndex]
-	return tool.ResolveURL(d.result.URL, seg.URI)
+	return ResolveURL(d.result.URL, seg.URI)
 }
 
 func tsFilename(ts int) string {

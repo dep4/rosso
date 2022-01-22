@@ -1,11 +1,9 @@
-package main
+package m3u8
 
 import (
 	"flag"
 	"fmt"
 	"os"
-
-	"github.com/oopsguy/m3u8/dl"
 )
 
 var (
@@ -37,7 +35,7 @@ func main() {
 	if chanSize <= 0 {
 		panic("parameter 'c' must be greater than 0")
 	}
-	downloader, err := dl.NewTask(output, url)
+	downloader, err := NewTask(output, url)
 	if err != nil {
 		panic(err)
 	}
