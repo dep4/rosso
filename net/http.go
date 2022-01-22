@@ -66,7 +66,7 @@ type requestTemplate struct {
    VarBody string
 }
 
-func WriteRequest(w io.Writer, req *http.Request) error {
+func WriteRequest(req *http.Request, w io.Writer) error {
    var request requestTemplate
    if req.Body != nil && req.Method == "POST" {
       buf, err := io.ReadAll(req.Body)
