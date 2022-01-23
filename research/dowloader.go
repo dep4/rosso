@@ -66,36 +66,36 @@ func NewTask(output string, url string) (*Downloader, error) {
 
 // Start runs downloader
 func (d *Downloader) Start(concurrency int) error {
-	var wg sync.WaitGroup
-	// struct{} zero size
-	limitChan := make(chan struct{}, concurrency)
-	for {
-		tsIdx, end, err := d.next()
-		if err != nil {
-			if end {
-				break
-			}
-			continue
-		}
-		wg.Add(1)
-		go func(idx int) {
-			defer wg.Done()
-			if err := d.download(idx); err != nil {
-				// Back into the queue, retry request
-				fmt.Printf("[failed] %s\n", err.Error())
-				if err := d.back(idx); err != nil {
-					fmt.Printf(err.Error())
-				}
-			}
-			<-limitChan
-		}(tsIdx)
-		limitChan <- struct{}{}
-	}
-	wg.Wait()
-	if err := d.merge(); err != nil {
-		return err
-	}
-	return nil
+   var wg sync.WaitGroup
+   // struct{} zero size
+   limitChan := make(chan struct{}, concurrency)
+   for {
+      tsIdx, end, err := d.next()
+      if err != nil {
+         if end {
+            break
+         }
+         continue
+      }
+      wg.Add(1)
+      go func(idx int) {
+         defer wg.Done()
+         if err := d.download(idx); err != nil {
+            // Back into the queue, retry request
+            fmt.Printf("[failed] %s\n", err.Error())
+            if err := d.back(idx); err != nil {
+               fmt.Println(err)
+            }
+         }
+         <-limitChan
+      }(tsIdx)
+      limitChan <- struct{}{}
+   }
+   wg.Wait()
+   if err := d.merge(); err != nil {
+      return err
+   }
+   return nil
 }
 
 func (d *Downloader) download(segIndex int) error {
@@ -184,52 +184,47 @@ func (d *Downloader) back(segIndex int) error {
 }
 
 func (d *Downloader) merge() error {
-	// In fact, the number of downloaded segments should be equal to number of m3u8 segments
-	missingCount := 0
-	for idx := 0; idx < d.segLen; idx++ {
-		tsFilename := tsFilename(idx)
-		f := filepath.Join(d.tsFolder, tsFilename)
-		if _, err := os.Stat(f); err != nil {
-			missingCount++
-		}
-	}
-	if missingCount > 0 {
-		fmt.Printf("[warning] %d files missing\n", missingCount)
-	}
-
-	// Create a TS file for merging, all segment files will be written to this file.
-	mFilePath := filepath.Join(d.folder, mergeTSFilename)
-	mFile, err := os.Create(mFilePath)
-	if err != nil {
-		return fmt.Errorf("create main TS file failed：%s", err.Error())
-	}
-	//noinspection GoUnhandledErrorResult
-	defer mFile.Close()
-
-	writer := bufio.NewWriter(mFile)
-	mergedCount := 0
-	for segIndex := 0; segIndex < d.segLen; segIndex++ {
-		tsFilename := tsFilename(segIndex)
-		bytes, err := ioutil.ReadFile(filepath.Join(d.tsFolder, tsFilename))
-		_, err = writer.Write(bytes)
-		if err != nil {
-			continue
-		}
-		mergedCount++
-		DrawProgressBar("merge",
-			float32(mergedCount)/float32(d.segLen), progressWidth)
-	}
-	_ = writer.Flush()
-	// Remove `ts` folder
-	_ = os.RemoveAll(d.tsFolder)
-
-	if mergedCount != d.segLen {
-		fmt.Printf("[warning] \n%d files merge failed", d.segLen-mergedCount)
-	}
-
-	fmt.Printf("\n[output] %s\n", mFilePath)
-
-	return nil
+   // In fact, the number of downloaded segments should be equal to number of m3u8 segments
+   missingCount := 0
+   for idx := 0; idx < d.segLen; idx++ {
+   tsFilename := tsFilename(idx)
+   f := filepath.Join(d.tsFolder, tsFilename)
+   if _, err := os.Stat(f); err != nil {
+   missingCount++
+   }
+   }
+   if missingCount > 0 {
+   fmt.Printf("[warning] %d files missing\n", missingCount)
+   }
+   // Create a TS file for merging, all segment files will be written to this file.
+   mFilePath := filepath.Join(d.folder, mergeTSFilename)
+   mFile, err := os.Create(mFilePath)
+   if err != nil {
+   return fmt.Errorf("create main TS file failed：%s", err.Error())
+   }
+   //noinspection GoUnhandledErrorResult
+   defer mFile.Close()
+   writer := bufio.NewWriter(mFile)
+   mergedCount := 0
+   for segIndex := 0; segIndex < d.segLen; segIndex++ {
+   tsFilename := tsFilename(segIndex)
+   bytes, err := ioutil.ReadFile(filepath.Join(d.tsFolder, tsFilename))
+   _, err = writer.Write(bytes)
+   if err != nil {
+   continue
+   }
+   mergedCount++
+   DrawProgressBar("merge",
+   float32(mergedCount)/float32(d.segLen), progressWidth)
+   }
+   _ = writer.Flush()
+   // Remove `ts` folder
+   _ = os.RemoveAll(d.tsFolder)
+   if mergedCount != d.segLen {
+   fmt.Printf("[warning] \n%d files merge failed", d.segLen-mergedCount)
+   }
+   fmt.Printf("\n[output] %s\n", mFilePath)
+   return nil
 }
 
 func (d *Downloader) tsURL(segIndex int) string {
