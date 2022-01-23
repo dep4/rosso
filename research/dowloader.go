@@ -184,7 +184,8 @@ func (d *Downloader) back(segIndex int) error {
 }
 
 func (d *Downloader) merge() error {
-   // In fact, the number of downloaded segments should be equal to number of m3u8 segments
+   // In fact, the number of downloaded segments should be equal to number of
+   // m3u8 segments
    missingCount := 0
    for idx := 0; idx < d.segLen; idx++ {
    tsFilename := tsFilename(idx)
@@ -196,7 +197,8 @@ func (d *Downloader) merge() error {
    if missingCount > 0 {
    fmt.Printf("[warning] %d files missing\n", missingCount)
    }
-   // Create a TS file for merging, all segment files will be written to this file.
+   // Create a TS file for merging, all segment files will be written to this
+   // file.
    mFilePath := filepath.Join(d.folder, mergeTSFilename)
    mFile, err := os.Create(mFilePath)
    if err != nil {
@@ -209,13 +211,15 @@ func (d *Downloader) merge() error {
    for segIndex := 0; segIndex < d.segLen; segIndex++ {
    tsFilename := tsFilename(segIndex)
    bytes, err := ioutil.ReadFile(filepath.Join(d.tsFolder, tsFilename))
+   if err != nil {
+      return err
+   }
    _, err = writer.Write(bytes)
    if err != nil {
-   continue
+      continue
    }
    mergedCount++
-   DrawProgressBar("merge",
-   float32(mergedCount)/float32(d.segLen), progressWidth)
+   DrawProgressBar("merge", float32(mergedCount)/float32(d.segLen), progressWidth)
    }
    _ = writer.Flush()
    // Remove `ts` folder
