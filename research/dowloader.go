@@ -1,14 +1,20 @@
 package m3u8
 
 import (
-	"bufio"
-	"fmt"
-	"io/ioutil"
-	"os"
-	"path/filepath"
-	"strconv"
-	"sync"
-	"sync/atomic"
+   "errors"
+   "fmt"
+   "io"
+   "net/url"
+   "os"
+   "path/filepath"
+   "regexp"
+   "path"
+   "net/http"
+   "github.com/89z/format"
+   "strconv"
+   "strings"
+   "sync"
+   "time"
 )
 
 // NewTask returns a Task instance
@@ -97,63 +103,6 @@ type Downloader struct {
 	result *Result
 }
 
-func (d *Downloader) download(segIndex int) error {
-	tsFilename := tsFilename(segIndex)
-	tsUrl := d.tsURL(segIndex)
-	b, e := Get(tsUrl)
-	if e != nil {
-		return fmt.Errorf("request %s, %s", tsUrl, e.Error())
-	}
-	//noinspection GoUnhandledErrorResult
-	defer b.Close()
-	fPath := filepath.Join(d.tsFolder, tsFilename)
-	fTemp := fPath + tsTempFileSuffix
-	f, err := os.Create(fTemp)
-	if err != nil {
-		return fmt.Errorf("create file: %s, %s", tsFilename, err.Error())
-	}
-	bytes, err := ioutil.ReadAll(b)
-	if err != nil {
-		return fmt.Errorf("read bytes: %s, %s", tsUrl, err.Error())
-	}
-	sf := d.result.M3u8.Segments[segIndex]
-	if sf == nil {
-		return fmt.Errorf("invalid segment index: %d", segIndex)
-	}
-	key, ok := d.result.Keys[sf.KeyIndex]
-	if ok && key != "" {
-		bytes, err = AES128Decrypt(bytes, []byte(key),
-			[]byte(d.result.M3u8.Keys[sf.KeyIndex].IV))
-		if err != nil {
-			return fmt.Errorf("decryt: %s, %s", tsUrl, err.Error())
-		}
-	}
-	// https://en.wikipedia.org/wiki/MPEG_transport_stream
-	// Some TS files do not start with SyncByte 0x47, they can not be played after merging,
-	// Need to remove the bytes before the SyncByte 0x47(71).
-	syncByte := uint8(71) //0x47
-	bLen := len(bytes)
-	for j := 0; j < bLen; j++ {
-		if bytes[j] == syncByte {
-			bytes = bytes[j:]
-			break
-		}
-	}
-	w := bufio.NewWriter(f)
-	if _, err := w.Write(bytes); err != nil {
-		return fmt.Errorf("write to %s: %s", fTemp, err.Error())
-	}
-	// Release file resource to rename file
-	_ = f.Close()
-	if err = os.Rename(fTemp, fPath); err != nil {
-		return err
-	}
-	// Maybe it will be safer in this way...
-	atomic.AddInt32(&d.finish, 1)
-	fmt.Printf("[download %6.2f%%] %s\n", float32(d.finish)/float32(d.segLen)*100, tsUrl)
-	return nil
-}
-
 func (d *Downloader) next() (segIndex int, end bool, err error) {
 	d.lock.Lock()
 	defer d.lock.Unlock()
@@ -197,4 +146,143 @@ func genSlice(len int) []int {
 		s = append(s, i)
 	}
 	return s
+}
+
+type Result struct {
+	URL  *url.URL
+	M3u8 *M3u8
+	Keys map[int]string
+}
+
+func CurrentDir(joinPath ...string) (string, error) {
+	dir, err := filepath.Abs(filepath.Dir(os.Args[0]))
+	if err != nil {
+		return "", err
+	}
+	p := strings.Replace(dir, "\\", "/", -1)
+	whole := filepath.Join(joinPath...)
+	whole = filepath.Join(p, whole)
+	return whole, nil
+}
+
+func ResolveURL(u *url.URL, p string) string {
+	if strings.HasPrefix(p, "https://") || strings.HasPrefix(p, "http://") {
+		return p
+	}
+	var baseURL string
+	if strings.Index(p, "/") == 0 {
+		baseURL = u.Scheme + "://" + u.Host
+	} else {
+		tU := u.String()
+		baseURL = tU[0:strings.LastIndex(tU, "/")]
+	}
+	return baseURL + path.Join("/", p)
+}
+
+func DrawProgressBar(prefix string, proportion float32, width int, suffix ...string) {
+	pos := int(proportion * float32(width))
+	s := fmt.Sprintf("[%s] %s%*s %6.2f%% %s",
+		prefix, strings.Repeat("■", pos), width-pos, "", proportion*100, strings.Join(suffix, ""))
+	fmt.Print("\r" + s)
+}
+
+func Get(url string) (io.ReadCloser, error) {
+   c := http.Client{
+   Timeout: time.Duration(60) * time.Second,
+   }
+   req, err := http.NewRequest("GET", url, nil)
+   if err != nil {
+   return nil, err
+   }
+   req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.81 Safari/537.36")
+   format.LogLevel.Dump(1, req)
+   resp, err := c.Do(req)
+   if err != nil {
+   return nil, err
+   }
+   if resp.StatusCode != 200 {
+   return nil, fmt.Errorf("http error: status code %d", resp.StatusCode)
+   }
+   return resp.Body, nil
+}
+
+type (
+	PlaylistType string
+	CryptMethod  string
+)
+
+const (
+   PlaylistTypeEvent PlaylistType = "EVENT"
+   PlaylistTypeVOD   PlaylistType = "VOD"
+)
+
+// regex pattern for extracting `key=value` parameters from a line
+var linePattern = regexp.MustCompile(`([a-zA-Z-]+)=("[^"]+"|[^",]+)`)
+
+type M3u8 struct {
+	Version        int8   // EXT-X-VERSION:version
+	MediaSequence  uint64 // Default 0, #EXT-X-MEDIA-SEQUENCE:sequence
+	Segments       []*Segment
+	MasterPlaylist []*MasterPlaylist
+	Keys           map[int]*Key
+	EndList        bool         // #EXT-X-ENDLIST
+	PlaylistType   PlaylistType // VOD or EVENT
+	TargetDuration float64      // #EXT-X-TARGETDURATION:duration
+}
+
+type Segment struct {
+	URI      string
+	KeyIndex int
+	Title    string  // #EXTINF: duration,<title>
+	Duration float32 // #EXTINF: duration,<title>
+	Length   uint64  // #EXT-X-BYTERANGE: length[@offset]
+	Offset   uint64  // #EXT-X-BYTERANGE: length[@offset]
+}
+
+// #EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=240000,RESOLUTION=416x234,CODECS="avc1.42e00a,mp4a.40.2"
+type MasterPlaylist struct {
+	URI        string
+	BandWidth  uint32
+	Resolution string
+	Codecs     string
+	ProgramID  uint32
+}
+
+func parseMasterPlaylist(line string) (*MasterPlaylist, error) {
+	params := parseLineParameters(line)
+	if len(params) == 0 {
+		return nil, errors.New("empty parameter")
+	}
+	mp := new(MasterPlaylist)
+	for k, v := range params {
+		switch {
+		case k == "BANDWIDTH":
+			v, err := strconv.ParseUint(v, 10, 32)
+			if err != nil {
+				return nil, err
+			}
+			mp.BandWidth = uint32(v)
+		case k == "RESOLUTION":
+			mp.Resolution = v
+		case k == "PROGRAM-ID":
+			v, err := strconv.ParseUint(v, 10, 32)
+			if err != nil {
+				return nil, err
+			}
+			mp.ProgramID = uint32(v)
+		case k == "CODECS":
+			mp.Codecs = v
+		}
+	}
+	return mp, nil
+}
+
+// parseLineParameters extra parameters in string `line`
+func parseLineParameters(line string) map[string]string {
+	r := linePattern.FindAllStringSubmatch(line, -1)
+	params := make(map[string]string)
+	for _, arr := range r {
+		params[arr[1]] = strings.Trim(arr[2], "\"")
+	}
+	return params
 }
