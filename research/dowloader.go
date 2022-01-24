@@ -19,36 +19,36 @@ import (
 
 // NewTask returns a Task instance
 func NewTask(output string, url string) (*Downloader, error) {
-	result, err := FromURL(url)
-	if err != nil {
-		return nil, err
-	}
-	var folder string
-	// If no output folder specified, use current directory
-	if output == "" {
-		current, err := CurrentDir()
-		if err != nil {
-			return nil, err
-		}
-		folder = filepath.Join(current, output)
-	} else {
-		folder = output
-	}
-	if err := os.MkdirAll(folder, os.ModePerm); err != nil {
-		return nil, fmt.Errorf("create storage folder failed: %s", err.Error())
-	}
-	tsFolder := filepath.Join(folder, tsFolderName)
-	if err := os.MkdirAll(tsFolder, os.ModePerm); err != nil {
-		return nil, fmt.Errorf("create ts folder '[%s]' failed: %s", tsFolder, err.Error())
-	}
-	d := &Downloader{
-		folder:   folder,
-		tsFolder: tsFolder,
-		result:   result,
-	}
-	d.segLen = len(result.M3u8.Segments)
-	d.queue = genSlice(d.segLen)
-	return d, nil
+   result, err := FromURL(url)
+   if err != nil {
+   return nil, err
+   }
+   var folder string
+   // If no output folder specified, use current directory
+   if output == "" {
+   current, err := CurrentDir()
+   if err != nil {
+   return nil, err
+   }
+   folder = filepath.Join(current, output)
+   } else {
+   folder = output
+   }
+   if err := os.MkdirAll(folder, os.ModePerm); err != nil {
+   return nil, fmt.Errorf("create storage folder failed: %s", err.Error())
+   }
+   tsFolder := filepath.Join(folder, tsFolderName)
+   if err := os.MkdirAll(tsFolder, os.ModePerm); err != nil {
+   return nil, fmt.Errorf("create ts folder '[%s]' failed: %s", tsFolder, err.Error())
+   }
+   d := &Downloader{
+   folder:   folder,
+   tsFolder: tsFolder,
+   result:   result,
+   }
+   d.segLen = len(result.M3u8.Segments)
+   d.queue = genSlice(d.segLen)
+   return d, nil
 }
 
 // Start runs downloader

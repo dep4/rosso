@@ -2,7 +2,6 @@ package m3u8
 
 import (
    "bufio"
-   "bytes"
    "crypto/aes"
    "crypto/cipher"
    "errors"
@@ -44,7 +43,7 @@ func (d *Downloader) download(segIndex int) error {
    tsUrl := d.tsURL(segIndex)
    b, e := Get(tsUrl)
    if e != nil {
-   return fmt.Errorf("request %s, %s", tsUrl, e.Error())
+      return fmt.Errorf("request %s, %s", tsUrl, e.Error())
    }
    //noinspection GoUnhandledErrorResult
    defer b.Close()
@@ -52,23 +51,22 @@ func (d *Downloader) download(segIndex int) error {
    fTemp := fPath + tsTempFileSuffix
    f, err := os.Create(fTemp)
    if err != nil {
-   return fmt.Errorf("create file: %s, %s", tsFilename, err.Error())
+      return fmt.Errorf("create file: %s, %s", tsFilename, err.Error())
    }
    bytes, err := ioutil.ReadAll(b)
    if err != nil {
-   return fmt.Errorf("read bytes: %s, %s", tsUrl, err.Error())
+      return fmt.Errorf("read bytes: %s, %s", tsUrl, err.Error())
    }
    sf := d.result.M3u8.Segments[segIndex]
    if sf == nil {
-   return fmt.Errorf("invalid segment index: %d", segIndex)
+      return fmt.Errorf("invalid segment index: %d", segIndex)
    }
    key, ok := d.result.Keys[sf.KeyIndex]
    if ok && key != "" {
-   bytes, err = AES128Decrypt(bytes, []byte(key),
-   []byte(d.result.M3u8.Keys[sf.KeyIndex].IV))
-   if err != nil {
-   return fmt.Errorf("decryt: %s, %s", tsUrl, err.Error())
-   }
+      bytes, err = AES128Decrypt(bytes, []byte(key), []byte(d.result.M3u8.Keys[sf.KeyIndex].IV))
+      if err != nil {
+         return fmt.Errorf("decryt: %s, %s", tsUrl, err.Error())
+      }
    }
    // https://en.wikipedia.org/wiki/MPEG_transport_stream
    // Some TS files do not start with SyncByte 0x47, they can not be played
@@ -76,19 +74,19 @@ func (d *Downloader) download(segIndex int) error {
    syncByte := uint8(71) //0x47
    bLen := len(bytes)
    for j := 0; j < bLen; j++ {
-   if bytes[j] == syncByte {
-   bytes = bytes[j:]
-   break
-   }
+      if bytes[j] == syncByte {
+         bytes = bytes[j:]
+         break
+      }
    }
    w := bufio.NewWriter(f)
    if _, err := w.Write(bytes); err != nil {
-   return fmt.Errorf("write to %s: %s", fTemp, err.Error())
+      return fmt.Errorf("write to %s: %s", fTemp, err.Error())
    }
    // Release file resource to rename file
-   _ = f.Close()
+   f.Close()
    if err = os.Rename(fTemp, fPath); err != nil {
-   return err
+      return err
    }
    // Maybe it will be safer in this way...
    atomic.AddInt32(&d.finish, 1)
@@ -97,6 +95,60 @@ func (d *Downloader) download(segIndex int) error {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+
+func FromURL(link string) (*Result, error) {
+   u, err := url.Parse(link)
+   if err != nil {
+      return nil, err
+   }
+   link = u.String()
+   body, err := Get(link)
+   if err != nil {
+      return nil, fmt.Errorf("request m3u8 URL failed: %s", err.Error())
+   }
+   //noinspection GoUnhandledErrorResult
+   defer body.Close()
+   m3u8, err := parse(body)
+   if err != nil {
+      return nil, err
+   }
+   if len(m3u8.MasterPlaylist) != 0 {
+      sf := m3u8.MasterPlaylist[0]
+      return FromURL(ResolveURL(u, sf.URI))
+   }
+   if len(m3u8.Segments) == 0 {
+      return nil, errors.New("can not found any TS file description")
+   }
+   result := &Result{
+      Keys: make(map[int]string),
+      M3u8: m3u8,
+      URL:  u,
+   }
+   for idx, key := range m3u8.Keys {
+      switch {
+      case key.Method == "" || key.Method == CryptMethodNONE:
+         continue
+      case key.Method == CryptMethodAES:
+         // Request URL to extract decryption key
+         keyURL := key.URI
+         keyURL = ResolveURL(u, keyURL)
+         resp, err := Get(keyURL)
+         if err != nil {
+            return nil, fmt.Errorf("extract key failed: %s", err.Error())
+         }
+         keyByte, err := ioutil.ReadAll(resp)
+         resp.Close()
+         if err != nil {
+            return nil, err
+         }
+         fmt.Println("decryption key: ", string(keyByte))
+         result.Keys[idx] = string(keyByte)
+      default:
+         return nil, fmt.Errorf("unknown or unsupported cryption method: %s", key.Method)
+      }
+   }
+   return result, nil
+}
 
 const (
    CryptMethodAES  CryptMethod = "AES-128"
@@ -110,62 +162,6 @@ type Key struct {
 	Method CryptMethod
 	URI    string
 	IV     string
-}
-
-
-func FromURL(link string) (*Result, error) {
-	u, err := url.Parse(link)
-	if err != nil {
-		return nil, err
-	}
-	link = u.String()
-	body, err := Get(link)
-	if err != nil {
-		return nil, fmt.Errorf("request m3u8 URL failed: %s", err.Error())
-	}
-	//noinspection GoUnhandledErrorResult
-	defer body.Close()
-	m3u8, err := parse(body)
-	if err != nil {
-		return nil, err
-	}
-	if len(m3u8.MasterPlaylist) != 0 {
-		sf := m3u8.MasterPlaylist[0]
-		return FromURL(ResolveURL(u, sf.URI))
-	}
-	if len(m3u8.Segments) == 0 {
-		return nil, errors.New("can not found any TS file description")
-	}
-	result := &Result{
-		URL:  u,
-		M3u8: m3u8,
-		Keys: make(map[int]string),
-	}
-
-	for idx, key := range m3u8.Keys {
-		switch {
-		case key.Method == "" || key.Method == CryptMethodNONE:
-			continue
-		case key.Method == CryptMethodAES:
-			// Request URL to extract decryption key
-			keyURL := key.URI
-			keyURL = ResolveURL(u, keyURL)
-			resp, err := Get(keyURL)
-			if err != nil {
-				return nil, fmt.Errorf("extract key failed: %s", err.Error())
-			}
-			keyByte, err := ioutil.ReadAll(resp)
-			_ = resp.Close()
-			if err != nil {
-				return nil, err
-			}
-			fmt.Println("decryption key: ", string(keyByte))
-			result.Keys[idx] = string(keyByte)
-		default:
-			return nil, fmt.Errorf("unknown or unsupported cryption method: %s", key.Method)
-		}
-	}
-	return result, nil
 }
 
 func parse(reader io.Reader) (*M3u8, error) {
@@ -319,4 +315,3 @@ func parse(reader io.Reader) (*M3u8, error) {
    }
    return m3u8, nil
 }
-
