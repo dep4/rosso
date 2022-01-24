@@ -35,7 +35,7 @@ func TestRequest(t *testing.T) {
       if err != nil {
          t.Fatal(err)
       }
-      if err := WriteRequest(os.Stdout, req); err != nil {
+      if err := WriteRequest(req, os.Stdout); err != nil {
          t.Fatal(err)
       }
       fmt.Println()

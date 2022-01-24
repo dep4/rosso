@@ -62,13 +62,8 @@ func Unmarshal(buf []byte) (Message, error) {
             // Could be Message or []byte
             mes.Add(num, "", mNew)
          } else {
-            // If we have this input:
-            // []byte{0x28, 0x9}
-            // It could be a string:
-            // "(\t"
-            // or a Message:
-            // Message{{Number: 5}: 9}
-            mes.Add(num, "", mNew)
+            // Could me Message or string
+            mes.addString(num, string(buf))
          }
       case protowire.StartGroupType:
          buf, err := consumeGroup(num, bVal)

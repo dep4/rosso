@@ -8,7 +8,7 @@ import (
 
 var apps = []string{
    "com.google.android.youtube.txt",
-   "air.ITVMobilePlayer.txt",
+   "com.instagram.android.txt",
 }
 
 func TestBinary(t *testing.T) {
@@ -28,8 +28,6 @@ func TestBinary(t *testing.T) {
       fmt.Printf("title: %q\n", title)
       currency := docV2.Get(8, "offer").GetString(2, "currencyCode")
       fmt.Printf("currency: %q\n", currency)
-      restrict := docV2.Get(9, "availability").GetUint64(5, "restriction")
-      fmt.Println("restrict:", restrict)
       versionCode := docV2.Get(13, "details").
          Get(1, "appDetails").
          GetUint64(3, "versionCode")
