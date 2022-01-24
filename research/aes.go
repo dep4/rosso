@@ -41,10 +41,6 @@ func AES128Decrypt(crypted, key, iv []byte) ([]byte, error) {
 func (d *Downloader) download(segIndex int) error {
    tsFilename := tsFilename(segIndex)
    tsUrl := d.tsURL(segIndex)
-   b, e := Get(tsUrl)
-   if e != nil {
-      return fmt.Errorf("request %s, %s", tsUrl, e.Error())
-   }
    //noinspection GoUnhandledErrorResult
    defer b.Close()
    fPath := filepath.Join(d.tsFolder, tsFilename)
@@ -93,8 +89,6 @@ func (d *Downloader) download(segIndex int) error {
    fmt.Printf("[download %6.2f%%] %s\n", float32(d.finish)/float32(d.segLen)*100, tsUrl)
    return nil
 }
-
-////////////////////////////////////////////////////////////////////////////////
 
 func FromURL(link string) (*Result, error) {
    u, err := url.Parse(link)
@@ -171,18 +165,15 @@ func parse(reader io.Reader) (*M3u8, error) {
       lines = append(lines, s.Text())
    }
    var (
-      i     = 0
-      count = len(lines)
-      m3u8  = &M3u8{
+      extByte, extInf  bool
+      key     *Key
+      keyIndex int
+      m3u8 = &M3u8{
          Keys: make(map[int]*Key),
       }
-      keyIndex = 0
-      key     *Key
-      seg     *Segment
-      extInf  bool
-      extByte bool
+      seg *Segment
    )
-   for ; i < count; i++ {
+   for i := 0; i < len(lines); i++ {
       line := strings.TrimSpace(lines[i])
       if i == 0 {
          if line != "#EXTM3U" {
