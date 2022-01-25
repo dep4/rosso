@@ -1,29 +1,12 @@
 package protobuf
 
 import (
-   "encoding/json"
    "fmt"
    "os"
    "testing"
 )
 
 const app = "com.instagram.android.txt"
-
-func TestMarshal(t *testing.T) {
-   buf, err := os.ReadFile(app)
-   if err != nil {
-      t.Fatal(err)
-   }
-   responseWrapper, err := Unmarshal(buf)
-   if err != nil {
-      t.Fatal(err)
-   }
-   bJSON, err := json.Marshal(responseWrapper)
-   if err != nil {
-      t.Fatal(err)
-   }
-   os.Stdout.Write(append(bJSON, '\n'))
-}
 
 func TestUnmarshal(t *testing.T) {
    buf, err := os.ReadFile(app)
@@ -34,6 +17,7 @@ func TestUnmarshal(t *testing.T) {
    if err != nil {
       t.Fatal(err)
    }
+   fmt.Println(responseWrapper)
    docV2 := responseWrapper.Get(1, "payload").
       Get(2, "detailsResponse").
       Get(4, "docV2")
