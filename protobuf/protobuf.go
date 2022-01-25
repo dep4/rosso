@@ -27,11 +27,10 @@ func Unmarshal(buf []byte) (Message, error) {
       bVal := buf[tLen:fLen]
       switch typ {
       case protowire.VarintType:
-         val, err := consumeVarint(bVal)
+         err := mes.consumeVarint(num, bVal)
          if err != nil {
             return nil, err
          }
-         mes.addUint64(num, "", val)
       case protowire.Fixed64Type:
          val, err := consumeFixed64(bVal)
          if err != nil {
@@ -43,7 +42,7 @@ func Unmarshal(buf []byte) (Message, error) {
          if err != nil {
             return nil, err
          }
-         mes.fixed32Type(num, val)
+         mes.addUint32(num, val)
       case protowire.BytesType:
          buf, err := consumeBytes(bVal)
          if err != nil {

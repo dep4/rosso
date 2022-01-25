@@ -5,119 +5,6 @@ import (
    "google.golang.org/protobuf/encoding/protowire"
 )
 
-func consumeBytes(b []byte) ([]byte, error) {
-   val, vLen := protowire.ConsumeBytes(b)
-   return val, protowire.ParseError(vLen)
-}
-
-func consumeField(b []byte) (protowire.Number, protowire.Type, int, error) {
-   num, typ, fLen := protowire.ConsumeField(b)
-   return num, typ, fLen, protowire.ParseError(fLen)
-}
-
-func consumeFixed32(b []byte) (uint32, error) {
-   val, vLen := protowire.ConsumeFixed32(b)
-   return val, protowire.ParseError(vLen)
-}
-
-func consumeFixed64(b []byte) (uint64, error) {
-   val, vLen := protowire.ConsumeFixed64(b)
-   return val, protowire.ParseError(vLen)
-}
-
-func consumeGroup(num protowire.Number, b []byte) ([]byte, error) {
-   val, vLen := protowire.ConsumeGroup(num, b)
-   return val, protowire.ParseError(vLen)
-}
-
-func consumeTag(b []byte) (int, error) {
-   _, _, tLen := protowire.ConsumeTag(b)
-   return tLen, protowire.ParseError(tLen)
-}
-
-func consumeVarint(b []byte) (uint64, error) {
-   val, vLen := protowire.ConsumeVarint(b)
-   return val, protowire.ParseError(vLen)
-}
-
-func (m Message) bytesType(num protowire.Number, buf []byte) {
-   ok := format.IsBinary(buf)
-   mNew, err := Unmarshal(buf)
-   if err != nil {
-      if ok {
-         m.addBytes(num, "", buf)
-      } else {
-         m.addString(num, "", string(buf))
-      }
-   } else if ok {
-      // Could be Message or []byte
-      m.Add(num, "", mNew)
-   } else {
-      // Cound be Message or string
-      m.addString(num, "", string(buf))
-   }
-}
-
-func (m Message) Add(num protowire.Number, str string, val Message) {
-   tag := Tag{num, str}
-   switch typ := m[tag].(type) {
-   case nil:
-      m[tag] = val
-   case Message:
-      m[tag] = []Message{typ, val}
-   case []Message:
-      m[tag] = append(typ, val)
-   }
-}
-
-func (m Message) addBytes(num protowire.Number, str string, val []byte) {
-   tag := Tag{num, str}
-   switch typ := m[tag].(type) {
-   case nil:
-      m[tag] = val
-   case []byte:
-      m[tag] = [][]byte{typ, val}
-   case [][]byte:
-      m[tag] = append(typ, val)
-   }
-}
-
-func (m Message) addString(num protowire.Number, str, val string) {
-   tag := Tag{num, str}
-   switch typ := m[tag].(type) {
-   case nil:
-      m[tag] = val
-   case string:
-      m[tag] = []string{typ, val}
-   case []string:
-      m[tag] = append(typ, val)
-   }
-}
-
-func (m Message) fixed32Type(num protowire.Number, val uint32) {
-   tag := Tag{num, ""}
-   switch typ := m[tag].(type) {
-   case nil:
-      m[tag] = val
-   case uint32:
-      m[tag] = []uint32{typ, val}
-   case []uint32:
-      m[tag] = append(typ, val)
-   }
-}
-
-func (m Message) addUint64(num protowire.Number, str string, val uint64) {
-   tag := Tag{num, str}
-   switch typ := m[tag].(type) {
-   case nil:
-      m[tag] = val
-   case uint64:
-      m[tag] = []uint64{typ, val}
-   case []uint64:
-      m[tag] = append(typ, val)
-   }
-}
-
 func (m Message) Get(num protowire.Number, str string) Message {
    val, ok := m[Tag{num, str}].(Message)
    if ok {
@@ -181,4 +68,124 @@ func (m Message) GetUint64(num protowire.Number, str string) uint64 {
       }
    }
    return 0
+}
+
+func (m Message) Add(num protowire.Number, str string, val Message) {
+   tag := Tag{num, str}
+   switch typ := m[tag].(type) {
+   case nil:
+      m[tag] = val
+   case Message:
+      m[tag] = []Message{typ, val}
+   case []Message:
+      m[tag] = append(typ, val)
+   }
+}
+
+func (m Message) addString(num protowire.Number, str, val string) {
+   tag := Tag{num, str}
+   switch typ := m[tag].(type) {
+   case nil:
+      m[tag] = val
+   case string:
+      m[tag] = []string{typ, val}
+   case []string:
+      m[tag] = append(typ, val)
+   }
+}
+
+func (m Message) addUint64(num protowire.Number, str string, val uint64) {
+   tag := Tag{num, str}
+   switch typ := m[tag].(type) {
+   case nil:
+      m[tag] = val
+   case uint64:
+      m[tag] = []uint64{typ, val}
+   case []uint64:
+      m[tag] = append(typ, val)
+   }
+}
+
+func (m Message) addUint32(num protowire.Number, val uint32) {
+   tag := Tag{num, ""}
+   switch typ := m[tag].(type) {
+   case nil:
+      m[tag] = val
+   case uint32:
+      m[tag] = []uint32{typ, val}
+   case []uint32:
+      m[tag] = append(typ, val)
+   }
+}
+
+func (m Message) addBytes(num protowire.Number, str string, val []byte) {
+   tag := Tag{num, str}
+   switch typ := m[tag].(type) {
+   case nil:
+      m[tag] = val
+   case []byte:
+      m[tag] = [][]byte{typ, val}
+   case [][]byte:
+      m[tag] = append(typ, val)
+   }
+}
+
+func consumeTag(b []byte) (int, error) {
+   _, _, tLen := protowire.ConsumeTag(b)
+   return tLen, protowire.ParseError(tLen)
+}
+
+func consumeField(b []byte) (protowire.Number, protowire.Type, int, error) {
+   num, typ, fLen := protowire.ConsumeField(b)
+   return num, typ, fLen, protowire.ParseError(fLen)
+}
+
+func (m Message) consumeVarint(num protowire.Number, buf []byte) error {
+   val, vLen := protowire.ConsumeVarint(buf)
+   err := protowire.ParseError(vLen)
+   if err != nil {
+      return err
+   }
+   m.addUint64(num, "", val)
+   return nil
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+func consumeFixed64(b []byte) (uint64, error) {
+   val, vLen := protowire.ConsumeFixed64(b)
+   return val, protowire.ParseError(vLen)
+}
+
+func consumeFixed32(b []byte) (uint32, error) {
+   val, vLen := protowire.ConsumeFixed32(b)
+   return val, protowire.ParseError(vLen)
+}
+
+func consumeBytes(b []byte) ([]byte, error) {
+   val, vLen := protowire.ConsumeBytes(b)
+   return val, protowire.ParseError(vLen)
+}
+
+func consumeGroup(num protowire.Number, b []byte) ([]byte, error) {
+   val, vLen := protowire.ConsumeGroup(num, b)
+   return val, protowire.ParseError(vLen)
+}
+
+func (m Message) bytesType(num protowire.Number, buf []byte) {
+   ok := format.IsBinary(buf)
+   mNew, err := Unmarshal(buf)
+   if err != nil {
+      if ok {
+         m.addBytes(num, "", buf)
+      } else {
+         m.addString(num, "", string(buf))
+      }
+   } else if ok {
+      // Could be Message or []byte
+      m.Add(num, "", mNew)
+   } else {
+      // Cound be Message or string
+      m.addString(num, "", string(buf))
+   }
 }
