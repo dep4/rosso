@@ -59,41 +59,30 @@ func Unmarshal(buf []byte) (Message, error) {
    }
    mes := make(Message)
    for len(buf) >= 1 {
-      num, typ, fLen, err := consumeField(buf)
+      num, typ, fLen := protowire.ConsumeField(buf)
+      err := protowire.ParseError(fLen)
       if err != nil {
          return nil, err
       }
-      tLen, err := consumeTag(buf[:fLen])
-      if err != nil {
+      _, _, tLen := protowire.ConsumeTag(buf[:fLen])
+      if err := protowire.ParseError(tLen); err != nil {
          return nil, err
       }
-      bVal := buf[tLen:fLen]
+      val := buf[tLen:fLen]
       switch typ {
-      case protowire.VarintType:
-         err := mes.consumeVarint(num, bVal)
-         if err != nil {
-            return nil, err
-         }
-      case protowire.Fixed64Type:
-         err := mes.consumeFixed64(num, bVal)
-         if err != nil {
-            return nil, err
-         }
-      case protowire.Fixed32Type:
-         err := mes.consumeFixed32(num, bVal)
-         if err != nil {
-            return nil, err
-         }
-      case protowire.StartGroupType:
-         err := mes.consumeGroup(num, bVal)
-         if err != nil {
-            return nil, err
-         }
       case protowire.BytesType:
-         err := mes.consumeBytes(num, bVal)
-         if err != nil {
-            return nil, err
-         }
+         err = mes.consumeBytes(num, val)
+      case protowire.Fixed32Type:
+         err = mes.consumeFixed32(num, val)
+      case protowire.Fixed64Type:
+         err = mes.consumeFixed64(num, val)
+      case protowire.StartGroupType:
+         err = mes.consumeGroup(num, val)
+      case protowire.VarintType:
+         err = mes.consumeVarint(num, val)
+      }
+      if err != nil {
+         return nil, err
       }
       buf = buf[fLen:]
    }
