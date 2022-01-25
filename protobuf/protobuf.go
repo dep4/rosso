@@ -2,7 +2,6 @@
 package protobuf
 
 import (
-   "bytes"
    "fmt"
    "google.golang.org/protobuf/encoding/protowire"
    "io"
@@ -45,14 +44,6 @@ func appendField(buf []byte, num protowire.Number, val interface{}) []byte {
 
 type Message map[Tag]interface{}
 
-func Decode(src io.Reader) (Message, error) {
-   buf, err := io.ReadAll(src)
-   if err != nil {
-      return nil, err
-   }
-   return Unmarshal(buf)
-}
-
 func Unmarshal(buf []byte) (Message, error) {
    if len(buf) == 0 {
       return nil, io.ErrUnexpectedEOF
@@ -89,22 +80,23 @@ func Unmarshal(buf []byte) (Message, error) {
    return mes, nil
 }
 
-func (m Message) Encode() io.Reader {
-   buf := m.Marshal()
-   return bytes.NewReader(buf)
+type Tag struct {
+   protowire.Type
+   protowire.Number
+   Name string
 }
 
 func (m Message) GoString() string {
    str := new(strings.Builder)
    str.WriteString("protobuf.Message{")
    first := true
-   for key, val := range m {
+   for tag, val := range m {
       if first {
          first = false
       } else {
          str.WriteString(",\n")
       }
-      fmt.Fprintf(str, "%#v:", key)
+      fmt.Fprintf(str, "%#v:", tag)
       switch typ := val.(type) {
       case uint32:
          fmt.Fprintf(str, "uint32(%v)", typ)
@@ -120,15 +112,10 @@ func (m Message) GoString() string {
 
 func (m Message) Marshal() []byte {
    var buf []byte
-   for key, val := range m {
-      buf = appendField(buf, key.Number, val)
+   for tag, val := range m {
+      buf = appendField(buf, tag.Number, val)
    }
    return buf
-}
-
-type Tag struct {
-   protowire.Number
-   String string
 }
 
 // encoding/json

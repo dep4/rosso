@@ -5,68 +5,115 @@ import (
    "google.golang.org/protobuf/encoding/protowire"
 )
 
-// bytes or group
-func (m Message) Add(num protowire.Number, key string, mes Message) {
-   tag := Tag{num, key}
+func (m Message) consumeBytes(n protowire.Number, b []byte) error {
+   val, vLen := protowire.ConsumeBytes(b)
+   err := protowire.ParseError(vLen)
+   if err != nil {
+      return err
+   }
+   ok := format.IsBinary(val)
+   mes, err := Unmarshal(val)
+   if err != nil {
+      if ok {
+         m.addBytes(n, val)
+      } else {
+         m.addString(n, string(val))
+      }
+   } else if ok {
+      // Could be Message or []byte
+      m.Add(n, "", mes)
+   } else {
+      // Cound be Message or string
+      m.addString(n, string(val))
+   }
+   return nil
+}
+
+func (m Message) consumeFixed32(n protowire.Number, b []byte) error {
+   val, vLen := protowire.ConsumeFixed32(b)
+   err := protowire.ParseError(vLen)
+   if err != nil {
+      return err
+   }
+   m.addUint32(n, val)
+   return nil
+}
+
+func (m Message) consumeFixed64(n protowire.Number, b []byte) error {
+   val, vLen := protowire.ConsumeFixed64(b)
+   err := protowire.ParseError(vLen)
+   if err != nil {
+      return err
+   }
+   m.addUint64(n, val)
+   return nil
+}
+
+func (m Message) consumeGroup(n protowire.Number, b []byte) error {
+   val, vLen := protowire.ConsumeGroup(n, b)
+   err := protowire.ParseError(vLen)
+   if err != nil {
+      return err
+   }
+   mes, err := Unmarshal(val)
+   if err != nil {
+      return err
+   }
+   m.Add(n, "", mes)
+   return nil
+}
+
+func (m Message) consumeVarint(n protowire.Number, b []byte) error {
+   val, vLen := protowire.ConsumeVarint(b)
+   err := protowire.ParseError(vLen)
+   if err != nil {
+      return err
+   }
+   m.addUint64(n, val)
+   return nil
+}
+
+func (m Message) Add(n protowire.Number, name string, v Message) {
+   tag := Tag{protowire.BytesType, n, name}
    switch val := m[tag].(type) {
    case nil:
-      m[tag] = mes
+      m[tag] = v
    case Message:
-      m[tag] = []Message{val, mes}
+      m[tag] = []Message{val, v}
    case []Message:
-      m[tag] = append(val, mes)
+      m[tag] = append(val, v)
    }
 }
 
-func (m Message) Get(num protowire.Number, key string) Message {
-   for _, str := range []string{"bytes", "group"} {
-      val, ok := m[Tag{num, str}].(Message)
-      if ok {
-         return val
-      }
-   }
-   return nil
-}
-
-func (m Message) GetBytes(num protowire.Number, key string) []byte {
-   val, ok := m[Tag{num, "bytes"}].([]byte)
+func (m Message) Get(n protowire.Number, name string) Message {
+   tag := Tag{Type: protowire.BytesType, Number: n}
+   val, ok := m[tag].(Message)
    if ok {
       return val
    }
    return nil
 }
 
-func (m Message) GetMessages(num protowire.Number, key string) []Message {
-   for _, str := range []string{"bytes", "group"} {
-      val, ok := m[Tag{num, str}].([]Message)
-      if ok {
-         return val
-      }
+func (m Message) GetBytes(n protowire.Number, name string) []byte {
+   tag := Tag{Type: protowire.BytesType, Number: n}
+   val, ok := m[tag].([]byte)
+   if ok {
+      return val
    }
    return nil
 }
 
-func (m Message) GetString(num protowire.Number, key string) string {
-   val, ok := m[Tag{num, "bytes"}].(string)
+func (m Message) GetMessages(n protowire.Number, name string) []Message {
+   tag := Tag{Type: protowire.BytesType, Number: n}
+   val, ok := m[tag].([]Message)
    if ok {
       return val
    }
-   return ""
+   return nil
 }
 
-func (m Message) GetUint64(num protowire.Number, key string) uint64 {
-   for _, str := range []string{"varint", "fixed64"} {
-      val, ok := m[Tag{num, str}].(uint64)
-      if ok {
-         return val
-      }
-   }
-   return 0
-}
-
-// bytes
-func (m Message) addBytes(num protowire.Number, key string, v []byte) {
-   tag := Tag{num, key}
+func (m Message) addBytes(n protowire.Number, v []byte) {
+   tag := Tag{Type: protowire.BytesType, Number: n}
    switch val := m[tag].(type) {
    case nil:
       m[tag] = v
@@ -77,9 +124,8 @@ func (m Message) addBytes(num protowire.Number, key string, v []byte) {
    }
 }
 
-// bytes
-func (m Message) addString(num protowire.Number, key, v string) {
-   tag := Tag{num, key}
+func (m Message) addString(n protowire.Number, v string) {
+   tag := Tag{Type: protowire.BytesType, Number: n}
    switch val := m[tag].(type) {
    case nil:
       m[tag] = v
@@ -90,9 +136,8 @@ func (m Message) addString(num protowire.Number, key, v string) {
    }
 }
 
-// fixed32
-func (m Message) addUint32(num protowire.Number, key string, v uint32) {
-   tag := Tag{num, key}
+func (m Message) addUint32(n protowire.Number, v uint32) {
+   tag := Tag{Type: protowire.Fixed32Type, Number: n}
    switch val := m[tag].(type) {
    case nil:
       m[tag] = v
@@ -103,9 +148,26 @@ func (m Message) addUint32(num protowire.Number, key string, v uint32) {
    }
 }
 
-// varint or fixed64
-func (m Message) addUint64(num protowire.Number, key string, v uint64) {
-   tag := Tag{num, key}
+func (m Message) GetString(n protowire.Number, name string) string {
+   tag := Tag{Type: protowire.BytesType, Number: n}
+   val, ok := m[tag].(string)
+   if ok {
+      return val
+   }
+   return ""
+}
+
+func (m Message) GetUint64(n protowire.Number, name string) uint64 {
+   tag := Tag{Type: protowire.VarintType, Number: n}
+   val, ok := m[tag].(uint64)
+   if ok {
+      return val
+   }
+   return 0
+}
+
+func (m Message) addUint64(n protowire.Number, v uint64) {
+   tag := Tag{Type: protowire.VarintType, Number: n}
    switch val := m[tag].(type) {
    case nil:
       m[tag] = v
@@ -114,72 +176,4 @@ func (m Message) addUint64(num protowire.Number, key string, v uint64) {
    case []uint64:
       m[tag] = append(val, v)
    }
-}
-
-func (m Message) consumeBytes(num protowire.Number, buf []byte) error {
-   val, vLen := protowire.ConsumeBytes(buf)
-   err := protowire.ParseError(vLen)
-   if err != nil {
-      return err
-   }
-   ok := format.IsBinary(val)
-   mes, err := Unmarshal(val)
-   if err != nil {
-      if ok {
-         m.addBytes(num, "bytes", val)
-      } else {
-         m.addString(num, "bytes", string(val))
-      }
-   } else if ok {
-      // Could be Message or []byte
-      m.Add(num, "bytes", mes)
-   } else {
-      // Cound be Message or string
-      m.addString(num, "bytes", string(val))
-   }
-   return nil
-}
-
-func (m Message) consumeFixed32(num protowire.Number, buf []byte) error {
-   val, vLen := protowire.ConsumeFixed32(buf)
-   err := protowire.ParseError(vLen)
-   if err != nil {
-      return err
-   }
-   m.addUint32(num, "fixed32", val)
-   return nil
-}
-
-func (m Message) consumeFixed64(num protowire.Number, buf []byte) error {
-   val, vLen := protowire.ConsumeFixed64(buf)
-   err := protowire.ParseError(vLen)
-   if err != nil {
-      return err
-   }
-   m.addUint64(num, "fixed64", val)
-   return nil
-}
-
-func (m Message) consumeGroup(num protowire.Number, buf []byte) error {
-   val, vLen := protowire.ConsumeGroup(num, buf)
-   err := protowire.ParseError(vLen)
-   if err != nil {
-      return err
-   }
-   mes, err := Unmarshal(val)
-   if err != nil {
-      return err
-   }
-   m.Add(num, "group", mes)
-   return nil
-}
-
-func (m Message) consumeVarint(num protowire.Number, buf []byte) error {
-   val, vLen := protowire.ConsumeVarint(buf)
-   err := protowire.ParseError(vLen)
-   if err != nil {
-      return err
-   }
-   m.addUint64(num, "varint", val)
-   return nil
 }
