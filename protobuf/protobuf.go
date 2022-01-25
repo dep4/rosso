@@ -4,7 +4,6 @@ package protobuf
 import (
    "bytes"
    "fmt"
-   "github.com/89z/format"
    "google.golang.org/protobuf/encoding/protowire"
    "io"
    "strconv"
@@ -32,39 +31,25 @@ func Unmarshal(buf []byte) (Message, error) {
          if err != nil {
             return nil, err
          }
-         mes.addUint64(num, val)
+         mes.addUint64(num, "", val)
       case protowire.Fixed64Type:
          val, err := consumeFixed64(bVal)
          if err != nil {
             return nil, err
          }
-         mes.addUint64(num, val)
+         mes.addUint64(num, "", val)
       case protowire.Fixed32Type:
          val, err := consumeFixed32(bVal)
          if err != nil {
             return nil, err
          }
-         mes.addUint32(num, val)
+         mes.fixed32Type(num, val)
       case protowire.BytesType:
          buf, err := consumeBytes(bVal)
          if err != nil {
             return nil, err
          }
-         ok := format.IsBinary(buf)
-         mNew, err := Unmarshal(buf)
-         if err != nil {
-            if ok {
-               mes.addBytes(num, buf)
-            } else {
-               mes.addString(num, string(buf))
-            }
-         } else if ok {
-            // Could be Message or []byte
-            mes.Add(num, "", mNew)
-         } else {
-            // Could me Message or string
-            mes.addString(num, string(buf))
-         }
+         mes.bytesType(num, buf)
       case protowire.StartGroupType:
          buf, err := consumeGroup(num, bVal)
          if err != nil {

@@ -1,6 +1,7 @@
 package protobuf
 
 import (
+   "github.com/89z/format"
    "google.golang.org/protobuf/encoding/protowire"
 )
 
@@ -39,6 +40,24 @@ func consumeVarint(b []byte) (uint64, error) {
    return val, protowire.ParseError(vLen)
 }
 
+func (m Message) bytesType(num protowire.Number, buf []byte) {
+   ok := format.IsBinary(buf)
+   mNew, err := Unmarshal(buf)
+   if err != nil {
+      if ok {
+         m.addBytes(num, "", buf)
+      } else {
+         m.addString(num, "", string(buf))
+      }
+   } else if ok {
+      // Could be Message or []byte
+      m.Add(num, "", mNew)
+   } else {
+      // Cound be Message or string
+      m.addString(num, "", string(buf))
+   }
+}
+
 func (m Message) Add(num protowire.Number, str string, val Message) {
    tag := Tag{num, str}
    switch typ := m[tag].(type) {
@@ -47,6 +66,54 @@ func (m Message) Add(num protowire.Number, str string, val Message) {
    case Message:
       m[tag] = []Message{typ, val}
    case []Message:
+      m[tag] = append(typ, val)
+   }
+}
+
+func (m Message) addBytes(num protowire.Number, str string, val []byte) {
+   tag := Tag{num, str}
+   switch typ := m[tag].(type) {
+   case nil:
+      m[tag] = val
+   case []byte:
+      m[tag] = [][]byte{typ, val}
+   case [][]byte:
+      m[tag] = append(typ, val)
+   }
+}
+
+func (m Message) addString(num protowire.Number, str, val string) {
+   tag := Tag{num, str}
+   switch typ := m[tag].(type) {
+   case nil:
+      m[tag] = val
+   case string:
+      m[tag] = []string{typ, val}
+   case []string:
+      m[tag] = append(typ, val)
+   }
+}
+
+func (m Message) fixed32Type(num protowire.Number, val uint32) {
+   tag := Tag{num, ""}
+   switch typ := m[tag].(type) {
+   case nil:
+      m[tag] = val
+   case uint32:
+      m[tag] = []uint32{typ, val}
+   case []uint32:
+      m[tag] = append(typ, val)
+   }
+}
+
+func (m Message) addUint64(num protowire.Number, str string, val uint64) {
+   tag := Tag{num, str}
+   switch typ := m[tag].(type) {
+   case nil:
+      m[tag] = val
+   case uint64:
+      m[tag] = []uint64{typ, val}
+   case []uint64:
       m[tag] = append(typ, val)
    }
 }
@@ -114,52 +181,4 @@ func (m Message) GetUint64(num protowire.Number, str string) uint64 {
       }
    }
    return 0
-}
-
-func (m Message) addBytes(key protowire.Number, val []byte) {
-   tag := Tag{Number: key}
-   switch typ := m[tag].(type) {
-   case nil:
-      m[tag] = val
-   case []byte:
-      m[tag] = [][]byte{typ, val}
-   case [][]byte:
-      m[tag] = append(typ, val)
-   }
-}
-
-func (m Message) addString(key protowire.Number, val string) {
-   tag := Tag{Number: key}
-   switch typ := m[tag].(type) {
-   case nil:
-      m[tag] = val
-   case string:
-      m[tag] = []string{typ, val}
-   case []string:
-      m[tag] = append(typ, val)
-   }
-}
-
-func (m Message) addUint32(key protowire.Number, val uint32) {
-   tag := Tag{Number: key}
-   switch typ := m[tag].(type) {
-   case nil:
-      m[tag] = val
-   case uint32:
-      m[tag] = []uint32{typ, val}
-   case []uint32:
-      m[tag] = append(typ, val)
-   }
-}
-
-func (m Message) addUint64(key protowire.Number, val uint64) {
-   tag := Tag{Number: key}
-   switch typ := m[tag].(type) {
-   case nil:
-      m[tag] = val
-   case uint64:
-      m[tag] = []uint64{typ, val}
-   case []uint64:
-      m[tag] = append(typ, val)
-   }
 }
