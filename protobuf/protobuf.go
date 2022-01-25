@@ -10,61 +10,6 @@ import (
    "strings"
 )
 
-func Unmarshal(buf []byte) (Message, error) {
-   if len(buf) == 0 {
-      return nil, io.ErrUnexpectedEOF
-   }
-   mes := make(Message)
-   for len(buf) >= 1 {
-      num, typ, fLen, err := consumeField(buf)
-      if err != nil {
-         return nil, err
-      }
-      tLen, err := consumeTag(buf[:fLen])
-      if err != nil {
-         return nil, err
-      }
-      bVal := buf[tLen:fLen]
-      switch typ {
-      case protowire.VarintType:
-         err := mes.consumeVarint(num, bVal)
-         if err != nil {
-            return nil, err
-         }
-      case protowire.Fixed64Type:
-         val, err := consumeFixed64(bVal)
-         if err != nil {
-            return nil, err
-         }
-         mes.addUint64(num, "", val)
-      case protowire.Fixed32Type:
-         val, err := consumeFixed32(bVal)
-         if err != nil {
-            return nil, err
-         }
-         mes.addUint32(num, val)
-      case protowire.BytesType:
-         buf, err := consumeBytes(bVal)
-         if err != nil {
-            return nil, err
-         }
-         mes.bytesType(num, buf)
-      case protowire.StartGroupType:
-         buf, err := consumeGroup(num, bVal)
-         if err != nil {
-            return nil, err
-         }
-         mNew, err := Unmarshal(buf)
-         if err != nil {
-            return nil, err
-         }
-         mes.Add(num, "", mNew)
-      }
-      buf = buf[fLen:]
-   }
-   return mes, nil
-}
-
 func appendField(buf []byte, num protowire.Number, val interface{}) []byte {
    switch val := val.(type) {
    case uint32:
@@ -106,6 +51,53 @@ func Decode(src io.Reader) (Message, error) {
       return nil, err
    }
    return Unmarshal(buf)
+}
+
+func Unmarshal(buf []byte) (Message, error) {
+   if len(buf) == 0 {
+      return nil, io.ErrUnexpectedEOF
+   }
+   mes := make(Message)
+   for len(buf) >= 1 {
+      num, typ, fLen, err := consumeField(buf)
+      if err != nil {
+         return nil, err
+      }
+      tLen, err := consumeTag(buf[:fLen])
+      if err != nil {
+         return nil, err
+      }
+      bVal := buf[tLen:fLen]
+      switch typ {
+      case protowire.VarintType:
+         err := mes.consumeVarint(num, bVal)
+         if err != nil {
+            return nil, err
+         }
+      case protowire.Fixed64Type:
+         err := mes.consumeFixed64(num, bVal)
+         if err != nil {
+            return nil, err
+         }
+      case protowire.Fixed32Type:
+         err := mes.consumeFixed32(num, bVal)
+         if err != nil {
+            return nil, err
+         }
+      case protowire.StartGroupType:
+         err := mes.consumeGroup(num, bVal)
+         if err != nil {
+            return nil, err
+         }
+      case protowire.BytesType:
+         err := mes.consumeBytes(num, bVal)
+         if err != nil {
+            return nil, err
+         }
+      }
+      buf = buf[fLen:]
+   }
+   return mes, nil
 }
 
 func (m Message) Encode() io.Reader {
