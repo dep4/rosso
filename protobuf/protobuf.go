@@ -53,6 +53,14 @@ func appendField(buf []byte, num protowire.Number, val interface{}) []byte {
 
 type Message map[Tag]interface{}
 
+func Decode(src io.Reader) (Message, error) {
+   buf, err := io.ReadAll(src)
+   if err != nil {
+      return nil, err
+   }
+   return Unmarshal(buf)
+}
+
 func Unmarshal(buf []byte) (Message, error) {
    if len(buf) == 0 {
       return nil, io.ErrUnexpectedEOF
@@ -131,4 +139,12 @@ func (t Tag) MarshalText() ([]byte, error) {
    buf = append(buf, ' ')
    buf = append(buf, t.Name...)
    return buf, nil
+}
+
+type nilMap struct {
+   value string
+}
+
+func (n nilMap) Error() string {
+   return strconv.Quote(n.value) + " assignment to entry in nil map"
 }

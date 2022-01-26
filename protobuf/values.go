@@ -5,7 +5,10 @@ import (
    "google.golang.org/protobuf/encoding/protowire"
 )
 
-func (m Message) Add(num protowire.Number, name string, val Message) {
+func (m Message) Add(num protowire.Number, name string, val Message) error {
+   if m == nil {
+      return nilMap{"protobuf.Message.Add"}
+   }
    tag := Tag{num, messageType}
    switch value := m[tag].(type) {
    case nil:
@@ -15,49 +18,60 @@ func (m Message) Add(num protowire.Number, name string, val Message) {
    case []Message:
       m[tag] = append(value, val)
    }
+   return nil
 }
 
 func (m Message) Get(num protowire.Number, name string) Message {
-   tag := Tag{num, messageType}
-   val, ok := m[tag].(Message)
-   if ok {
-      return val
+   for _, name := range []string{name, messageType} {
+      tag := Tag{num, name}
+      val, ok := m[tag].(Message)
+      if ok {
+         return val
+      }
    }
    return nil
 }
 
 func (m Message) GetBytes(num protowire.Number, name string) []byte {
-   tag := Tag{num, bytesType}
-   val, ok := m[tag].([]byte)
-   if ok {
-      return val
+   for _, name := range []string{name, bytesType} {
+      tag := Tag{num, name}
+      val, ok := m[tag].([]byte)
+      if ok {
+         return val
+      }
    }
    return nil
 }
 
 func (m Message) GetMessages(num protowire.Number, name string) []Message {
-   tag := Tag{num, messageType}
-   val, ok := m[tag].([]Message)
-   if ok {
-      return val
+   for _, name := range []string{name, messageType} {
+      tag := Tag{num, name}
+      val, ok := m[tag].([]Message)
+      if ok {
+         return val
+      }
    }
    return nil
 }
 
 func (m Message) GetString(num protowire.Number, name string) string {
-   tag := Tag{num, stringType}
-   val, ok := m[tag].(string)
-   if ok {
-      return val
+   for _, name := range []string{name, stringType} {
+      tag := Tag{num, name}
+      val, ok := m[tag].(string)
+      if ok {
+         return val
+      }
    }
    return ""
 }
 
 func (m Message) GetVarint(num protowire.Number, name string) uint64 {
-   tag := Tag{num, varintType}
-   val, ok := m[tag].(uint64)
-   if ok {
-      return val
+   for _, name := range []string{name, varintType} {
+      tag := Tag{num, name}
+      val, ok := m[tag].(uint64)
+      if ok {
+         return val
+      }
    }
    return 0
 }
