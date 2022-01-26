@@ -27,16 +27,16 @@ func appendField(buf []byte, num protowire.Number, val interface{}) []byte {
       buf = protowire.AppendTag(buf, num, protowire.BytesType)
       buf = protowire.AppendBytes(buf, val.Marshal())
    case []uint64:
-      for _, ran := range val {
-         buf = appendField(buf, num, ran)
+      for _, elem := range val {
+         buf = appendField(buf, num, elem)
       }
    case []string:
-      for _, ran := range val {
-         buf = appendField(buf, num, ran)
+      for _, elem := range val {
+         buf = appendField(buf, num, elem)
       }
    case []Message:
-      for _, ran := range val {
-         buf = appendField(buf, num, ran)
+      for _, elem := range val {
+         buf = appendField(buf, num, elem)
       }
    }
    return buf
