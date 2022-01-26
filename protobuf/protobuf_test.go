@@ -7,14 +7,30 @@ import (
    "testing"
 )
 
-const app = "com.instagram.android.txt"
-
-func TestUnmarshal(t *testing.T) {
-   buf, err := os.ReadFile(app)
+func TestCheckin(t *testing.T) {
+   bProto, err := os.ReadFile("checkin.txt")
    if err != nil {
       t.Fatal(err)
    }
-   responseWrapper, err := Unmarshal(buf)
+   checkinResponse, err := Unmarshal(bProto)
+   if err != nil {
+      t.Fatal(err)
+   }
+   bJSON, err := json.Marshal(checkinResponse)
+   if err != nil {
+      t.Fatal(err)
+   }
+   fmt.Println(string(bJSON))
+   androidID := checkinResponse.GetFixed64(7, "androidId")
+   fmt.Println("androidId:", androidID)
+}
+
+func TestDetails(t *testing.T) {
+   bProto, err := os.ReadFile("details.txt")
+   if err != nil {
+      t.Fatal(err)
+   }
+   responseWrapper, err := Unmarshal(bProto)
    if err != nil {
       t.Fatal(err)
    }
