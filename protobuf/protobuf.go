@@ -9,6 +9,15 @@ import (
    "strings"
 )
 
+const (
+   bytesType = "bytes"
+   fixed32Type = "fixed32"
+   groupType = "group"
+   messageType = "message"
+   stringType = "string"
+   varintType = "varint"
+)
+
 func appendField(buf []byte, num protowire.Number, val interface{}) []byte {
    switch val := val.(type) {
    case uint32:
@@ -65,8 +74,6 @@ func Unmarshal(buf []byte) (Message, error) {
          err = mes.consumeBytes(num, val)
       case protowire.Fixed32Type:
          err = mes.consumeFixed32(num, val)
-      case protowire.Fixed64Type:
-         err = mes.consumeFixed64(num, val)
       case protowire.StartGroupType:
          err = mes.consumeGroup(num, val)
       case protowire.VarintType:
@@ -78,12 +85,6 @@ func Unmarshal(buf []byte) (Message, error) {
       buf = buf[fLen:]
    }
    return mes, nil
-}
-
-type Tag struct {
-   protowire.Type
-   protowire.Number
-   Name string
 }
 
 func (m Message) GoString() string {
@@ -118,8 +119,16 @@ func (m Message) Marshal() []byte {
    return buf
 }
 
+type Tag struct {
+   protowire.Number
+   Name string
+}
+
 // encoding/json
 func (t Tag) MarshalText() ([]byte, error) {
-   num := int64(t.Number)
-   return strconv.AppendInt(nil, num, 10), nil
+   var buf []byte
+   buf = strconv.AppendInt(buf, int64(t.Number), 10)
+   buf = append(buf, ' ')
+   buf = append(buf, t.Name...)
+   return buf, nil
 }

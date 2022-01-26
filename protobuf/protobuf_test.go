@@ -1,6 +1,7 @@
 package protobuf
 
 import (
+   "encoding/json"
    "fmt"
    "os"
    "testing"
@@ -17,10 +18,14 @@ func TestUnmarshal(t *testing.T) {
    if err != nil {
       t.Fatal(err)
    }
-   fmt.Println(responseWrapper)
    docV2 := responseWrapper.Get(1, "payload").
       Get(2, "detailsResponse").
       Get(4, "docV2")
+   bJSON, err := json.Marshal(docV2)
+   if err != nil {
+      t.Fatal(err)
+   }
+   fmt.Println(string(bJSON))
    title := docV2.GetString(5, "title")
    fmt.Printf("title: %q\n", title)
    currency := docV2.Get(8, "offer").GetString(2, "currencyCode")
