@@ -5,7 +5,10 @@ import (
    "google.golang.org/protobuf/encoding/protowire"
 )
 
-func (m Message) Add(num protowire.Number, name string, val Message) {
+func (m Message) Add(num protowire.Number, name string, val Message) error {
+   if m == nil {
+      return nilMap{"protobuf.Message.Add"}
+   }
    tag := Tag{num, messageType}
    switch value := m[tag].(type) {
    case nil:
@@ -15,49 +18,71 @@ func (m Message) Add(num protowire.Number, name string, val Message) {
    case []Message:
       m[tag] = append(value, val)
    }
+   return nil
 }
 
 func (m Message) Get(num protowire.Number, name string) Message {
-   tag := Tag{num, messageType}
-   val, ok := m[tag].(Message)
-   if ok {
-      return val
+   for _, name := range []string{name, messageType} {
+      tag := Tag{num, name}
+      val, ok := m[tag].(Message)
+      if ok {
+         return val
+      }
    }
    return nil
 }
 
 func (m Message) GetBytes(num protowire.Number, name string) []byte {
-   tag := Tag{num, bytesType}
-   val, ok := m[tag].([]byte)
-   if ok {
-      return val
+   for _, name := range []string{name, bytesType} {
+      tag := Tag{num, name}
+      val, ok := m[tag].([]byte)
+      if ok {
+         return val
+      }
    }
    return nil
 }
 
+func (m Message) GetFixed64(num protowire.Number, name string) uint64 {
+   for _, name := range []string{name, fixed64Type} {
+      tag := Tag{num, name}
+      val, ok := m[tag].(uint64)
+      if ok {
+         return val
+      }
+   }
+   return 0
+}
+
 func (m Message) GetMessages(num protowire.Number, name string) []Message {
-   tag := Tag{num, messageType}
-   val, ok := m[tag].([]Message)
-   if ok {
-      return val
+   for _, name := range []string{name, messageType} {
+      tag := Tag{num, name}
+      val, ok := m[tag].([]Message)
+      if ok {
+         return val
+      }
    }
    return nil
 }
 
 func (m Message) GetString(num protowire.Number, name string) string {
-   tag := Tag{num, stringType}
-   val, ok := m[tag].(string)
-   if ok {
-      return val
+   for _, name := range []string{name, stringType} {
+      tag := Tag{num, name}
+      val, ok := m[tag].(string)
+      if ok {
+         return val
+      }
    }
    return ""
 }
 
 func (m Message) GetVarint(num protowire.Number, name string) uint64 {
-   tag := Tag{num, varintType}
-   val, ok := m[tag].(uint64)
-   if ok {
-      return val
+   for _, name := range []string{name, varintType} {
+      tag := Tag{num, name}
+      val, ok := m[tag].(uint64)
+      if ok {
+         return val
+      }
    }
    return 0
 }
@@ -110,41 +135,19 @@ func (m Message) consumeBytes(num protowire.Number, buf []byte) error {
    return nil
 }
 
-func (m Message) consumeFixed32(num protowire.Number, buf []byte) error {
-   elem2, eLen := protowire.ConsumeFixed32(buf)
+func (m Message) consumeFixed64(num protowire.Number, buf []byte) error {
+   elem2, eLen := protowire.ConsumeFixed64(buf)
    err := protowire.ParseError(eLen)
    if err != nil {
       return err
    }
-   tag := Tag{num, fixed32Type}
+   tag := Tag{num, fixed64Type}
    switch elem := m[tag].(type) {
    case nil:
       m[tag] = elem2
-   case uint32:
-      m[tag] = []uint32{elem, elem2}
-   case []uint32:
-      m[tag] = append(elem, elem2)
-   }
-   return nil
-}
-
-func (m Message) consumeGroup(num protowire.Number, buf []byte) error {
-   buf, bLen := protowire.ConsumeGroup(num, buf)
-   err := protowire.ParseError(bLen)
-   if err != nil {
-      return err
-   }
-   elem2, err := Unmarshal(buf)
-   if err != nil {
-      return err
-   }
-   tag := Tag{num, groupType}
-   switch elem := m[tag].(type) {
-   case nil:
-      m[tag] = elem2
-   case Message:
-      m[tag] = []Message{elem, elem2}
-   case []Message:
+   case uint64:
+      m[tag] = []uint64{elem, elem2}
+   case []uint64:
       m[tag] = append(elem, elem2)
    }
    return nil
