@@ -27,7 +27,7 @@ func TestUnmarshal(t *testing.T) {
    fmt.Printf("currency: %q\n", currency)
    versionCode := docV2.Get(13, "details").
       Get(1, "appDetails").
-      GetUint64(3, "versionCode")
+      GetVarint(3, "versionCode")
    fmt.Println("versionCode:", versionCode)
    version := docV2.Get(13, "details").
       Get(1, "appDetails").
@@ -40,10 +40,10 @@ func TestUnmarshal(t *testing.T) {
    size := docV2.Get(13, "details").
       Get(1, "appDetails").
       Get(34, "installDetails").
-      GetUint64(2, "size")
+      GetVarint(2, "size")
    fmt.Println("size:", size)
    download := docV2.Get(13, "details").
       Get(1, "appDetails").
-      GetUint64(70, "numDownloads")
+      GetVarint(70, "numDownloads")
    fmt.Println("download:", download)
 }
