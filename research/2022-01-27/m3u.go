@@ -20,7 +20,7 @@ func unpad(buf []byte) []byte {
    return nil
 }
 
-func (f Format) blockMode() (cipher.BlockMode, error) {
+func (f Format) BlockMode() (cipher.BlockMode, error) {
    res, err := http.Get(f["URI"])
    if err != nil {
       return nil, err
@@ -83,7 +83,6 @@ func Unmarshal(buf []byte) []Format {
    for _, form := range pass1 {
       uri, ok := form["URI"]
       if ok && !uris[uri] {
-         form["URI"] = form["URI"]
          pass2 = append(pass2, form)
          uris[uri] = true
       }
