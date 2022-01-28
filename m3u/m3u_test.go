@@ -18,7 +18,7 @@ func TestPlaylist(t *testing.T) {
       if err != nil {
          t.Fatal(err)
       }
-      for _, form := range Unmarshal(buf, "dir/") {
+      for _, form := range Unmarshal(buf, "http://example.com/") {
          fmt.Printf("%+v\n", form)
       }
       fmt.Println()

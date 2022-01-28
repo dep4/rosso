@@ -8,17 +8,15 @@ import (
 )
 
 func merge(forms []Format) int {
+   if len(forms) >= 1 {
+      form := forms[len(forms)-1]
+      if len(form) >= 1 {
+         // UPDATE
+         return len(forms)-1
+      }
+   }
    // INSERT
-   fLen := len(forms)
-   if fLen == 0 {
-      return -1
-   }
-   form := forms[fLen-1]
-   if len(form) == 0 {
-      return -1
-   }
-   // UPDATE
-   return fLen-1
+   return -1
 }
 
 type Format map[string]string
@@ -48,25 +46,25 @@ func Unmarshal(buf []byte, dir string) []Format {
             }
             var pair reader
             pair.buf = pairs.readBytes(',', '"')
-            key := pair.readString('=', '"')
+            key := pair.readBytes('=', '"')
             if pair.buf != nil {
                val := string(pair.buf)
                unq, err := strconv.Unquote(val)
                if err == nil {
                   val = unq
                }
-               form[key] = val
+               form[string(key)] = val
             }
          }
          pass1 = append(pass1, form)
       } else {
-         text := string(line)
          ind := merge(pass1)
-         if ind == -1 {
-            form := Format{"URI": text}
-            pass1 = append(pass1, form)
+         if ind >= 0 {
+            pass1[ind]["URI"] = string(line)
          } else {
-            pass1[ind]["URI"] = text
+            form := make(Format)
+            form["URI"] = string(line)
+            pass1 = append(pass1, form)
          }
       }
    }
@@ -102,9 +100,4 @@ func (r *reader) readBytes(sep, enc byte) []byte {
    buf := r.buf
    r.buf = nil
    return buf
-}
-
-func (r *reader) readString(sep, enc byte) string {
-   bytes := r.readBytes(sep, enc)
-   return string(bytes)
 }
