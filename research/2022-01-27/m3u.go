@@ -9,6 +9,23 @@ import (
    "strconv"
 )
 
+func newDecrypter(req *http.Request) (cipher.BlockMode, error) {
+   res, err := new(http.Transport).RoundTrip(req)
+   if err != nil {
+      return nil, err
+   }
+   defer res.Body.Close()
+   key, err := io.ReadAll(res.Body)
+   if err != nil {
+      return nil, err
+   }
+   block, err := aes.NewCipher(key)
+   if err != nil {
+      return nil, err
+   }
+   return cipher.NewCBCDecrypter(block, key), nil
+}
+
 func unpad(buf []byte) []byte {
    total := len(buf)
    if total > 0 {
@@ -18,24 +35,6 @@ func unpad(buf []byte) []byte {
       }
    }
    return nil
-}
-
-func (f Format) BlockMode() (cipher.BlockMode, error) {
-   res, err := http.Get(f["URI"])
-   if err != nil {
-      return nil, err
-   }
-   defer res.Body.Close()
-   key, err := io.ReadAll(res.Body)
-   if err != nil {
-      return nil, err
-   }
-   // The CBS key is 16 bytes, which means BlockSize will be 16.
-   block, err := aes.NewCipher(key)
-   if err != nil {
-      return nil, err
-   }
-   return cipher.NewCBCDecrypter(block, key), nil
 }
 
 type Format map[string]string
