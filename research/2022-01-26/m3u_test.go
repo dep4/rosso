@@ -35,21 +35,7 @@ func getIndex() ([]byte, error) {
    return io.ReadAll(res.Body)
 }
 
-func writeFile(req *http.Request, dec cipher.BlockMode) error {
-   res, err := new(http.Transport).RoundTrip(req)
-   if err != nil {
-      return err
-   }
-   defer res.Body.Close()
-   src, err := io.ReadAll(res.Body)
-   if err != nil {
-      return err
-   }
-   dst := make([]byte, len(src))
-   dec.CryptBlocks(dst, src)
-   dst = unpad(dst)
-   return os.WriteFile("segment1_1_av.ts", dst, os.ModePerm)
-}
+////////////////////////////////////////////////////////////////////////////////
 
 func TestDecrypt(t *testing.T) {
    index, err := getIndex()
@@ -76,4 +62,20 @@ func TestDecrypt(t *testing.T) {
          break
       }
    }
+}
+
+func writeFile(req *http.Request, dec cipher.BlockMode) error {
+   res, err := new(http.Transport).RoundTrip(req)
+   if err != nil {
+      return err
+   }
+   defer res.Body.Close()
+   src, err := io.ReadAll(res.Body)
+   if err != nil {
+      return err
+   }
+   dst := make([]byte, len(src))
+   dec.CryptBlocks(dst, src)
+   dst = unpad(dst)
+   return os.WriteFile("segment1_1_av.ts", dst, os.ModePerm)
 }
