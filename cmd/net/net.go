@@ -1,64 +1,21 @@
 package main
 
 import (
-   "flag"
-   "fmt"
    "github.com/89z/format"
-   "github.com/89z/format/net"
    "net/http"
    "net/http/httputil"
    "os"
    "strconv"
 )
 
-func main() {
-   var (
-      https, info bool
-      output string
-   )
-   flag.BoolVar(&info, "i", false, "info")
-   flag.StringVar(&output, "o", "", "output file")
-   flag.BoolVar(&https, "s", false, "HTTPS")
-   flag.Parse()
-   if flag.NArg() == 1 {
-      input := flag.Arg(0)
-      read, err := os.Open(input)
-      if err != nil {
-         panic(err)
-      }
-      defer read.Close()
-      req, err := net.ReadRequest(read, https)
-      if err != nil {
-         panic(err)
-      }
-      file, err := os.Create(output)
-      if err != nil {
-         file = os.Stdout
-      }
-      defer file.Close()
-      if info {
-         err := net.WriteRequest(req, file)
-         if err != nil {
-            panic(err)
-         }
-      } else {
-         err := roundTrip(req, file)
-         if err != nil {
-            panic(err)
-         }
-      }
-   } else {
-      fmt.Println("net [flags] [request file]")
-      flag.PrintDefaults()
+func roundTrip(req *http.Request, redirect bool) (*http.Response, error) {
+   if redirect {
+      return new(http.Client).Do(req)
    }
+   return new(http.Transport).RoundTrip(req)
 }
 
-func roundTrip(req *http.Request, file *os.File) error {
-   res, err := new(http.Transport).RoundTrip(req)
-   if err != nil {
-      return err
-   }
-   defer res.Body.Close()
+func write(res *http.Response, file *os.File) error {
    if file == os.Stdout {
       buf, err := httputil.DumpResponse(res, true)
       if err != nil {
