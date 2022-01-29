@@ -68,7 +68,7 @@ type requestTemplate struct {
 
 func WriteRequest(req *http.Request, w io.Writer) error {
    var request requestTemplate
-   if req.Body != nil && req.Method == "POST" {
+   if req.Body != nil && req.Method != "GET" {
       buf, err := io.ReadAll(req.Body)
       if err != nil {
          return err
