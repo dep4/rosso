@@ -1,0 +1,12 @@
+#EXTM3U
+#EXT-X-TARGETDURATION:10
+#EXT-X-ALLOW-CACHE:YES
+#EXT-X-KEY:METHOD=AES-128,URI="https://cbsios-vh.akamaihd.net/i/temp_hd_gallery_video/CBS_Production_Outlet_VMS/video_robot/CBS_Production_Entertainment/2021/10/18/1963091011554/NICKELODEON_STARTREKPRODIGY_104_HD_985058_,2228,4628,3128,1628,848,503,000.mp4.csmil/crypt.key?null=0&id=AgBItRcmFy81SNCG9WEksSAXz4zziNDkp0%2fE+rZNgZpeZkyAcbcwrTClgx51DY69ky3S6THMdvjBeg%3d%3d&hdntl=exp=1643567184~acl=/i/temp_hd_gallery_video/CBS_Production_Outlet_VMS/video_robot/CBS_Production_Entertainment/2021/10/18/1963091011554/NICKELODEON_STARTREKPRODIGY_104_HD_985058_*~data=hdntl~hmac=d999541e1edd3f43d9398c4241edb32d7e956ad6f2d82ec1876307372f30d35f"
+#EXT-X-PLAYLIST-TYPE:VOD
+#EXT-X-VERSION:3
+#EXT-X-MEDIA-SEQUENCE:1
+#EXTINF:10.000,
+https://cbsios-vh.akamaihd.net/i/temp_hd_gallery_video/CBS_Production_Outlet_VMS/video_robot/CBS_Production_Entertainment/2021/10/18/1963091011554/NICKELODEON_STARTREKPRODIGY_104_HD_985058_,2228,4628,3128,1628,848,503,000.mp4.csmil/segment1_1_av.ts?null=0&id=AgBItRcmFy81SNCG9WEksSAXz4zziNDkp0%2fE+rZNgZpeZkyAcbcwrTClgx51DY69ky3S6THMdvjBeg%3d%3d&hdntl=exp=1643567184~acl=/i/temp_hd_gallery_video/CBS_Production_Outlet_VMS/video_robot/CBS_Production_Entertainment/2021/10/18/1963091011554/NICKELODEON_STARTREKPRODIGY_104_HD_985058_*~data=hdntl~hmac=d999541e1edd3f43d9398c4241edb32d7e956ad6f2d82ec1876307372f30d35f
+#EXTINF:10.000,
+https://cbsios-vh.akamaihd.net/i/temp_hd_gallery_video/CBS_Production_Outlet_VMS/video_robot/CBS_Production_Entertainment/2021/10/18/1963091011554/NICKELODEON_STARTREKPRODIGY_104_HD_985058_,2228,4628,3128,1628,848,503,000.mp4.csmil/segment2_1_av.ts?null=0&id=AgBItRcmFy81SNCG9WEksSAXz4zziNDkp0%2fE+rZNgZpeZkyAcbcwrTClgx51DY69ky3S6THMdvjBeg%3d%3d&hdntl=exp=1643567184~acl=/i/temp_hd_gallery_video/CBS_Production_Outlet_VMS/video_robot/CBS_Production_Entertainment/2021/10/18/1963091011554/NICKELODEON_STARTREKPRODIGY_104_HD_985058_*~data=hdntl~hmac=d999541e1edd3f43d9398c4241edb32d7e956ad6f2d82ec1876307372f30d35f
+#EXT-X-ENDLIST
