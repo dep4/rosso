@@ -1,103 +1,105 @@
-// M3U parser
 package m3u
 
 import (
-   "bytes"
    "io"
    "strconv"
+   "text/scanner"
+   "unicode"
 )
 
-func merge(forms []Format) int {
-   if len(forms) >= 1 {
-      form := forms[len(forms)-1]
-      if len(form) >= 1 {
-         // UPDATE
-         return len(forms)-1
+func scanLines(buf *scanner.Scanner) {
+   buf.IsIdentRune = func(r rune, i int) bool {
+      return r != '\n'
+   }
+   buf.Whitespace = 1 << '\n'
+}
+
+func scanWords(buf *scanner.Scanner) {
+   buf.IsIdentRune = func(r rune, i int) bool {
+      return r == '-' || unicode.IsDigit(r) || unicode.IsLetter(r)
+   }
+   buf.Whitespace = 1 << ' '
+}
+
+type Master struct {
+   Codecs string
+   Resolution string
+   URI string
+}
+
+func Masters(src io.Reader, dir string) ([]Master, error) {
+   var (
+      buf scanner.Scanner
+      mass []Master
+   )
+   buf.Init(src)
+   for {
+      scanWords(&buf)
+      if buf.Scan() == scanner.EOF {
+         break
       }
-   }
-   // INSERT
-   return -1
-}
-
-type Format map[string]string
-
-func Decode(src io.Reader, dir string) ([]Format, error) {
-   buf, err := io.ReadAll(src)
-   if err != nil {
-      return nil, err
-   }
-   return Unmarshal(buf, dir), nil
-}
-
-// #EXTINF:6.006,frame-rate=23.976
-func Unmarshal(buf []byte, dir string) []Format {
-   lines := bytes.FieldsFunc(buf, func(r rune) bool {
-      return r == '\n'
-   })
-   var pass1 []Format
-   for _, line := range lines {
-      if line[0] == '#' {
-         form := make(Format)
-         pairs := reader{line}
-         pairs.readBytes(':', '"')
-         for {
-            if pairs.buf == nil {
-               break
-            }
-            var pair reader
-            pair.buf = pairs.readBytes(',', '"')
-            key := pair.readBytes('=', '"')
-            if pair.buf != nil {
-               val := string(pair.buf)
-               unq, err := strconv.Unquote(val)
-               if err == nil {
-                  val = unq
+      if buf.TokenText() == "EXT-X-STREAM-INF" {
+         var mas Master
+         for buf.Scan() != '\n' {
+            switch buf.TokenText() {
+            case "RESOLUTION":
+               buf.Scan()
+               buf.Scan()
+               mas.Resolution = buf.TokenText()
+            case "CODECS":
+               buf.Scan()
+               buf.Scan()
+               codec, err := strconv.Unquote(buf.TokenText())
+               if err != nil {
+                  return nil, err
                }
-               form[string(key)] = val
+               mas.Codecs = codec
             }
          }
-         pass1 = append(pass1, form)
-      } else {
-         ind := merge(pass1)
-         if ind >= 0 {
-            pass1[ind]["URI"] = string(line)
-         } else {
-            form := make(Format)
-            form["URI"] = string(line)
-            pass1 = append(pass1, form)
+         scanLines(&buf)
+         buf.Scan()
+         mas.URI = dir + buf.TokenText()
+         mass = append(mass, mas)
+      }
+   }
+   return mass, nil
+}
+
+type Segment struct {
+   Key string
+   URI []string
+}
+
+func NewSegment(src io.Reader, dir string) (*Segment, error) {
+   var (
+      buf scanner.Scanner
+      seg Segment
+   )
+   buf.Init(src)
+   for {
+      scanWords(&buf)
+      if buf.Scan() == scanner.EOF {
+         break
+      }
+      switch buf.TokenText() {
+      case "EXT-X-KEY":
+         for buf.Scan() != '\n' {
+            if buf.TokenText() == "URI" {
+               buf.Scan()
+               buf.Scan()
+               key, err := strconv.Unquote(buf.TokenText())
+               if err != nil {
+                  return nil, err
+               }
+               seg.Key = key
+            }
          }
+      case "EXTINF":
+         scanLines(&buf)
+         buf.Scan()
+         buf.Scan()
+         seg.URI = append(seg.URI, dir + buf.TokenText())
       }
    }
-   var pass2 []Format
-   uris := make(map[string]bool)
-   for _, form := range pass1 {
-      uri, ok := form["URI"]
-      if ok && !uris[uri] {
-         form["URI"] = dir + form["URI"]
-         pass2 = append(pass2, form)
-         uris[uri] = true
-      }
-   }
-   return pass2
-}
-
-type reader struct {
-   buf []byte
-}
-
-func (r *reader) readBytes(sep, enc byte) []byte {
-   out := true
-   for key, val := range r.buf {
-      if val == enc {
-         out = !out
-      }
-      if out && val == sep {
-         buf := r.buf[:key]
-         r.buf = r.buf[key+1:]
-         return buf
-      }
-   }
-   buf := r.buf
-   r.buf = nil
-   return buf
+   return &seg, nil
 }
