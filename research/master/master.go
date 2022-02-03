@@ -7,30 +7,40 @@ import (
    "unicode"
 )
 
-type Format struct {
-   resolution, codecs, uri string
+func scanLines(r rune, i int) bool {
+   return r != '\n'
 }
 
-func Decode(src io.Reader, dir string) ([]Format, error) {
-   var forms []Format
-   var text scanner.Scanner
+func scanWords(r rune, i int) bool {
+   return r == '-' || unicode.IsDigit(r) || unicode.IsLetter(r)
+}
+
+type Master struct {
+   Codecs string
+   Resolution string
+   URI string
+}
+
+func Masters(src io.Reader) ([]Master, error) {
+   var (
+      mass []Master
+      text scanner.Scanner
+   )
    text.Init(src)
    text.Whitespace = 1 << ' '
    for {
-      text.IsIdentRune = func(r rune, i int) bool {
-         return r == '-' || unicode.IsDigit(r) || unicode.IsLetter(r)
-      }
+      text.IsIdentRune = scanWords
       if text.Scan() == scanner.EOF {
          break
       }
       if text.TokenText() == "EXT-X-STREAM-INF" {
-         var form Format
+         var mas Master
          for text.Scan() != '\n' {
             switch text.TokenText() {
             case "RESOLUTION":
                text.Scan()
                text.Scan()
-               form.resolution = text.TokenText()
+               mas.Resolution = text.TokenText()
             case "CODECS":
                text.Scan()
                text.Scan()
@@ -38,16 +48,14 @@ func Decode(src io.Reader, dir string) ([]Format, error) {
                if err != nil {
                   return nil, err
                }
-               form.codecs = codec
+               mas.Codecs = codec
             }
          }
-         text.IsIdentRune = func(r rune, i int) bool {
-            return r != '\n'
-         }
+         text.IsIdentRune = scanLines
          text.Scan()
-         form.uri = text.TokenText()
-         forms = append(forms, form)
+         mas.URI = text.TokenText()
+         mass = append(mass, mas)
       }
    }
-   return forms, nil
+   return mass, nil
 }

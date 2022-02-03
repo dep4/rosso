@@ -24,12 +24,12 @@ func TestMaster(t *testing.T) {
          t.Fatal(err)
       }
       defer file.Close()
-      forms, err := Decode(file, master.dir)
+      mass, err := Masters(file)
       if err != nil {
          t.Fatal(err)
       }
-      for _, form := range forms {
-         fmt.Printf("%q %q %.9q\n", form.resolution, form.codecs, form.uri)
+      for _, mas := range mass {
+         fmt.Printf("%q %q %.9q\n", mas.Resolution, mas.Codecs, mas.URI)
       }
    }
 }
