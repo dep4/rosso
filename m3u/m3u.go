@@ -29,52 +29,6 @@ type Master struct {
    URI string
 }
 
-func Masters(src io.Reader, dir string) ([]Master, error) {
-   var (
-      buf scanner.Scanner
-      mass []Master
-   )
-   buf.Init(src)
-   for {
-      scanWords(&buf)
-      if buf.Scan() == scanner.EOF {
-         break
-      }
-      if buf.TokenText() == "EXT-X-STREAM-INF" {
-         var mas Master
-         for buf.Scan() != '\n' {
-            switch buf.TokenText() {
-            case "BANDWIDTH":
-               buf.Scan()
-               buf.Scan()
-               val, err := strconv.ParseInt(buf.TokenText(), 10, 64)
-               if err != nil {
-                  return nil, err
-               }
-               mas.Bandwidth = val
-            case "CODECS":
-               buf.Scan()
-               buf.Scan()
-               val, err := strconv.Unquote(buf.TokenText())
-               if err != nil {
-                  return nil, err
-               }
-               mas.Codecs = val
-            case "RESOLUTION":
-               buf.Scan()
-               buf.Scan()
-               mas.Resolution = buf.TokenText()
-            }
-         }
-         scanLines(&buf)
-         buf.Scan()
-         mas.URI = dir + buf.TokenText()
-         mass = append(mass, mas)
-      }
-   }
-   return mass, nil
-}
-
 func (m Master) String() string {
    buf := []byte("Resolution:")
    buf = append(buf, m.Resolution...)
@@ -94,7 +48,7 @@ type Segment struct {
    URI []string
 }
 
-func NewSegment(src io.Reader, dir string) (*Segment, error) {
+func NewSegment(src io.Reader) (*Segment, error) {
    var (
       buf scanner.Scanner
       seg Segment
@@ -122,8 +76,63 @@ func NewSegment(src io.Reader, dir string) (*Segment, error) {
          scanLines(&buf)
          buf.Scan()
          buf.Scan()
-         seg.URI = append(seg.URI, dir + buf.TokenText())
+         seg.URI = append(seg.URI, buf.TokenText())
       }
    }
    return &seg, nil
+}
+
+type Scanner struct {
+   Error error
+   Master
+   scanner.Scanner
+}
+
+func NewScanner(src io.Reader) Scanner {
+   var buf Scanner
+   buf.Init(src)
+   return buf
+}
+
+func (s *Scanner) Scan() bool {
+   for {
+      scanWords(&s.Scanner)
+      if s.Scanner.Scan() == scanner.EOF {
+         return false
+      }
+      if s.TokenText() == "EXT-X-STREAM-INF" {
+         var mas Master
+         for s.Scanner.Scan() != '\n' {
+            switch s.TokenText() {
+            case "BANDWIDTH":
+               s.Scanner.Scan()
+               s.Scanner.Scan()
+               val, err := strconv.ParseInt(s.TokenText(), 10, 64)
+               if err != nil {
+                  s.Error = err
+                  return false
+               }
+               mas.Bandwidth = val
+            case "CODECS":
+               s.Scanner.Scan()
+               s.Scanner.Scan()
+               val, err := strconv.Unquote(s.TokenText())
+               if err != nil {
+                  s.Error = err
+                  return false
+               }
+               mas.Codecs = val
+            case "RESOLUTION":
+               s.Scanner.Scan()
+               s.Scanner.Scan()
+               mas.Resolution = s.TokenText()
+            }
+         }
+         scanLines(&s.Scanner)
+         s.Scanner.Scan()
+         mas.URI = s.TokenText()
+         s.Master = mas
+         return true
+      }
+   }
 }
