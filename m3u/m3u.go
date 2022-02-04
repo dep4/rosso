@@ -47,8 +47,6 @@ func (m Master) String() string {
    return string(buf)
 }
 
-////////////////////////////////////////////////////////////////////////////////
-
 type Scanner struct {
    Error error
    Master
