@@ -30,9 +30,13 @@ type Master struct {
 }
 
 func (m Master) String() string {
-   buf := []byte("Resolution:")
-   buf = append(buf, m.Resolution...)
-   buf = append(buf, " Bandwidth:"...)
+   var buf []byte
+   if m.Resolution != "" {
+      buf = append(buf, "Resolution:"...)
+      buf = append(buf, m.Resolution...)
+      buf = append(buf, ' ')
+   }
+   buf = append(buf, "Bandwidth:"...)
    buf = strconv.AppendInt(buf, m.Bandwidth, 10)
    buf = append(buf, " Codecs:"...)
    buf = append(buf, m.Codecs...)
@@ -43,55 +47,12 @@ func (m Master) String() string {
    return string(buf)
 }
 
-type Segment struct {
-   Key string
-   URI []string
-}
-
-func NewSegment(src io.Reader) (*Segment, error) {
-   var (
-      buf scanner.Scanner
-      seg Segment
-   )
-   buf.Init(src)
-   for {
-      scanWords(&buf)
-      if buf.Scan() == scanner.EOF {
-         break
-      }
-      switch buf.TokenText() {
-      case "EXT-X-KEY":
-         for buf.Scan() != '\n' {
-            if buf.TokenText() == "URI" {
-               buf.Scan()
-               buf.Scan()
-               key, err := strconv.Unquote(buf.TokenText())
-               if err != nil {
-                  return nil, err
-               }
-               seg.Key = key
-            }
-         }
-      case "EXTINF":
-         scanLines(&buf)
-         buf.Scan()
-         buf.Scan()
-         seg.URI = append(seg.URI, buf.TokenText())
-      }
-   }
-   return &seg, nil
-}
+////////////////////////////////////////////////////////////////////////////////
 
 type Scanner struct {
    Error error
    Master
    scanner.Scanner
-}
-
-func NewScanner(src io.Reader) Scanner {
-   var buf Scanner
-   buf.Init(src)
-   return buf
 }
 
 func (s *Scanner) Scan() bool {
@@ -135,4 +96,43 @@ func (s *Scanner) Scan() bool {
          return true
       }
    }
+}
+
+type Segment struct {
+   Key string
+   URI []string
+}
+
+func NewSegment(src io.Reader) (*Segment, error) {
+   var (
+      buf scanner.Scanner
+      seg Segment
+   )
+   buf.Init(src)
+   for {
+      scanWords(&buf)
+      if buf.Scan() == scanner.EOF {
+         break
+      }
+      switch buf.TokenText() {
+      case "EXT-X-KEY":
+         for buf.Scan() != '\n' {
+            if buf.TokenText() == "URI" {
+               buf.Scan()
+               buf.Scan()
+               key, err := strconv.Unquote(buf.TokenText())
+               if err != nil {
+                  return nil, err
+               }
+               seg.Key = key
+            }
+         }
+      case "EXTINF":
+         scanLines(&buf)
+         buf.Scan()
+         buf.Scan()
+         seg.URI = append(seg.URI, buf.TokenText())
+      }
+   }
+   return &seg, nil
 }

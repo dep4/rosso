@@ -52,7 +52,8 @@ func TestMaster(t *testing.T) {
          t.Fatal(err)
       }
       defer file.Close()
-      buf := NewScanner(file)
+      var buf Scanner
+      buf.Init(file)
       for buf.Scan() {
          fmt.Printf("%+v\n", buf.Master)
       }
