@@ -28,12 +28,11 @@ func main() {
       if err != nil {
          panic(err)
       }
-      bJSON, err := json.Marshal(mes)
-      if err != nil {
-         panic(err)
-      }
       indent := new(bytes.Buffer)
-      if err := json.Indent(indent, bJSON, "", " "); err != nil {
+      enc := json.NewEncoder(indent)
+      enc.SetEscapeHTML(false)
+      enc.SetIndent("", " ")
+      if err := enc.Encode(mes); err != nil {
          panic(err)
       }
       if _, err := file.ReadFrom(indent); err != nil {
