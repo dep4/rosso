@@ -91,8 +91,10 @@ func ParseJA3(str string) (*tls.ClientHelloSpec, error) {
       case "13":
          ext = &tls.SignatureAlgorithmsExtension{
             SupportedSignatureAlgorithms: []tls.SignatureScheme{
-               // Android API 24
+               // android.clients.google.com
                tls.ECDSAWithP256AndSHA256,
+               // www.instagram.com
+               tls.PSSWithSHA256,
             },
          }
       case "16":
@@ -115,6 +117,9 @@ func ParseJA3(str string) (*tls.ClientHelloSpec, error) {
          ext = &tls.PSKKeyExchangeModesExtension{
             Modes: []uint8{tls.PskModeDHE},
          }
+      case "51":
+         // www.instagram.com
+         ext = &tls.KeyShareExtension{}
       case "65281":
          // Android API 24
          ext = &tls.RenegotiationInfoExtension{}
