@@ -22,86 +22,57 @@ func scanWords(buf *scanner.Scanner) {
    buf.Whitespace = 1 << ' '
 }
 
-type Master struct {
-   Resolution string
-   Bandwidth int64
-   Codecs string
-   URI string
+type Decoder struct {
+   Dir string
 }
 
-func (m Master) String() string {
-   var buf []byte
-   if m.Resolution != "" {
-      buf = append(buf, "Resolution:"...)
-      buf = append(buf, m.Resolution...)
-      buf = append(buf, ' ')
-   }
-   buf = append(buf, "Bandwidth:"...)
-   buf = strconv.AppendInt(buf, m.Bandwidth, 10)
-   buf = append(buf, " Codecs:"...)
-   buf = append(buf, m.Codecs...)
-   if m.URI != "" {
-      buf = append(buf, " URI:"...)
-      buf = append(buf, m.URI...)
-   }
-   return string(buf)
-}
-
-type Scanner struct {
-   Error error
-   Master
-   scanner.Scanner
-}
-
-func (s *Scanner) Scan() bool {
+func (d Decoder) Masters(src io.Reader) ([]Master, error) {
+   var (
+      buf scanner.Scanner
+      mass []Master
+   )
+   buf.Init(src)
    for {
-      scanWords(&s.Scanner)
-      if s.Scanner.Scan() == scanner.EOF {
-         return false
+      scanWords(&buf)
+      if buf.Scan() == scanner.EOF {
+         break
       }
-      if s.TokenText() == "EXT-X-STREAM-INF" {
+      if buf.TokenText() == "EXT-X-STREAM-INF" {
          var mas Master
-         for s.Scanner.Scan() != '\n' {
-            switch s.TokenText() {
+         for buf.Scan() != '\n' {
+            switch buf.TokenText() {
             case "BANDWIDTH":
-               s.Scanner.Scan()
-               s.Scanner.Scan()
-               val, err := strconv.ParseInt(s.TokenText(), 10, 64)
+               buf.Scan()
+               buf.Scan()
+               val, err := strconv.ParseInt(buf.TokenText(), 10, 64)
                if err != nil {
-                  s.Error = err
-                  return false
+                  return nil, err
                }
                mas.Bandwidth = val
             case "CODECS":
-               s.Scanner.Scan()
-               s.Scanner.Scan()
-               val, err := strconv.Unquote(s.TokenText())
+               buf.Scan()
+               buf.Scan()
+               val, err := strconv.Unquote(buf.TokenText())
                if err != nil {
-                  s.Error = err
-                  return false
+                  return nil, err
                }
                mas.Codecs = val
             case "RESOLUTION":
-               s.Scanner.Scan()
-               s.Scanner.Scan()
-               mas.Resolution = s.TokenText()
+               buf.Scan()
+               buf.Scan()
+               mas.Resolution = buf.TokenText()
             }
          }
-         scanLines(&s.Scanner)
-         s.Scanner.Scan()
-         mas.URI = s.TokenText()
-         s.Master = mas
-         return true
+         scanLines(&buf)
+         buf.Scan()
+         mas.URI = d.Dir + buf.TokenText()
+         mass = append(mass, mas)
       }
    }
+   return mass, nil
 }
 
-type Segment struct {
-   Key string
-   URI []string
-}
-
-func NewSegment(src io.Reader) (*Segment, error) {
+func (d Decoder) Segment(src io.Reader) (*Segment, error) {
    var (
       buf scanner.Scanner
       seg Segment
@@ -129,8 +100,38 @@ func NewSegment(src io.Reader) (*Segment, error) {
          scanLines(&buf)
          buf.Scan()
          buf.Scan()
-         seg.URI = append(seg.URI, buf.TokenText())
+         seg.URI = append(seg.URI, d.Dir + buf.TokenText())
       }
    }
    return &seg, nil
+}
+
+type Master struct {
+   Resolution string
+   Bandwidth int64
+   Codecs string
+   URI string
+}
+
+func (m Master) String() string {
+   var buf []byte
+   if m.Resolution != "" {
+      buf = append(buf, "Resolution:"...)
+      buf = append(buf, m.Resolution...)
+      buf = append(buf, ' ')
+   }
+   buf = append(buf, "Bandwidth:"...)
+   buf = strconv.AppendInt(buf, m.Bandwidth, 10)
+   buf = append(buf, " Codecs:"...)
+   buf = append(buf, m.Codecs...)
+   if m.URI != "" {
+      buf = append(buf, " URI:"...)
+      buf = append(buf, m.URI...)
+   }
+   return string(buf)
+}
+
+type Segment struct {
+   Key string
+   URI []string
 }

@@ -25,25 +25,6 @@ var segments = []testType{
    {base: "segment-twitter.m3u8", dir: dir},
 }
 
-func TestSegment(t *testing.T) {
-   for _, segment := range segments {
-      file, err := os.Open(segment.base)
-      if err != nil {
-         t.Fatal(err)
-      }
-      defer file.Close()
-      seg, err := NewSegment(file)
-      if err != nil {
-         t.Fatal(err)
-      }
-      fmt.Println(segment.base + ":")
-      fmt.Printf("%.99q\n", seg.Key)
-      for _, addr := range seg.URI {
-         fmt.Printf("%.99q\n", addr)
-      }
-   }
-}
-
 func TestMaster(t *testing.T) {
    for _, master := range masters {
       fmt.Println(master.base + ":")
@@ -52,10 +33,27 @@ func TestMaster(t *testing.T) {
          t.Fatal(err)
       }
       defer file.Close()
-      var buf Scanner
-      buf.Init(file)
-      for buf.Scan() {
-         fmt.Printf("%+v\n", buf.Master)
+      mass, err := Decoder{master.dir}.Masters(file)
+      if err != nil {
+         t.Fatal(err)
       }
+      for _, mas := range mass {
+         fmt.Printf("%+v\n", mas)
+      }
+   }
+}
+
+func TestSegment(t *testing.T) {
+   for _, segment := range segments {
+      file, err := os.Open(segment.base)
+      if err != nil {
+         t.Fatal(err)
+      }
+      defer file.Close()
+      seg, err := Decoder{segment.dir}.Segment(file)
+      if err != nil {
+         t.Fatal(err)
+      }
+      fmt.Printf("%+v\n", seg)
    }
 }
