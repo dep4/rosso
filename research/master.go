@@ -21,14 +21,11 @@ func scanWords(buf *scanner.Scanner) {
    buf.Whitespace = 1 << ' '
 }
 
-type Master struct {
-   Resolution string
-   Bandwidth int64
-   Codecs string
-   URI string
+type Decoder struct {
+   Dir string
 }
 
-func Masters(src io.Reader) ([]Master, error) {
+func (d Decoder) Masters(src io.Reader) ([]Master, error) {
    var (
       buf scanner.Scanner
       mass []Master
@@ -67,9 +64,16 @@ func Masters(src io.Reader) ([]Master, error) {
          }
          scanLines(&buf)
          buf.Scan()
-         mas.URI = buf.TokenText()
+         mas.URI = d.Dir + buf.TokenText()
          mass = append(mass, mas)
       }
    }
    return mass, nil
+}
+
+type Master struct {
+   Resolution string
+   Bandwidth int64
+   Codecs string
+   URI string
 }
