@@ -7,6 +7,27 @@ import (
    "unicode"
 )
 
+func (d Decoder) Segments(src io.Reader) []string {
+   var (
+      buf scanner.Scanner
+      segs []string
+   )
+   buf.Init(src)
+   for {
+      scanWords(&buf)
+      if buf.Scan() == scanner.EOF {
+         break
+      }
+      if buf.TokenText() == "EXTINF" {
+         scanLines(&buf)
+         buf.Scan()
+         buf.Scan()
+         segs = append(segs, d.Dir + buf.TokenText())
+      }
+   }
+   return segs
+}
+
 func scanLines(buf *scanner.Scanner) {
    buf.IsIdentRune = func(r rune, i int) bool {
       return r != '\n'
@@ -26,7 +47,11 @@ type Master struct {
    URI string
 }
 
-func Masters(src io.Reader) ([]Master, error) {
+type Decoder struct {
+   Dir string
+}
+
+func (d Decoder) Masters(src io.Reader) ([]Master, error) {
    var (
       buf scanner.Scanner
       mass []Master
@@ -52,9 +77,10 @@ func Masters(src io.Reader) ([]Master, error) {
          }
          scanLines(&buf)
          buf.Scan()
-         mas.URI = buf.TokenText()
+         mas.URI = d.Dir + buf.TokenText()
          mass = append(mass, mas)
       }
    }
    return mass, nil
 }
+
