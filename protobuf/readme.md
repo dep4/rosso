@@ -1,18 +1,52 @@
 # Protobuf
 
+I reject the idea of having to use a compiler for ProtoBuf. I think you should
+be able to Marshal and Unmarshal just like JSON. And really, that should be
+possible. If they had only added a single extra wiretype for messages, ProtoBuf
+would be more or less self describing. At any rate, I want a package that can
+decode arbitrary ProtoBuf, and can also encode some Map or Struct into ProtoBuf
+as well.
+
 - https://github.com/golang/protobuf/issues/1370
-- https://stackoverflow.com/questions/26744873/converting-map-to-struct
 - https://stackoverflow.com/questions/41348512/protobuf-unmarshal-unknown
 
-I think I found a fix for ambiguous data. From my testing, problems only happen
-with `protowire.BytesType`, as the result can be a `string`, `bytes` or
-`message`. You can solve some cases by seeing if the data will parse as a
-message, or by checking if the data is binary [1]. However if the data can
-parse as a message, the result could be multiple types.
+> Is it a string, bytes, or a sub-type? you don't know. You might be able to
+> figure it out for a specific input, like when reverse engineering a gRPC api,
+> but not in general.
 
-To solve this, I wrote a package that has separate types for message, string
-and bytes. If I encounter ambiguous data, I add two entries. One as a string
-(or bytes) and one as a message. I give both the same field number, and use my
-new types as the discriminator.
+You can generalize this. `string`, `bytes` and `message` all get passed as wire
+type 2 (length-delimited). But you **can** differ between strings and bytes
+[1], and not all bytes slices are valid messages. So you can run those tests,
+and if you still have overlap, then you can just parse the data as both types,
+and add both types to the output under the same field number, using the type as
+the discriminator. This wouldnt work with `protowire.Type` [2], as again it
+uses the same type for all three, so any implementation would need to create a
+new `string`, `bytes` and `message` type.
 
 1. https://github.com/golang/go/blob/go1.17.6/src/net/http/sniff.go#L297-L309
+2. https://godocs.io/google.golang.org/protobuf/encoding/protowire#Type
+
+> what's the wire type?
+
+https://developers.google.com/protocol-buffers/docs/encoding#structure
+
+> Why would you even want it vs using something else like JSON or BSON?
+
+If it was my choice, I would never use ProtoBuf ever again. Its an awful
+format. However some servers I deal with, require ProtoBuf request body, and
+return ProtoBuf response body.
+
+> why don't you use this plus some `protowire.EncodeTag`
+
+Thats a good idea, but in my case I wanted an implementation that treats the
+field name as first class citizen, so I ended up doing something like this:
+
+~~~go
+type Tag struct {
+   protowire.Number
+   Name string
+}
+~~~
+
+Then I can use the `string` either as a type discriminator, or as the field
+name associated with the field number.
