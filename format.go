@@ -185,9 +185,9 @@ func (s Symbols) GetUint64(i uint64) string {
 
 // Do not export this. The method is one line, so just vendor it if need be.
 type notFound struct {
-   input string
+   value string
 }
 
 func (n notFound) Error() string {
-   return strconv.Quote(n.input) + " not found"
+   return strconv.Quote(n.value) + " not found"
 }

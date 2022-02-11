@@ -10,12 +10,15 @@ import (
 )
 
 func main() {
+   // f
+   var name string
+   flag.StringVar(&name, "f", "", "input file")
+   // o
    var output string
    flag.StringVar(&output, "o", "", "output file")
    flag.Parse()
-   if flag.NArg() == 1 {
-      input := flag.Arg(0)
-      bProto, err := os.ReadFile(input)
+   if name != "" {
+      buf, err := os.ReadFile(name)
       if err != nil {
          panic(err)
       }
@@ -24,7 +27,7 @@ func main() {
          file = os.Stdout
       }
       defer file.Close()
-      mes, err := protobuf.Unmarshal(bProto)
+      mes, err := protobuf.Unmarshal(buf)
       if err != nil {
          panic(err)
       }
@@ -39,7 +42,7 @@ func main() {
          panic(err)
       }
    } else {
-      fmt.Println("protobuf [flags] [file]")
+      fmt.Println("protobuf [flags]")
       flag.PrintDefaults()
    }
 }

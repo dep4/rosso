@@ -8,33 +8,39 @@ import (
 )
 
 func main() {
-   var (
-      https, info, redirect bool
-      output string
-   )
+   // f
+   var name string
+   flag.StringVar(&name, "f", "", "file")
+   // i
+   var info bool
    flag.BoolVar(&info, "i", false, "info")
+   // o
+   var output string
    flag.StringVar(&output, "o", "", "output file")
+   // r
+   var redirect bool
    flag.BoolVar(&redirect, "r", false, "redirect")
+   // s
+   var https bool
    flag.BoolVar(&https, "s", false, "HTTPS")
    flag.Parse()
-   if flag.NArg() == 1 {
-      input := flag.Arg(0)
-      read, err := os.Open(input)
+   if name != "" {
+      src, err := os.Open(name)
       if err != nil {
          panic(err)
       }
-      defer read.Close()
-      req, err := net.ReadRequest(read, https)
+      defer src.Close()
+      req, err := net.ReadRequest(src, https)
       if err != nil {
          panic(err)
       }
-      file, err := os.Create(output)
+      dst, err := os.Create(output)
       if err != nil {
-         file = os.Stdout
+         dst = os.Stdout
       }
-      defer file.Close()
+      defer dst.Close()
       if info {
-         err := net.WriteRequest(req, file)
+         err := net.WriteRequest(req, dst)
          if err != nil {
             panic(err)
          }
@@ -44,12 +50,12 @@ func main() {
             panic(err)
          }
          defer res.Body.Close()
-         if err := write(res, file); err != nil {
+         if err := write(res, dst); err != nil {
             panic(err)
          }
       }
    } else {
-      fmt.Println("net [flags] [request file]")
+      fmt.Println("net [flags]")
       flag.PrintDefaults()
    }
 }
