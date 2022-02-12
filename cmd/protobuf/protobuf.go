@@ -4,7 +4,6 @@ import (
    "bytes"
    "encoding/json"
    "flag"
-   "fmt"
    "github.com/89z/format/protobuf"
    "os"
 )
@@ -42,7 +41,6 @@ func main() {
          panic(err)
       }
    } else {
-      fmt.Println("protobuf [flags]")
       flag.PrintDefaults()
    }
 }

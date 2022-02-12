@@ -2,7 +2,6 @@ package main
 
 import (
    "flag"
-   "fmt"
    "github.com/89z/format/net"
    "os"
 )
@@ -10,7 +9,7 @@ import (
 func main() {
    // f
    var name string
-   flag.StringVar(&name, "f", "", "file")
+   flag.StringVar(&name, "f", "", "input file")
    // i
    var info bool
    flag.BoolVar(&info, "i", false, "info")
@@ -55,7 +54,6 @@ func main() {
          }
       }
    } else {
-      fmt.Println("net [flags]")
       flag.PrintDefaults()
    }
 }

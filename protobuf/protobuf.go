@@ -90,25 +90,25 @@ func Unmarshal(buf []byte) (Message, error) {
 }
 
 func (m Message) GoString() string {
-   str := new(strings.Builder)
-   str.WriteString("protobuf.Message{")
+   buf := new(strings.Builder)
+   buf.WriteString("protobuf.Message{")
    first := true
    for tag, val := range m {
       if first {
          first = false
       } else {
-         str.WriteString(",\n")
+         buf.WriteString(",\n")
       }
-      fmt.Fprintf(str, "%#v:", tag)
+      fmt.Fprintf(buf, "%#v:", tag)
       num, ok := val.(uint64)
       if ok {
-         fmt.Fprintf(str, "uint64(%v)", num)
+         fmt.Fprintf(buf, "uint64(%v)", num)
       } else {
-         fmt.Fprintf(str, "%#v", val)
+         fmt.Fprintf(buf, "%#v", val)
       }
    }
-   str.WriteByte('}')
-   return str.String()
+   buf.WriteByte('}')
+   return buf.String()
 }
 
 func (m Message) Marshal() []byte {

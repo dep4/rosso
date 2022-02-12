@@ -53,12 +53,12 @@ type mediaset struct {
 }
 
 func newMediaset() (*mediaset, error) {
-   var str strings.Builder
-   str.WriteString("http://open.live.bbc.co.uk")
-   str.WriteString("/mediaselector/6/select/version/2.0/mediaset/pc/vpid/")
-   str.WriteString("p0bkp6nx")
-   fmt.Println("GET", str.String())
-   res, err := http.Get(str.String())
+   var buf strings.Builder
+   buf.WriteString("http://open.live.bbc.co.uk")
+   buf.WriteString("/mediaselector/6/select/version/2.0/mediaset/pc/vpid/")
+   buf.WriteString("p0bkp6nx")
+   fmt.Println("GET", buf.String())
+   res, err := http.Get(buf.String())
    if err != nil {
       return nil, err
    }
