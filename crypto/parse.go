@@ -93,6 +93,8 @@ func ParseJA3(str string) (*tls.ClientHelloSpec, error) {
             SupportedSignatureAlgorithms: []tls.SignatureScheme{
                // Android API 24
                tls.ECDSAWithP256AndSHA256,
+               // httpbin.org
+               tls.PKCS1WithSHA256,
             },
          }
       case "16":

@@ -1,5 +1,20 @@
 # Protobuf
 
+~~~mermaid
+flowchart TD
+   A -- no --> E[can input parse as string?]
+   A -- yes --> B[add message]
+   A[can input parse as message?]
+   B --> C[can input parse as string?]
+   C -- yes --> D[add string]
+   E -- no --> G[add bytes]
+   E -- yes --> D[add string]
+   class A question
+   class C question
+   class E question
+   classDef question fill:bisque
+~~~
+
 I reject the idea of having to use a compiler for ProtoBuf. I think you should
 be able to Marshal and Unmarshal just like JSON. And really, that should be
 possible. If they had only added a single extra wiretype for messages, ProtoBuf
