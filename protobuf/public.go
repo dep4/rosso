@@ -2,10 +2,26 @@ package protobuf
 
 import (
    "google.golang.org/protobuf/encoding/protowire"
+   "io"
    "strconv"
 )
 
+const (
+   MessageType = 0
+   BytesType = 0.1
+   VarintType = 0.2
+   Fixed64Type = 0.3
+)
+
 type Message map[Tag]interface{}
+
+func Decode(src io.Reader) (Message, error) {
+   buf, err := io.ReadAll(src)
+   if err != nil {
+      return nil, err
+   }
+   return Unmarshal(buf)
+}
 
 func Unmarshal(buf []byte) (Message, error) {
    mes := make(Message)
@@ -35,34 +51,6 @@ func Unmarshal(buf []byte) (Message, error) {
    return mes, nil
 }
 
-func (m Message) Marshal() []byte {
-   var buf []byte
-   for tag, val := range m {
-      buf = appendField(buf, protowire.Number(tag.NumberType), val)
-   }
-   return buf
-}
-
-type Tag struct {
-   NumberType float64
-   Name string
-}
-
-func (t Tag) MarshalText() ([]byte, error) {
-   return strconv.AppendFloat(nil, t.NumberType, 'f', -1, 64), nil
-}
-
-// Return value using MessageType, given number and empty Name. To return value
-// with a Name, use the map directly.
-func (m Message) Get(num float64) Message {
-   tag := Tag{NumberType: num + MessageType}
-   val, ok := m[tag].(Message)
-   if ok {
-      return val
-   }
-   return nil
-}
-
 // Add value using MessageType, given number and empty Name. To add value with
 // a Name, use the map directly.
 func (m Message) Add(num float64, val Message) error {
@@ -74,6 +62,17 @@ func (m Message) Add(num float64, val Message) error {
       m[tag] = []Message{value, val}
    case []Message:
       m[tag] = append(value, val)
+   }
+   return nil
+}
+
+// Return value using MessageType, given number and empty Name. To return value
+// with a Name, use the map directly.
+func (m Message) Get(num float64) Message {
+   tag := Tag{NumberType: num + MessageType}
+   val, ok := m[tag].(Message)
+   if ok {
+      return val
    }
    return nil
 }
@@ -111,13 +110,6 @@ func (m Message) GetMessages(num float64) []Message {
    return nil
 }
 
-const (
-   MessageType = 0
-   BytesType = 0.1
-   VarintType = 0.2
-   Fixed64Type = 0.3
-)
-
 // Return value using BytesType, given number and empty Name. To return value
 // with a Name, use the map directly.
 func (m Message) GetString(num float64) string {
@@ -138,4 +130,21 @@ func (m Message) GetVarint(num float64) uint64 {
       return val
    }
    return 0
+}
+
+func (m Message) Marshal() []byte {
+   var buf []byte
+   for tag, val := range m {
+      buf = appendField(buf, protowire.Number(tag.NumberType), val)
+   }
+   return buf
+}
+
+type Tag struct {
+   NumberType float64
+   Name string
+}
+
+func (t Tag) MarshalText() ([]byte, error) {
+   return strconv.AppendFloat(nil, t.NumberType, 'f', -1, 64), nil
 }

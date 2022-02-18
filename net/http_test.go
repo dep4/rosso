@@ -1,7 +1,6 @@
 package net
 
 import (
-   "fmt"
    "os"
    "strings"
    "testing"
