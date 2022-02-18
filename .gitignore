@@ -1,4 +1,2 @@
-*.exe
-*.html
-*.json
-secret.go
+ignore.go
+ignore.txt
