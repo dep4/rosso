@@ -10,7 +10,9 @@ func Tag(num float64, name string) float64 {
 }
 
 // We cannot include the name in the key. When you Unmarshal, the name will be
-// empty. If you then try to Get with a name, it will fail.
+// empty. If you then try to Get with a name, it will fail. Max valid number is
+// 536,870,911, so better to use float64:
+// stackoverflow.com/questions/3793838
 type Message map[float64]interface{}
 
 func Decode(src io.Reader) (Message, error) {
@@ -87,9 +89,11 @@ func (m Message) GetFixed64(num float64, name string) uint64 {
 }
 
 func (m Message) GetMessages(num float64, name string) []Message {
-   val, ok := m[num + messageType].([]Message)
-   if ok {
-      return val
+   switch value := m[num + messageType].(type) {
+   case []Message:
+      return value
+   case Message:
+      return []Message{value}
    }
    return nil
 }
