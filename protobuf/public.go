@@ -3,17 +3,14 @@ package protobuf
 import (
    "google.golang.org/protobuf/encoding/protowire"
    "io"
+   "strconv"
 )
-
-func Tag(num float64, name string) float64 {
-   return num
-}
 
 // We cannot include the name in the key. When you Unmarshal, the name will be
 // empty. If you then try to Get with a name, it will fail. Max valid number is
 // 536,870,911, so better to use float64:
 // stackoverflow.com/questions/3793838
-type Message map[float64]interface{}
+type Message map[Number]interface{}
 
 func Decode(src io.Reader) (Message, error) {
    buf, err := io.ReadAll(src)
@@ -51,7 +48,7 @@ func Unmarshal(buf []byte) (Message, error) {
    return mes, nil
 }
 
-func (m Message) Add(num float64, name string, val Message) error {
+func (m Message) Add(num Number, name string, val Message) error {
    num += messageType
    switch value := m[num].(type) {
    case nil:
@@ -64,7 +61,7 @@ func (m Message) Add(num float64, name string, val Message) error {
    return nil
 }
 
-func (m Message) Get(num float64, name string) Message {
+func (m Message) Get(num Number, name string) Message {
    val, ok := m[num + messageType].(Message)
    if ok {
       return val
@@ -72,7 +69,7 @@ func (m Message) Get(num float64, name string) Message {
    return nil
 }
 
-func (m Message) GetBytes(num float64, name string) []byte {
+func (m Message) GetBytes(num Number, name string) []byte {
    val, ok := m[num + bytesType].([]byte)
    if ok {
       return val
@@ -80,7 +77,7 @@ func (m Message) GetBytes(num float64, name string) []byte {
    return nil
 }
 
-func (m Message) GetFixed64(num float64, name string) uint64 {
+func (m Message) GetFixed64(num Number, name string) uint64 {
    val, ok := m[num + fixed64Type].(uint64)
    if ok {
       return val
@@ -88,7 +85,7 @@ func (m Message) GetFixed64(num float64, name string) uint64 {
    return 0
 }
 
-func (m Message) GetMessages(num float64, name string) []Message {
+func (m Message) GetMessages(num Number, name string) []Message {
    switch value := m[num + messageType].(type) {
    case []Message:
       return value
@@ -98,7 +95,7 @@ func (m Message) GetMessages(num float64, name string) []Message {
    return nil
 }
 
-func (m Message) GetString(num float64, name string) string {
+func (m Message) GetString(num Number, name string) string {
    val, ok := m[num + bytesType].(string)
    if ok {
       return val
@@ -106,7 +103,7 @@ func (m Message) GetString(num float64, name string) string {
    return ""
 }
 
-func (m Message) GetVarint(num float64, name string) uint64 {
+func (m Message) GetVarint(num Number, name string) uint64 {
    val, ok := m[num + varintType].(uint64)
    if ok {
       return val
@@ -120,4 +117,15 @@ func (m Message) Marshal() []byte {
       buf = appendField(buf, protowire.Number(num), val)
    }
    return buf
+}
+
+type Number float64
+
+func Tag(num Number, name string) Number {
+   return num
+}
+
+func (n Number) MarshalText() ([]byte, error) {
+   f := float64(n)
+   return strconv.AppendFloat(nil, f, 'f', -1, 64), nil
 }

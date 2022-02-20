@@ -8,3 +8,7 @@
 ## How to get Android JA3?
 
 Check out the `cmd/proxy` folder.
+
+## TLS Handshake Explained - Computerphile
+
+https://www.youtube.com/watch?v=86cQJ0MMses

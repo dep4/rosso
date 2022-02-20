@@ -6,10 +6,10 @@ import (
 )
 
 const (
-   messageType = 0
-   bytesType = 0.1
-   varintType = 0.2
-   fixed64Type = 0.3
+   messageType Number = 0
+   bytesType Number = 0.1
+   varintType Number = 0.2
+   fixed64Type Number = 0.3
 )
 
 func appendField(buf []byte, num protowire.Number, val interface{}) []byte {
@@ -42,12 +42,12 @@ func appendField(buf []byte, num protowire.Number, val interface{}) []byte {
    return buf
 }
 
-func consumeField(buf []byte) (float64, protowire.Type, int, error) {
+func consumeField(buf []byte) (Number, protowire.Type, int, error) {
    num, typ, fLen := protowire.ConsumeField(buf)
-   return float64(num), typ, fLen, protowire.ParseError(fLen)
+   return Number(num), typ, fLen, protowire.ParseError(fLen)
 }
 
-func (m Message) addString(num float64, val string) {
+func (m Message) addString(num Number, val string) {
    num += bytesType
    switch value := m[num].(type) {
    case nil:
@@ -63,7 +63,7 @@ func (m Message) addString(num float64, val string) {
 // slice. We assume for now its always a Message. If input is not binary, then
 // result could be a Message or string. Since its not possible to tell Message
 // from string, we just add both under the same number, each with its own type.
-func (m Message) consumeBytes(num float64, buf []byte) error {
+func (m Message) consumeBytes(num Number, buf []byte) error {
    val, vLen := protowire.ConsumeBytes(buf)
    err := protowire.ParseError(vLen)
    if err != nil {
@@ -94,7 +94,7 @@ func (m Message) consumeBytes(num float64, buf []byte) error {
    return nil
 }
 
-func (m Message) consumeFixed64(num float64, buf []byte) error {
+func (m Message) consumeFixed64(num Number, buf []byte) error {
    val, vLen := protowire.ConsumeFixed64(buf)
    err := protowire.ParseError(vLen)
    if err != nil {
@@ -112,7 +112,7 @@ func (m Message) consumeFixed64(num float64, buf []byte) error {
    return nil
 }
 
-func (m Message) consumeVarint(num float64, buf []byte) error {
+func (m Message) consumeVarint(num Number, buf []byte) error {
    val, vLen := protowire.ConsumeVarint(buf)
    err := protowire.ParseError(vLen)
    if err != nil {
