@@ -1,9 +1,11 @@
 package protobuf
 
 import (
+   "fmt"
    "google.golang.org/protobuf/encoding/protowire"
    "io"
    "strconv"
+   "strings"
 )
 
 // We cannot include the name in the key. When you Unmarshal, the name will be
@@ -109,6 +111,28 @@ func (m Message) GetVarint(num Number, name string) uint64 {
       return val
    }
    return 0
+}
+
+func (m Message) GoString() string {
+   buf := new(strings.Builder)
+   buf.WriteString("protobuf.Message{")
+   first := true
+   for tag, val := range m {
+      if first {
+         first = false
+      } else {
+         buf.WriteString(",\n")
+      }
+      fmt.Fprintf(buf, "%#v:", tag)
+      num, ok := val.(uint64)
+      if ok {
+         fmt.Fprintf(buf, "uint64(%v)", num)
+      } else {
+         fmt.Fprintf(buf, "%#v", val)
+      }
+   }
+   buf.WriteByte('}')
+   return buf.String()
 }
 
 func (m Message) Marshal() []byte {
