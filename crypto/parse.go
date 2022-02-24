@@ -1,35 +1,11 @@
-// TLS and JA3 parsers
 package crypto
 
 import (
-   "encoding/binary"
    "fmt"
    "github.com/89z/format"
    "github.com/refraction-networking/utls"
    "strings"
 )
-
-// len 122, 8fcaa9e4a15f48af0a7d396e3fa5c5eb
-const AndroidAPI24 =
-   "771,49195-49196-52393-49199-49200-52392-158-159-49161-49162-49171-" +
-   "49172-51-57-156-157-47-53,65281-0-23-35-13-16-11-10,23,0"
-
-// len 128, 9fc6ef6efc99b933c5e2d8fcf4f68955
-const AndroidAPI25 =
-   "771,49195-49196-52393-49199-49200-52392-158-159-49161-49162-49171-" +
-   "49172-51-57-156-157-47-53,65281-0-23-35-13-16-11-10,23-24-25,0"
-
-// len 116, d8c87b9bfde38897979e41242626c2f3
-const AndroidAPI26 =
-   "771,49195-49196-52393-49199-49200-52392-49161-49162-49171-" +
-   "49172-156-157-47-53,65281-0-23-35-13-5-16-11-10,29-23-24,0"
-
-// len 143, 9b02ebd3a43b62d825e1ac605b621dc8
-const AndroidAPI29 =
-   "771,4865-4866-4867-49195-49196-52393-49199-49200-52392-49161-49162-49171-" +
-   "49172-156-157-47-53,0-23-65281-10-11-35-16-5-13-51-45-43-21,29-23-24,0"
-
-const AndroidAPI32 = AndroidAPI29
 
 func ParseJA3(str string) (*tls.ClientHelloSpec, error) {
    tokens := strings.Split(str, ",")
@@ -131,22 +107,4 @@ func ParseJA3(str string) (*tls.ClientHelloSpec, error) {
       hello.Extensions = append(hello.Extensions, ext)
    }
    return &hello, nil
-}
-
-func ParseTLS(buf []byte) (*tls.ClientHelloSpec, error) {
-   // unsupported extension 0x16
-   printer := tls.Fingerprinter{AllowBluntMimicry: true}
-   // FingerprintClientHello does bounds checking, so we dont need to worry
-   // about it in this function.
-   spec, err := printer.FingerprintClientHello(buf)
-   if err != nil {
-      return nil, err
-   }
-   // If SupportedVersionsExtension is present, then TLSVersMax is set to zero.
-   // In which case we need to manually read the bytes.
-   if spec.TLSVersMax == 0 {
-      // \x16\x03\x01\x00\xbc\x01\x00\x00\xb8\x03\x03
-      spec.TLSVersMax = binary.BigEndian.Uint16(buf[9:])
-   }
-   return spec, nil
 }
