@@ -24,25 +24,6 @@ func Clean(char rune) rune {
    return char
 }
 
-// github.com/golang/go/issues/22318
-func ExtensionByType(typ string) (string, error) {
-   justType, _, err := mime.ParseMediaType(typ)
-   if err != nil {
-      return "", err
-   }
-   switch justType {
-   case "audio/mp4":
-      return ".m4a", nil
-   case "audio/webm":
-      return ".weba", nil
-   case "video/mp4":
-      return ".m4v", nil
-   case "video/webm":
-      return ".webm", nil
-   }
-   return "", notFound{justType}
-}
-
 // mimesniff.spec.whatwg.org#binary-data-byte
 func IsBinary(buf []byte) bool {
    for _, b := range buf {
@@ -73,20 +54,6 @@ func percent(value, total float64) string {
       ratio = 100 * value / total
    }
    return strconv.FormatFloat(ratio, 'f', 1, 64) + "%"
-}
-
-type InvalidSlice struct {
-   Index, Length int
-}
-
-func (i InvalidSlice) Error() string {
-   index, length := int64(i.Index), int64(i.Length)
-   var buf []byte
-   buf = append(buf, "index out of range ["...)
-   buf = strconv.AppendInt(buf, index, 10)
-   buf = append(buf, "] with length "...)
-   buf = strconv.AppendInt(buf, length, 10)
-   return string(buf)
 }
 
 // Use 0 for INFO, 1 for VERBOSE and any other value for QUIET.
@@ -183,11 +150,22 @@ func (s Symbols) GetUint64(i uint64) string {
    return s.Get(f)
 }
 
-// Do not export this. The method is one line, so just vendor it if need be.
-type notFound struct {
-   value string
-}
-
-func (n notFound) Error() string {
-   return strconv.Quote(n.value) + " not found"
+// github.com/golang/go/issues/22318
+func ExtensionByType(typ string) (string, error) {
+   mediaType, _, err := mime.ParseMediaType(typ)
+   if err != nil {
+      return "", err
+   }
+   var ext string
+   switch mediaType {
+   case "audio/mp4":
+      ext = ".m4a"
+   case "audio/webm":
+      ext = ".weba"
+   case "video/mp4":
+      ext = ".m4v"
+   case "video/webm":
+      ext = ".webm"
+   }
+   return ext, nil
 }

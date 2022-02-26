@@ -50,7 +50,7 @@ func TestParseJA3(t *testing.T) {
          t.Fatal(err)
       }
       req, err := http.NewRequest(
-         "POST", "https://android.clients.google.com/auth",
+         "POST", "https://android.googleapis.com/auth",
          strings.NewReader(val),
       )
       if err != nil {
