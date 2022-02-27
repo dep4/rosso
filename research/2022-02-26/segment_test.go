@@ -1,4 +1,4 @@
-package m3u
+package hls
 
 import (
    "encoding/json"
@@ -9,7 +9,7 @@ import (
    "testing"
 )
 
-func TestM3U(t *testing.T) {
+func TestSegment(t *testing.T) {
    res, err := http.Get(addr)
    if err != nil {
       t.Fatal(err)

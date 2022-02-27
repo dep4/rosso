@@ -23,7 +23,7 @@ func (m mediaset) masters() ([]Master, error) {
    return Decoder{dir}.Masters(res.Body)
 }
 
-func TestM3U(t *testing.T) {
+func TestMaster(t *testing.T) {
    set, err := newMediaset()
    if err != nil {
       t.Fatal(err)

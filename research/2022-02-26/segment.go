@@ -1,4 +1,4 @@
-package m3u
+package hls
 
 import (
    "io"

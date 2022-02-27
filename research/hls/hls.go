@@ -1,5 +1,4 @@
-// M3U parser
-package m3u
+package hls
 
 import (
    "io"
@@ -143,4 +142,3 @@ func (d Decoder) Masters(src io.Reader) ([]Master, error) {
    }
    return mass, nil
 }
-

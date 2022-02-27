@@ -20,10 +20,10 @@
 Data parsers and formatters
 
 Path     | Synopsis
----------|--------------------
+---------|------------------------
 crypto   | JA3 and TLS fingerprint
 json     | JSON parser
-m3u      | M3U parser
+hls      | HLS parser
 net      | HTML and HTTP parsers
 protobuf | Protocol Buffers
 
