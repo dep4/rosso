@@ -1,33 +1,10 @@
 package m3u
 
 import (
-   "io"
    "path"
    "strconv"
    "text/scanner"
-   "unicode"
 )
-
-func scanLines(buf *scanner.Scanner) {
-   buf.IsIdentRune = func(r rune, i int) bool {
-      return r != '\n'
-   }
-   buf.Whitespace = 1 << '\n'
-}
-
-func scanWords(buf *scanner.Scanner) {
-   buf.IsIdentRune = func(r rune, i int) bool {
-      return r == '-' || unicode.IsDigit(r) || unicode.IsLetter(r)
-   }
-   buf.Whitespace = 1 << ' '
-}
-
-type Master struct {
-   Bandwidth int64
-   URI string
-}
-
-type openFile func(string) (io.ReadCloser, error)
 
 func Masters(src string, fn openFile) ([]Master, error) {
    file, err := fn(src)
@@ -60,8 +37,11 @@ func Masters(src string, fn openFile) ([]Master, error) {
          }
          scanLines(&buf)
          buf.Scan()
-         // FIXME if TokenText is already absolute, this fail:
-         mas.URI = path.Dir(src) + buf.TokenText()
+         mas.URI = buf.TokenText()
+         if !isAbsPath(mas.URI) {
+            // FIXME fails with Windows
+            mas.URI = path.Dir(src) + buf.TokenText()
+         }
          mass = append(mass, mas)
       }
    }
