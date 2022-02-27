@@ -3,7 +3,9 @@ package m3u
 import (
    "encoding/json"
    "fmt"
+   "io"
    "net/http"
+   "os"
    "path"
    "strings"
    "testing"
@@ -29,18 +31,6 @@ func TestM3U(t *testing.T) {
    mass, err := set.masters()
    if err != nil {
       t.Fatal(err)
-   }
-   addr := mass[0].URI
-   fmt.Println("GET", addr)
-   res, err := http.Get(addr)
-   if err != nil {
-      t.Fatal(err)
-   }
-   defer res.Body.Close()
-   dir, _ := path.Split(addr)
-   segs := Decoder{dir}.Segments(res.Body)
-   for _, seg := range segs {
-      fmt.Println(seg)
    }
 }
 
@@ -68,4 +58,20 @@ func newMediaset() (*mediaset, error) {
       return nil, err
    }
    return set, nil
+}
+
+func get(s string) (io.ReadCloser, error) {
+   res, err := http.Get(s)
+   if err != nil {
+      return nil, err
+   }
+   return res.Body, nil
+}
+
+func TestFile(t *testing.T) {
+   b, err := newPlaylist("https://github.com/manifest.json", get)
+   if err != nil {
+      t.Fatal(err)
+   }
+   fmt.Println(string(b))
 }

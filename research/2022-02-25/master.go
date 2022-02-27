@@ -2,31 +2,11 @@ package m3u
 
 import (
    "io"
+   "path"
    "strconv"
    "text/scanner"
    "unicode"
 )
-
-func (d Decoder) Segments(src io.Reader) []string {
-   var (
-      buf scanner.Scanner
-      segs []string
-   )
-   buf.Init(src)
-   for {
-      scanWords(&buf)
-      if buf.Scan() == scanner.EOF {
-         break
-      }
-      if buf.TokenText() == "EXTINF" {
-         scanLines(&buf)
-         buf.Scan()
-         buf.Scan()
-         segs = append(segs, d.Dir + buf.TokenText())
-      }
-   }
-   return segs
-}
 
 func scanLines(buf *scanner.Scanner) {
    buf.IsIdentRune = func(r rune, i int) bool {
@@ -47,16 +27,19 @@ type Master struct {
    URI string
 }
 
-type Decoder struct {
-   Dir string
-}
+type openFile func(string) (io.ReadCloser, error)
 
-func (d Decoder) Masters(src io.Reader) ([]Master, error) {
+func Masters(src string, fn openFile) ([]Master, error) {
+   file, err := fn(src)
+   if err != nil {
+      return nil, err
+   }
+   defer file.Close()
    var (
       buf scanner.Scanner
       mass []Master
    )
-   buf.Init(src)
+   buf.Init(file)
    for {
       scanWords(&buf)
       if buf.Scan() == scanner.EOF {
@@ -77,10 +60,10 @@ func (d Decoder) Masters(src io.Reader) ([]Master, error) {
          }
          scanLines(&buf)
          buf.Scan()
-         mas.URI = d.Dir + buf.TokenText()
+         // FIXME if TokenText is already absolute, this fail:
+         mas.URI = path.Dir(src) + buf.TokenText()
          mass = append(mass, mas)
       }
    }
    return mass, nil
 }
-
