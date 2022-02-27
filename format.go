@@ -160,6 +160,8 @@ func ExtensionByType(typ string) (string, error) {
    switch mediaType {
    case "audio/mp4":
       ext = ".m4a"
+   case "audio/mpeg":
+      ext = ".mp3"
    case "audio/webm":
       ext = ".weba"
    case "video/mp4":
