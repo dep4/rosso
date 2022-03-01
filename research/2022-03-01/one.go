@@ -25,7 +25,7 @@ type master struct {
    uri string
 }
 
-func masters(src io.Reader) ([]master, error) {
+func one(src io.Reader) []master {
    var (
       buf scanner.Scanner
       mass []master
@@ -51,5 +51,5 @@ func masters(src io.Reader) ([]master, error) {
          mass = append(mass, mas)
       }
    }
-   return mass, nil
+   return mass
 }

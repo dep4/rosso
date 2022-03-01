@@ -31,7 +31,7 @@ func getHref() (string, error) {
    return set.Media[1].Connection[0].Href, nil
 }
 
-func TestMaster(t *testing.T) {
+func TestOne(t *testing.T) {
    href, err := getHref()
    if err != nil {
       t.Fatal(err)
@@ -41,7 +41,7 @@ func TestMaster(t *testing.T) {
       t.Fatal(err)
    }
    defer res.Body.Close()
-   mass, err := masters(res.Body)
+   mass, err := one(res.Body)
    if err != nil {
       t.Fatal(err)
    }
