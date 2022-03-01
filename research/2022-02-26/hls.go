@@ -8,24 +8,6 @@ import (
    "unicode"
 )
 
-func scanLines(buf *scanner.Scanner) {
-   buf.IsIdentRune = func(r rune, i int) bool {
-      return r != '\n'
-   }
-   buf.Whitespace = 1 << '\n'
-}
-
-func scanWords(buf *scanner.Scanner) {
-   buf.IsIdentRune = func(r rune, i int) bool {
-      return r == '-' || unicode.IsDigit(r) || unicode.IsLetter(r)
-   }
-   buf.Whitespace = 1 << ' '
-}
-
-type Decoder struct {
-   Dir string
-}
-
 type Information struct {
    Runtime time.Duration
    URI string
@@ -41,24 +23,6 @@ type Master struct {
    Bandwidth int64
    Codecs string
    URI string
-}
-
-func (m Master) String() string {
-   var buf []byte
-   if m.Resolution != "" {
-      buf = append(buf, "Resolution:"...)
-      buf = append(buf, m.Resolution...)
-      buf = append(buf, ' ')
-   }
-   buf = append(buf, "Bandwidth:"...)
-   buf = strconv.AppendInt(buf, m.Bandwidth, 10)
-   buf = append(buf, " Codecs:"...)
-   buf = append(buf, m.Codecs...)
-   if m.URI != "" {
-      buf = append(buf, " URI:"...)
-      buf = append(buf, m.URI...)
-   }
-   return string(buf)
 }
 
 func (d Decoder) Segment(src io.Reader) (*Segment, error) {
