@@ -15,7 +15,10 @@ func scanLines(buf *scanner.Scanner) {
 
 func scanWords(buf *scanner.Scanner) {
    buf.IsIdentRune = func(r rune, i int) bool {
-      return r == '-' || unicode.IsDigit(r) || unicode.IsLetter(r)
+      if r == '-' || unicode.IsLetter(r) {
+         return true
+      }
+      return i >= 1 && unicode.IsDigit(r)
    }
    buf.Whitespace = 1 << ' '
 }

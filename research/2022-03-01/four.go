@@ -1,21 +1,16 @@
 package hls
 
 import (
-   "io"
+   "net/http"
    "text/scanner"
 )
 
-type segment struct {
-   duration string
-   uri string
-}
-
-func three(src io.Reader) []segment {
+func four(res *http.Response) ([]segment, error) {
    var (
       buf scanner.Scanner
       segs []segment
    )
-   buf.Init(src)
+   buf.Init(res.Body)
    for {
       scanWords(&buf)
       if buf.Scan() == scanner.EOF {
@@ -29,9 +24,13 @@ func three(src io.Reader) []segment {
          scanLines(&buf)
          buf.Scan()
          buf.Scan()
-         seg.uri = buf.TokenText()
+         addr, err := res.Request.URL.Parse(buf.TokenText())
+         if err != nil {
+            return nil, err
+         }
+         seg.uri = addr.String()
          segs = append(segs, seg)
       }
    }
-   return segs
+   return segs, nil
 }

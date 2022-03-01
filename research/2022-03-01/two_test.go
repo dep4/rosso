@@ -6,17 +6,21 @@ import (
    "testing"
 )
 
-func TestTwo(t *testing.T) {
-   href, err := getHref()
+func twoHref() ([]master, error) {
+   href, err := oneHref()
    if err != nil {
-      t.Fatal(err)
+      return nil, err
    }
    res, err := http.Get(href)
    if err != nil {
-      t.Fatal(err)
+      return nil, err
    }
    defer res.Body.Close()
-   mass, err := two(res)
+   return two(res)
+}
+
+func TestTwo(t *testing.T) {
+   mass, err := twoHref()
    if err != nil {
       t.Fatal(err)
    }

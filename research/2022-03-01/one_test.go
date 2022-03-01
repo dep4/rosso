@@ -8,7 +8,7 @@ import (
    "testing"
 )
 
-func getHref() (string, error) {
+func oneHref() (string, error) {
    var buf strings.Builder
    buf.WriteString("http://open.live.bbc.co.uk")
    buf.WriteString("/mediaselector/6/select/version/2.0/mediaset/pc/vpid/")
@@ -32,7 +32,7 @@ func getHref() (string, error) {
 }
 
 func TestOne(t *testing.T) {
-   href, err := getHref()
+   href, err := oneHref()
    if err != nil {
       t.Fatal(err)
    }
@@ -41,11 +41,7 @@ func TestOne(t *testing.T) {
       t.Fatal(err)
    }
    defer res.Body.Close()
-   mass, err := one(res.Body)
-   if err != nil {
-      t.Fatal(err)
-   }
-   for _, mas := range mass {
+   for _, mas := range one(res.Body) {
       fmt.Printf("%+v\n", mas)
    }
 }
