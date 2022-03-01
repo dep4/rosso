@@ -11,17 +11,33 @@ import (
    "time"
 )
 
-var (
-   Number = Symbols{"", " K", " M", " B", " T"}
-   Rate = Symbols{" B/s", " kB/s", " MB/s", " GB/s", " TB/s"}
-   Size = Symbols{" B", " kB", " MB", " GB", " TB"}
-)
-
 func Clean(char rune) rune {
    if strings.ContainsRune(`"*/:<>?\|`, char) {
       return -1
    }
    return char
+}
+
+// github.com/golang/go/issues/22318
+func ExtensionByType(typ string) (string, error) {
+   mediaType, _, err := mime.ParseMediaType(typ)
+   if err != nil {
+      return "", err
+   }
+   var ext string
+   switch mediaType {
+   case "audio/mp4":
+      ext = ".m4a"
+   case "audio/mpeg":
+      ext = ".mp3"
+   case "audio/webm":
+      ext = ".weba"
+   case "video/mp4":
+      ext = ".m4v"
+   case "video/webm":
+      ext = ".webm"
+   }
+   return ext, nil
 }
 
 // mimesniff.spec.whatwg.org#binary-data-byte
@@ -123,6 +139,12 @@ func (p Progress) getRate() string {
 
 type Symbols []string
 
+var (
+   Number = Symbols{"", " K", " M", " B", " T"}
+   Rate = Symbols{" B/s", " kB/s", " MB/s", " GB/s", " TB/s"}
+   Size = Symbols{" B", " kB", " MB", " GB", " TB"}
+)
+
 func (s Symbols) Get(f float64) string {
    var (
       i int
@@ -148,26 +170,4 @@ func (s Symbols) GetInt64(i int64) string {
 func (s Symbols) GetUint64(i uint64) string {
    f := float64(i)
    return s.Get(f)
-}
-
-// github.com/golang/go/issues/22318
-func ExtensionByType(typ string) (string, error) {
-   mediaType, _, err := mime.ParseMediaType(typ)
-   if err != nil {
-      return "", err
-   }
-   var ext string
-   switch mediaType {
-   case "audio/mp4":
-      ext = ".m4a"
-   case "audio/mpeg":
-      ext = ".mp3"
-   case "audio/webm":
-      ext = ".weba"
-   case "video/mp4":
-      ext = ".m4v"
-   case "video/webm":
-      ext = ".webm"
-   }
-   return ext, nil
 }
