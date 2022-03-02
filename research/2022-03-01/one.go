@@ -1,7 +1,7 @@
 package hls
 
 import (
-   "io"
+   "net/http"
    "text/scanner"
    "unicode"
 )
@@ -23,37 +23,6 @@ func scanWords(buf *scanner.Scanner) {
    buf.Whitespace = 1 << ' '
 }
 
-func one(src io.Reader) master {
-   var (
-      buf scanner.Scanner
-      mas master
-   )
-   buf.Init(src)
-   for {
-      scanWords(&buf)
-      if buf.Scan() == scanner.EOF {
-         break
-      }
-      switch buf.TokenText() {
-      case "EXT-X-STREAM-INF":
-         var str stream
-         for buf.Scan() != '\n' {
-            if buf.TokenText() == "BANDWIDTH" {
-               buf.Scan()
-               buf.Scan()
-               str.Bandwidth = buf.TokenText()
-            }
-         }
-         scanLines(&buf)
-         buf.Scan()
-         str.URI = buf.TokenText()
-         mas.stream = append(mas.stream, str)
-      case "EXT-X-MEDIA":
-      }
-   }
-   return mas
-}
-
 type media struct {
    Name string
    Type string
@@ -67,4 +36,39 @@ type stream struct {
 type master struct {
    media []media
    stream []stream
+}
+
+func one(res *http.Response) (*master, error) {
+   var (
+      buf scanner.Scanner
+      mas master
+   )
+   buf.Init(res.Body)
+   for {
+      scanWords(&buf)
+      if buf.Scan() == scanner.EOF {
+         break
+      }
+      switch buf.TokenText() {
+      case "EXT-X-MEDIA":
+      case "EXT-X-STREAM-INF":
+         var str stream
+         for buf.Scan() != '\n' {
+            if buf.TokenText() == "BANDWIDTH" {
+               buf.Scan()
+               buf.Scan()
+               str.Bandwidth = buf.TokenText()
+            }
+         }
+         scanLines(&buf)
+         buf.Scan()
+         addr, err := res.Request.URL.Parse(buf.TokenText())
+         if err != nil {
+            return nil, err
+         }
+         str.URI = addr.String()
+         mas.stream = append(mas.stream, str)
+      }
+   }
+   return &mas, nil
 }

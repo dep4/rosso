@@ -31,17 +31,28 @@ func oneHref() (string, error) {
    return set.Media[1].Connection[0].Href, nil
 }
 
-func TestOne(t *testing.T) {
+func twoHref() (*master, error) {
    href, err := oneHref()
    if err != nil {
-      t.Fatal(err)
+      return nil, err
    }
    res, err := http.Get(href)
    if err != nil {
-      t.Fatal(err)
+      return nil, err
    }
    defer res.Body.Close()
-   for _, mas := range one(res.Body) {
-      fmt.Printf("%+v\n", mas)
+   return one(res)
+}
+
+func TestOne(t *testing.T) {
+   mas, err := twoHref()
+   if err != nil {
+      t.Fatal(err)
+   }
+   for _, med := range mas.media {
+      fmt.Printf("%+v\n", med)
+   }
+   for _, str := range mas.stream {
+      fmt.Printf("%+v\n", str)
    }
 }
