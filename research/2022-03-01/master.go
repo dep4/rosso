@@ -23,25 +23,15 @@ func scanWords(buf *scanner.Scanner) {
    buf.Whitespace = 1 << ' '
 }
 
-type media struct {
-   Name string
-   Type string
+type Master struct {
+   Media []Media
+   Stream []Stream
 }
 
-type stream struct {
-   Bandwidth string
-   URI string
-}
-
-type master struct {
-   media []media
-   stream []stream
-}
-
-func newMaster(res *http.Response) (*master, error) {
+func NewMaster(res *http.Response) (*Master, error) {
    var (
       buf scanner.Scanner
-      mas master
+      mas Master
    )
    buf.Init(res.Body)
    for {
@@ -51,8 +41,22 @@ func newMaster(res *http.Response) (*master, error) {
       }
       switch buf.TokenText() {
       case "EXT-X-MEDIA":
+         var med Media
+         for buf.Scan() != '\n' {
+            switch buf.TokenText() {
+            case "AUTOSELECT":
+               buf.Scan()
+               buf.Scan()
+               med.AutoSelect = buf.TokenText()
+            case "TYPE":
+               buf.Scan()
+               buf.Scan()
+               med.Type = buf.TokenText()
+            }
+         }
+         mas.Media = append(mas.Media, med)
       case "EXT-X-STREAM-INF":
-         var str stream
+         var str Stream
          for buf.Scan() != '\n' {
             if buf.TokenText() == "BANDWIDTH" {
                buf.Scan()
@@ -67,8 +71,18 @@ func newMaster(res *http.Response) (*master, error) {
             return nil, err
          }
          str.URI = addr.String()
-         mas.stream = append(mas.stream, str)
+         mas.Stream = append(mas.Stream, str)
       }
    }
    return &mas, nil
+}
+
+type Media struct {
+   AutoSelect string
+   Type string
+}
+
+type Stream struct {
+   Bandwidth string
+   URI string
 }

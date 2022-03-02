@@ -41,14 +41,14 @@ func TestMaster(t *testing.T) {
       t.Fatal(err)
    }
    defer res.Body.Close()
-   mas, err := newMaster(res)
+   mas, err := NewMaster(res)
    if err != nil {
       t.Fatal(err)
    }
-   for _, med := range mas.media {
+   for _, med := range mas.Media {
       fmt.Printf("%+v\n", med)
    }
-   for _, str := range mas.stream {
+   for _, str := range mas.Stream {
       fmt.Printf("%+v\n", str)
    }
 }

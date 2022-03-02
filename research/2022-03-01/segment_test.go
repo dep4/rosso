@@ -23,11 +23,11 @@ func platform() (string, error) {
       return "", err
    }
    defer res.Body.Close()
-   mas, err := newMaster(res)
+   mas, err := NewMaster(res)
    if err != nil {
       return "", err
    }
-   return mas.stream[0].URI, nil
+   return mas.Stream[0].URI, nil
 }
 
 func TestSegment(t *testing.T) {
@@ -40,14 +40,12 @@ func TestSegment(t *testing.T) {
       t.Fatal(err)
    }
    defer res.Body.Close()
-   seg, err := newSegment(res)
+   seg, err := NewSegment(res)
    if err != nil {
       t.Fatal(err)
    }
-   for _, inf := range seg.inf {
-      fmt.Printf("%+v\n", inf)
+   for _, info := range seg.Info {
+      fmt.Printf("%+v\n", info)
    }
-   fmt.Printf("%+v\n", seg.key)
+   fmt.Printf("%+v\n", seg.Key)
 }
-
-

@@ -2,26 +2,28 @@ package hls
 
 import (
    "net/http"
+   "strconv"
    "text/scanner"
 )
 
-type information struct {
-   duration string
-   uri string
+type Information struct {
+   Duration string
+   URI string
 }
 
-type segment struct {
-   key struct {
-      method string
-      uri string
+type Segment struct {
+   Key struct {
+      Method string
+      URI string
    }
-   inf []information
+   Info []Information
 }
 
-func newSegment(res *http.Response) (*segment, error) {
+func NewSegment(res *http.Response) (*Segment, error) {
    var (
       buf scanner.Scanner
-      seg segment
+      err error
+      seg Segment
    )
    buf.Init(res.Body)
    for {
@@ -31,10 +33,10 @@ func newSegment(res *http.Response) (*segment, error) {
       }
       switch buf.TokenText() {
       case "EXTINF":
-         var inf information
+         var info Information
          buf.Scan()
          buf.Scan()
-         inf.duration = buf.TokenText()
+         info.Duration = buf.TokenText()
          scanLines(&buf)
          buf.Scan()
          buf.Scan()
@@ -42,19 +44,22 @@ func newSegment(res *http.Response) (*segment, error) {
          if err != nil {
             return nil, err
          }
-         inf.uri = addr.String()
-         seg.inf = append(seg.inf, inf)
+         info.URI = addr.String()
+         seg.Info = append(seg.Info, info)
       case "EXT-X-KEY":
          for buf.Scan() != '\n' {
             switch buf.TokenText() {
             case "METHOD":
                buf.Scan()
                buf.Scan()
-               seg.key.method = buf.TokenText()
+               seg.Key.Method = buf.TokenText()
             case "URI":
                buf.Scan()
                buf.Scan()
-               seg.key.uri = buf.TokenText()
+               seg.Key.URI, err = strconv.Unquote(buf.TokenText())
+               if err != nil {
+                  return nil, err
+               }
             }
          }
       }
