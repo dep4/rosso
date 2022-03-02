@@ -5,28 +5,7 @@ import (
    "net/http"
    "strings"
    "testing"
-   
-   "os"
 )
-
-func TestFive(t *testing.T) {
-   href, err := platformOne()
-   if err != nil {
-      t.Fatal(err)
-   }
-   res, err := http.Get(href)
-   if err != nil {
-      t.Fatal(err)
-   }
-   defer res.Body.Close()
-   
-   os.Stdout.ReadFrom(res.Body)
-   
-   return
-   for _, seg := range three(res.Body) {
-      fmt.Printf("%+v\n", seg)
-   }
-}
 
 func platformOne() (string, error) {
    var buf strings.Builder
@@ -48,4 +27,19 @@ func platformOne() (string, error) {
       return "", err
    }
    return mass[0].uri, nil
+}
+
+func TestFive(t *testing.T) {
+   href, err := platformOne()
+   if err != nil {
+      t.Fatal(err)
+   }
+   res, err := http.Get(href)
+   if err != nil {
+      t.Fatal(err)
+   }
+   defer res.Body.Close()
+   for _, seg := range three(res.Body) {
+      fmt.Printf("%+v\n", seg)
+   }
 }

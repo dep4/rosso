@@ -5,10 +5,10 @@ import (
    "text/scanner"
 )
 
-func two(res *http.Response) ([]master, error) {
+func two(res *http.Response) (*master, error) {
    var (
       buf scanner.Scanner
-      mass []master
+      mas master
    )
    buf.Init(res.Body)
    for {
@@ -16,13 +16,15 @@ func two(res *http.Response) ([]master, error) {
       if buf.Scan() == scanner.EOF {
          break
       }
-      if buf.TokenText() == "EXT-X-STREAM-INF" {
-         var mas master
+      switch buf.TokenText() {
+      case "EXT-X-MEDIA":
+      case "EXT-X-STREAM-INF":
+         var str stream
          for buf.Scan() != '\n' {
             if buf.TokenText() == "BANDWIDTH" {
                buf.Scan()
                buf.Scan()
-               mas.bandwidth = buf.TokenText()
+               str.Bandwidth = buf.TokenText()
             }
          }
          scanLines(&buf)
@@ -31,9 +33,9 @@ func two(res *http.Response) ([]master, error) {
          if err != nil {
             return nil, err
          }
-         mas.uri = addr.String()
-         mass = append(mass, mas)
+         str.URI = addr.String()
+         mas.stream = append(mas.stream, str)
       }
    }
-   return mass, nil
+   return &mas, nil
 }

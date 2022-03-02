@@ -23,15 +23,10 @@ func scanWords(buf *scanner.Scanner) {
    buf.Whitespace = 1 << ' '
 }
 
-type master struct {
-   bandwidth string
-   uri string
-}
-
-func one(src io.Reader) []master {
+func one(src io.Reader) master {
    var (
       buf scanner.Scanner
-      mass []master
+      mas master
    )
    buf.Init(src)
    for {
@@ -39,20 +34,37 @@ func one(src io.Reader) []master {
       if buf.Scan() == scanner.EOF {
          break
       }
-      if buf.TokenText() == "EXT-X-STREAM-INF" {
-         var mas master
+      switch buf.TokenText() {
+      case "EXT-X-STREAM-INF":
+         var str stream
          for buf.Scan() != '\n' {
             if buf.TokenText() == "BANDWIDTH" {
                buf.Scan()
                buf.Scan()
-               mas.bandwidth = buf.TokenText()
+               str.Bandwidth = buf.TokenText()
             }
          }
          scanLines(&buf)
          buf.Scan()
-         mas.uri = buf.TokenText()
-         mass = append(mass, mas)
+         str.URI = buf.TokenText()
+         mas.stream = append(mas.stream, str)
+      case "EXT-X-MEDIA":
       }
    }
-   return mass
+   return mas
+}
+
+type media struct {
+   Name string
+   Type string
+}
+
+type stream struct {
+   Bandwidth string
+   URI string
+}
+
+type master struct {
+   media []media
+   stream []stream
 }
