@@ -1,7 +1,9 @@
 package hls
 
 import (
-   "net/http"
+   "io"
+   "net/url"
+   "strconv"
    "text/scanner"
    "unicode"
 )
@@ -25,12 +27,18 @@ type Master struct {
    Stream []Stream
 }
 
-func NewMaster(res *http.Response) (*Master, error) {
+type Media struct {
+   AutoSelect string
+   Type string
+}
+
+func NewMaster(addr *url.URL, body io.Reader) (*Master, error) {
    var (
       buf scanner.Scanner
+      err error
       mas Master
    )
-   buf.Init(res.Body)
+   buf.Init(body)
    for {
       scanWords(&buf)
       if buf.Scan() == scanner.EOF {
@@ -56,19 +64,29 @@ func NewMaster(res *http.Response) (*Master, error) {
          var str Stream
          for buf.Scan() != '\n' {
             switch buf.TokenText() {
-            case "BANDWIDTH":
-               buf.Scan()
-               buf.Scan()
-               str.Bandwidth = buf.TokenText()
             case "RESOLUTION":
                buf.Scan()
                buf.Scan()
                str.Resolution = buf.TokenText()
+            case "CODECS":
+               buf.Scan()
+               buf.Scan()
+               str.Codecs, err = strconv.Unquote(buf.TokenText())
+               if err != nil {
+                  return nil, err
+               }
+            case "BANDWIDTH":
+               buf.Scan()
+               buf.Scan()
+               str.Bandwidth, err = strconv.ParseInt(buf.TokenText(), 10, 64)
+               if err != nil {
+                  return nil, err
+               }
             }
          }
          scanLines(&buf)
          buf.Scan()
-         addr, err := res.Request.URL.Parse(buf.TokenText())
+         addr, err = addr.Parse(buf.TokenText())
          if err != nil {
             return nil, err
          }
@@ -79,13 +97,27 @@ func NewMaster(res *http.Response) (*Master, error) {
    return &mas, nil
 }
 
-type Media struct {
-   AutoSelect string
-   Type string
-}
-
 type Stream struct {
-   Bandwidth string
+   Bandwidth int64
+   Codecs string
    Resolution string
    URI string
+}
+
+func (s Stream) String() string {
+   var buf []byte
+   if s.Resolution != "" {
+      buf = append(buf, "Resolution:"...)
+      buf = append(buf, s.Resolution...)
+      buf = append(buf, ' ')
+   }
+   buf = append(buf, "Bandwidth:"...)
+   buf = strconv.AppendInt(buf, s.Bandwidth, 10)
+   buf = append(buf, " Codecs:"...)
+   buf = append(buf, s.Codecs...)
+   if s.URI != "" {
+      buf = append(buf, " URI:"...)
+      buf = append(buf, s.URI...)
+   }
+   return string(buf)
 }
