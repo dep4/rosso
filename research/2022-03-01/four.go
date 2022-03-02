@@ -5,10 +5,10 @@ import (
    "text/scanner"
 )
 
-func four(res *http.Response) ([]segment, error) {
+func four(res *http.Response) ([]segmentThree, error) {
    var (
       buf scanner.Scanner
-      segs []segment
+      segs []segmentThree
    )
    buf.Init(res.Body)
    for {
@@ -19,7 +19,7 @@ func four(res *http.Response) ([]segment, error) {
       if buf.TokenText() == "EXTINF" {
          buf.Scan()
          buf.Scan()
-         var seg segment
+         var seg segmentThree
          seg.duration = buf.TokenText()
          scanLines(&buf)
          buf.Scan()

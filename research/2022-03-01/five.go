@@ -5,15 +5,15 @@ import (
    "text/scanner"
 )
 
-type segmentThree struct {
+type segment struct {
    duration string
    uri string
 }
 
-func three(src io.Reader) []segmentThree {
+func Five(src io.Reader) []segment {
    var (
       buf scanner.Scanner
-      segs []segmentThree
+      segs []segment
    )
    buf.Init(src)
    for {
@@ -24,7 +24,7 @@ func three(src io.Reader) []segmentThree {
       if buf.TokenText() == "EXTINF" {
          buf.Scan()
          buf.Scan()
-         var seg segmentThree
+         var seg segment
          seg.duration = buf.TokenText()
          scanLines(&buf)
          buf.Scan()
