@@ -18,28 +18,6 @@ func Clean(char rune) rune {
    return char
 }
 
-// github.com/golang/go/issues/22318
-func ExtensionByType(typ string) (string, error) {
-   mediaType, _, err := mime.ParseMediaType(typ)
-   if err != nil {
-      return "", err
-   }
-   var ext string
-   switch mediaType {
-   case "audio/mp4":
-      ext = ".m4a"
-   case "audio/mpeg":
-      ext = ".mp3"
-   case "audio/webm":
-      ext = ".weba"
-   case "video/mp4":
-      ext = ".m4v"
-   case "video/webm":
-      ext = ".webm"
-   }
-   return ext, nil
-}
-
 // mimesniff.spec.whatwg.org#binary-data-byte
 func IsBinary(buf []byte) bool {
    for _, b := range buf {
