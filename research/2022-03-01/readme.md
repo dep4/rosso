@@ -5,8 +5,9 @@
 
 ## Done
 
-## To do
-
 1. master http.Response
 2. segment http.Response
+
+## To do
+
 3. segment EXT-X-KEY http.Response
