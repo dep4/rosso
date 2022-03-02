@@ -1,7 +1,8 @@
 package hls
 
 import (
-   "net/http"
+   "io"
+   "net/url"
    "text/scanner"
    "unicode"
 )
@@ -25,12 +26,13 @@ type Master struct {
    Stream []Stream
 }
 
-func NewMaster(res *http.Response) (*Master, error) {
+func NewMaster(addr *url.URL, body io.Reader) (*Master, error) {
    var (
       buf scanner.Scanner
+      err error
       mas Master
    )
-   buf.Init(res.Body)
+   buf.Init(body)
    for {
       scanWords(&buf)
       if buf.Scan() == scanner.EOF {
@@ -68,7 +70,7 @@ func NewMaster(res *http.Response) (*Master, error) {
          }
          scanLines(&buf)
          buf.Scan()
-         addr, err := res.Request.URL.Parse(buf.TokenText())
+         addr, err = addr.Parse(buf.TokenText())
          if err != nil {
             return nil, err
          }

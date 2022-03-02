@@ -4,7 +4,7 @@ import (
    "crypto/aes"
    "crypto/cipher"
    "io"
-   "net/http"
+   "net/url"
    "strconv"
    "text/scanner"
 )
@@ -55,13 +55,13 @@ type Segment struct {
    Info []Information
 }
 
-func NewSegment(res *http.Response) (*Segment, error) {
+func NewSegment(addr *url.URL, body io.Reader) (*Segment, error) {
    var (
       buf scanner.Scanner
       err error
       seg Segment
    )
-   buf.Init(res.Body)
+   buf.Init(body)
    for {
       scanWords(&buf)
       if buf.Scan() == scanner.EOF {
@@ -76,7 +76,7 @@ func NewSegment(res *http.Response) (*Segment, error) {
          scanLines(&buf)
          buf.Scan()
          buf.Scan()
-         addr, err := res.Request.URL.Parse(buf.TokenText())
+         addr, err = addr.Parse(buf.TokenText())
          if err != nil {
             return nil, err
          }
