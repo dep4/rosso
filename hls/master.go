@@ -15,10 +15,7 @@ func scanLines(buf *scanner.Scanner) {
 
 func scanWords(buf *scanner.Scanner) {
    buf.IsIdentRune = func(r rune, i int) bool {
-      if r == '-' || unicode.IsLetter(r) {
-         return true
-      }
-      return i >= 1 && unicode.IsDigit(r)
+      return r == '-' || r == '.' || unicode.IsLetter(r) || unicode.IsDigit(r)
    }
    buf.Whitespace = 1 << ' '
 }
@@ -58,10 +55,15 @@ func NewMaster(res *http.Response) (*Master, error) {
       case "EXT-X-STREAM-INF":
          var str Stream
          for buf.Scan() != '\n' {
-            if buf.TokenText() == "BANDWIDTH" {
+            switch buf.TokenText() {
+            case "BANDWIDTH":
                buf.Scan()
                buf.Scan()
                str.Bandwidth = buf.TokenText()
+            case "RESOLUTION":
+               buf.Scan()
+               buf.Scan()
+               str.Resolution = buf.TokenText()
             }
          }
          scanLines(&buf)
@@ -84,5 +86,6 @@ type Media struct {
 
 type Stream struct {
    Bandwidth string
+   Resolution string
    URI string
 }

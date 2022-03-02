@@ -1,12 +1,38 @@
 package hls
 
 import (
-   "io"
+   "fmt"
    "net/http"
    "os"
    "strings"
    "testing"
 )
+
+func TestSegment(t *testing.T) {
+   seg, err := doSegment()
+   if err != nil {
+      t.Fatal(err)
+   }
+   dec, err := doKey(seg)
+   if err != nil {
+      t.Fatal(err)
+   }
+   for _, info := range seg.Info {
+      fmt.Printf("%+v\n", info)
+   }
+   res, err := http.Get(seg.Info[1].URI)
+   if err != nil {
+      t.Fatal(err)
+   }
+   defer res.Body.Close()
+   buf, err := dec.Decrypt(res.Body)
+   if err != nil {
+      t.Fatal(err)
+   }
+   if err := os.WriteFile("ignore.ts", buf, os.ModePerm); err != nil {
+      t.Fatal(err)
+   }
+}
 
 func doMaster() (*Master, error) {
    var buf strings.Builder
@@ -40,39 +66,11 @@ func doSegment() (*Segment, error) {
    return NewSegment(res)
 }
 
-func doKey(seg *Segment) (*Block, error) {
+func doKey(seg *Segment) (*Decrypter, error) {
    res, err := http.Get(seg.Key.URI)
    if err != nil {
       return nil, err
    }
    defer res.Body.Close()
-   buf, err := io.ReadAll(res.Body)
-   if err != nil {
-      return nil, err
-   }
-   return NewCipher(buf)
-}
-
-func TestSegment(t *testing.T) {
-   seg, err := doSegment()
-   if err != nil {
-      t.Fatal(err)
-   }
-   block, err := doKey(seg)
-   if err != nil {
-      t.Fatal(err)
-   }
-   res, err := http.Get(seg.Info[1].URI)
-   if err != nil {
-      t.Fatal(err)
-   }
-   defer res.Body.Close()
-   buf, err := io.ReadAll(res.Body)
-   if err != nil {
-      t.Fatal(err)
-   }
-   buf = block.Decrypt(buf)
-   if err := os.WriteFile("ignore.ts", buf, os.ModePerm); err != nil {
-      t.Fatal(err)
-   }
+   return NewDecrypter(res.Body)
 }

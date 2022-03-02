@@ -9,12 +9,12 @@ import (
    "text/scanner"
 )
 
-type Block struct {
+type Decrypter struct {
    cipher.Block
    IV []byte
 }
 
-func NewCipher(src io.Reader) (*Block, error) {
+func NewDecrypter(src io.Reader) (*Decrypter, error) {
    key, err := io.ReadAll(src)
    if err != nil {
       return nil, err
@@ -23,20 +23,23 @@ func NewCipher(src io.Reader) (*Block, error) {
    if err != nil {
       return nil, err
    }
-   return &Block{block, key}, nil
+   return &Decrypter{block, key}, nil
 }
 
 // We do not care about the ciphertext, so this works in place.
-func (b Block) Decrypt(src []byte) []byte {
-   total := len(src)
-   if total >= b.BlockSize() {
-      cipher.NewCBCDecrypter(b.Block, b.IV).CryptBlocks(src, src)
-      value := int(src[total-1])
-      if value < total {
-         return src[:total-value]
+func (d Decrypter) Decrypt(src io.Reader) ([]byte, error) {
+   buf, err := io.ReadAll(src)
+   if err != nil {
+      return nil, err
+   }
+   cipher.NewCBCDecrypter(d.Block, d.IV).CryptBlocks(buf, buf)
+   if len(buf) >= 1 {
+      pad := buf[len(buf)-1]
+      if len(buf) >= int(pad) {
+         buf = buf[:len(buf)-int(pad)]
       }
    }
-   return nil
+   return buf, nil
 }
 
 type Information struct {
