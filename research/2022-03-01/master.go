@@ -38,7 +38,7 @@ type master struct {
    stream []stream
 }
 
-func one(res *http.Response) (*master, error) {
+func newMaster(res *http.Response) (*master, error) {
    var (
       buf scanner.Scanner
       mas master

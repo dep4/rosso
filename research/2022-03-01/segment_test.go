@@ -7,7 +7,7 @@ import (
    "testing"
 )
 
-func platformOne() (string, error) {
+func platform() (string, error) {
    var buf strings.Builder
    buf.WriteString("http://link.theplatform.com/s/dJ5BDC/media/guid/2198311517")
    buf.WriteString("/3htV4fvVt4Z8gDZHqlzPOGLSMgcGc_vy")
@@ -15,22 +15,23 @@ func platformOne() (string, error) {
    if err != nil {
       return "", err
    }
-   req.URL.RawQuery = "formats=M3U"
-   // this redirects
+   // We need "MPEG4", otherwise you get a "EXT-X-KEY" with "skd" scheme:
+   req.URL.RawQuery = "formats=MPEG4,M3U"
+   // This redirects:
    res, err := new(http.Client).Do(req)
    if err != nil {
       return "", err
    }
    defer res.Body.Close()
-   mas, err := one(res)
+   mas, err := newMaster(res)
    if err != nil {
       return "", err
    }
    return mas.stream[0].URI, nil
 }
 
-func TestThree(t *testing.T) {
-   href, err := platformOne()
+func TestSegment(t *testing.T) {
+   href, err := platform()
    if err != nil {
       t.Fatal(err)
    }
@@ -39,11 +40,14 @@ func TestThree(t *testing.T) {
       t.Fatal(err)
    }
    defer res.Body.Close()
-   segs, err := two(res)
+   seg, err := newSegment(res)
    if err != nil {
       t.Fatal(err)
    }
-   for _, seg := range segs {
-      fmt.Printf("%+v\n", seg)
+   for _, inf := range seg.inf {
+      fmt.Printf("%+v\n", inf)
    }
+   fmt.Printf("%+v\n", seg.key)
 }
+
+

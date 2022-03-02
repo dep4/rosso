@@ -8,7 +8,7 @@ import (
    "testing"
 )
 
-func oneHref() (string, error) {
+func hrefOne() (string, error) {
    var buf strings.Builder
    buf.WriteString("http://open.live.bbc.co.uk")
    buf.WriteString("/mediaselector/6/select/version/2.0/mediaset/pc/vpid/")
@@ -31,21 +31,17 @@ func oneHref() (string, error) {
    return set.Media[1].Connection[0].Href, nil
 }
 
-func twoHref() (*master, error) {
-   href, err := oneHref()
+func TestMaster(t *testing.T) {
+   href, err := hrefOne()
    if err != nil {
-      return nil, err
+      t.Fatal(err)
    }
    res, err := http.Get(href)
    if err != nil {
-      return nil, err
+      t.Fatal(err)
    }
    defer res.Body.Close()
-   return one(res)
-}
-
-func TestOne(t *testing.T) {
-   mas, err := twoHref()
+   mas, err := newMaster(res)
    if err != nil {
       t.Fatal(err)
    }
