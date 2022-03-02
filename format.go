@@ -2,7 +2,6 @@ package format
 
 import (
    "bytes"
-   "mime"
    "net/http"
    "net/http/httputil"
    "os"
@@ -11,33 +10,14 @@ import (
    "time"
 )
 
-func Clean(char rune) rune {
-   if strings.ContainsRune(`"*/:<>?\|`, char) {
-      return -1
+func Clean(path string) string {
+   fn := func(r rune) rune {
+      if strings.ContainsRune(`"*/:<>?\|`, r) {
+         return -1
+      }
+      return r
    }
-   return char
-}
-
-// github.com/golang/go/issues/22318
-func ExtensionByType(typ string) (string, error) {
-   mediaType, _, err := mime.ParseMediaType(typ)
-   if err != nil {
-      return "", err
-   }
-   var ext string
-   switch mediaType {
-   case "audio/mp4":
-      ext = ".m4a"
-   case "audio/mpeg":
-      ext = ".mp3"
-   case "audio/webm":
-      ext = ".weba"
-   case "video/mp4":
-      ext = ".m4v"
-   case "video/webm":
-      ext = ".webm"
-   }
-   return ext, nil
+   return strings.Map(fn, path)
 }
 
 // mimesniff.spec.whatwg.org#binary-data-byte
