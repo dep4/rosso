@@ -5,9 +5,23 @@ import (
    "fmt"
    "net/http"
    "os"
+   "path"
    "strings"
    "testing"
 )
+
+func TestMaster(t *testing.T) {
+   mas, err := newMaster()
+   if err != nil {
+      t.Fatal(err)
+   }
+   for _, med := range mas.Media {
+      fmt.Printf("%+v\n", med)
+   }
+   for _, str := range mas.Stream {
+      fmt.Println(str)
+   }
+}
 
 func newTopaz() (string, error) {
    var buf strings.Builder
@@ -43,18 +57,6 @@ func newMaster() (*Master, error) {
    return NewMaster(res.Request.URL, res.Body)
 }
 
-func TestMaster(t *testing.T) {
-   mas, err := newMaster()
-   if err != nil {
-      t.Fatal(err)
-   }
-   for _, med := range mas.Media {
-      fmt.Printf("%+v\n", med)
-   }
-   for _, str := range mas.Stream {
-      fmt.Println(str)
-   }
-}
 
 func doKey(seg *Segment) (*Decrypter, error) {
    res, err := http.Get(seg.Key.URI)
@@ -65,42 +67,45 @@ func doKey(seg *Segment) (*Decrypter, error) {
    return NewDecrypter(res.Body)
 }
 
-func newSegment() (*Segment, error) {
+func TestSegment(t *testing.T) {
    mas, err := newMaster()
    if err != nil {
-      return nil, err
+      t.Fatal(err)
    }
-   res, err := http.Get(mas.Stream[0].URI)
-   if err != nil {
-      return nil, err
+   streams := []string{mas.Stream[0].URI, mas.Media[0].URI}
+   for _, stream := range streams {
+      res, err := http.Get(stream)
+      if err != nil {
+         t.Fatal(err)
+      }
+      defer res.Body.Close()
+      seg, err := NewSegment(res.Request.URL, res.Body)
+      if err != nil {
+         t.Fatal(err)
+      }
+      if err := decrypt(seg); err != nil {
+         t.Fatal(err)
+      }
    }
-   defer res.Body.Close()
-   return NewSegment(res.Request.URL, res.Body)
 }
 
-func TestSegment(t *testing.T) {
-   seg, err := newSegment()
-   if err != nil {
-      t.Fatal(err)
-   }
-   fmt.Printf("%+v\n", seg.Key)
-   for _, info := range seg.Info {
-      fmt.Printf("%+v\n", info)
-   }
+func decrypt(seg *Segment) error {
    dec, err := doKey(seg)
    if err != nil {
-      t.Fatal(err)
+      return err
    }
    res, err := http.Get(seg.Info[0].URI)
    if err != nil {
-      t.Fatal(err)
+      return err
    }
    defer res.Body.Close()
-   buf, err := dec.Decrypt(res.Body)
+   file, err := os.Create("ignore/" + path.Base(seg.Info[0].URI))
    if err != nil {
-      t.Fatal(err)
+      return err
    }
-   if err := os.WriteFile("ignore.ts", buf, os.ModePerm); err != nil {
-      t.Fatal(err)
+   defer file.Close()
+   if _, err := dec.Copy(file, res.Body); err != nil {
+      return err
    }
+   return nil
 }

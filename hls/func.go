@@ -10,6 +10,21 @@ import (
    "unicode"
 )
 
+func (d Decrypter) Copy(dst io.Writer, src io.Reader) (int, error) {
+   buf, err := io.ReadAll(src)
+   if err != nil {
+      return 0, err
+   }
+   cipher.NewCBCDecrypter(d.Block, d.IV).CryptBlocks(buf, buf)
+   if len(buf) >= 1 {
+      pad := buf[len(buf)-1]
+      if len(buf) >= int(pad) {
+         buf = buf[:len(buf)-int(pad)]
+      }
+   }
+   return dst.Write(buf)
+}
+
 func NewMaster(addr *url.URL, body io.Reader) (*Master, error) {
    var (
       buf scanner.Scanner
@@ -166,21 +181,6 @@ func NewDecrypter(src io.Reader) (*Decrypter, error) {
    return &Decrypter{block, key}, nil
 }
 
-func (d Decrypter) Decrypt(src io.Reader) ([]byte, error) {
-   buf, err := io.ReadAll(src)
-   if err != nil {
-      return nil, err
-   }
-   cipher.NewCBCDecrypter(d.Block, d.IV).CryptBlocks(buf, buf)
-   if len(buf) >= 1 {
-      pad := buf[len(buf)-1]
-      if len(buf) >= int(pad) {
-         buf = buf[:len(buf)-int(pad)]
-      }
-   }
-   return buf, nil
-}
-
 func (s Stream) String() string {
    var buf []byte
    if s.Resolution != "" {
@@ -202,5 +202,3 @@ func (s Stream) String() string {
    }
    return string(buf)
 }
-
-
