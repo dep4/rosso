@@ -10,20 +10,6 @@ import (
    "unicode"
 )
 
-func scanLines(buf *scanner.Scanner) {
-   buf.IsIdentRune = func(r rune, i int) bool {
-      return r != '\n'
-   }
-   buf.Whitespace = 1 << '\n'
-}
-
-func scanWords(buf *scanner.Scanner) {
-   buf.IsIdentRune = func(r rune, i int) bool {
-      return r == '-' || r == '.' || unicode.IsLetter(r) || unicode.IsDigit(r)
-   }
-   buf.Whitespace = 1 << ' '
-}
-
 func NewMaster(addr *url.URL, body io.Reader) (*Master, error) {
    var (
       buf scanner.Scanner
@@ -44,7 +30,22 @@ func NewMaster(addr *url.URL, body io.Reader) (*Master, error) {
             case "GROUP-ID":
                buf.Scan()
                buf.Scan()
-               med.GroupID = buf.TokenText()
+               med.GroupID, err = strconv.Unquote(buf.TokenText())
+               if err != nil {
+                  return nil, err
+               }
+            case "URI":
+               buf.Scan()
+               buf.Scan()
+               med.URI, err = strconv.Unquote(buf.TokenText())
+               if err != nil {
+                  return nil, err
+               }
+               addr, err := addr.Parse(med.URI)
+               if err != nil {
+                  return nil, err
+               }
+               med.URI = addr.String()
             }
          }
          mas.Media = append(mas.Media, med)
@@ -56,25 +57,26 @@ func NewMaster(addr *url.URL, body io.Reader) (*Master, error) {
                buf.Scan()
                buf.Scan()
                str.Resolution = buf.TokenText()
-            case "CODECS":
-               buf.Scan()
-               buf.Scan()
-               str.Codecs, err = strconv.Unquote(buf.TokenText())
-               if err != nil {
-                  return nil, err
-               }
             case "BANDWIDTH":
                buf.Scan()
                buf.Scan()
                str.Bandwidth, err = strconv.ParseInt(buf.TokenText(), 10, 64)
-               if err != nil {
-                  return nil, err
-               }
+            case "CODECS":
+               buf.Scan()
+               buf.Scan()
+               str.Codecs, err = strconv.Unquote(buf.TokenText())
+            case "AUDIO":
+               buf.Scan()
+               buf.Scan()
+               str.Audio, err = strconv.Unquote(buf.TokenText())
+            }
+            if err != nil {
+               return nil, err
             }
          }
          scanLines(&buf)
          buf.Scan()
-         addr, err = addr.Parse(buf.TokenText())
+         addr, err := addr.Parse(buf.TokenText())
          if err != nil {
             return nil, err
          }
@@ -85,22 +87,71 @@ func NewMaster(addr *url.URL, body io.Reader) (*Master, error) {
    return &mas, nil
 }
 
-func (s Stream) String() string {
-   var buf []byte
-   if s.Resolution != "" {
-      buf = append(buf, "Resolution:"...)
-      buf = append(buf, s.Resolution...)
-      buf = append(buf, ' ')
+func NewSegment(addr *url.URL, body io.Reader) (*Segment, error) {
+   var (
+      buf scanner.Scanner
+      err error
+      seg Segment
+   )
+   buf.Init(body)
+   for {
+      scanWords(&buf)
+      if buf.Scan() == scanner.EOF {
+         break
+      }
+      switch buf.TokenText() {
+      case "EXT-X-KEY":
+         for buf.Scan() != '\n' {
+            switch buf.TokenText() {
+            case "METHOD":
+               buf.Scan()
+               buf.Scan()
+               seg.Key.Method = buf.TokenText()
+            case "URI":
+               buf.Scan()
+               buf.Scan()
+               seg.Key.URI, err = strconv.Unquote(buf.TokenText())
+               if err != nil {
+                  return nil, err
+               }
+               addr, err := addr.Parse(seg.Key.URI)
+               if err != nil {
+                  return nil, err
+               }
+               seg.Key.URI = addr.String()
+            }
+         }
+      case "EXTINF":
+         var info Information
+         buf.Scan()
+         buf.Scan()
+         info.Duration = buf.TokenText()
+         scanLines(&buf)
+         buf.Scan()
+         buf.Scan()
+         addr, err := addr.Parse(buf.TokenText())
+         if err != nil {
+            return nil, err
+         }
+         info.URI = addr.String()
+         seg.Info = append(seg.Info, info)
+      }
    }
-   buf = append(buf, "Bandwidth:"...)
-   buf = strconv.AppendInt(buf, s.Bandwidth, 10)
-   buf = append(buf, " Codecs:"...)
-   buf = append(buf, s.Codecs...)
-   if s.URI != "" {
-      buf = append(buf, " URI:"...)
-      buf = append(buf, s.URI...)
+   return &seg, nil
+}
+
+func scanLines(buf *scanner.Scanner) {
+   buf.IsIdentRune = func(r rune, i int) bool {
+      return r != '\n'
    }
-   return string(buf)
+   buf.Whitespace = 1 << '\n'
+}
+
+func scanWords(buf *scanner.Scanner) {
+   buf.IsIdentRune = func(r rune, i int) bool {
+      return r == '-' || r == '.' || unicode.IsLetter(r) || unicode.IsDigit(r)
+   }
+   buf.Whitespace = 1 << ' '
 }
 
 func NewDecrypter(src io.Reader) (*Decrypter, error) {
@@ -130,55 +181,26 @@ func (d Decrypter) Decrypt(src io.Reader) ([]byte, error) {
    return buf, nil
 }
 
-func NewSegment(addr *url.URL, body io.Reader) (*Segment, error) {
-   var (
-      buf scanner.Scanner
-      err error
-      seg Segment
-   )
-   buf.Init(body)
-   for {
-      scanWords(&buf)
-      if buf.Scan() == scanner.EOF {
-         break
-      }
-      switch buf.TokenText() {
-      case "EXTINF":
-         var info Information
-         buf.Scan()
-         buf.Scan()
-         info.Duration = buf.TokenText()
-         scanLines(&buf)
-         buf.Scan()
-         buf.Scan()
-         addr, err = addr.Parse(buf.TokenText())
-         if err != nil {
-            return nil, err
-         }
-         info.URI = addr.String()
-         seg.Info = append(seg.Info, info)
-      case "EXT-X-KEY":
-         for buf.Scan() != '\n' {
-            switch buf.TokenText() {
-            case "METHOD":
-               buf.Scan()
-               buf.Scan()
-               seg.Key.Method = buf.TokenText()
-            case "URI":
-               buf.Scan()
-               buf.Scan()
-               seg.Key.URI, err = strconv.Unquote(buf.TokenText())
-               if err != nil {
-                  return nil, err
-               }
-               addr, err = addr.Parse(seg.Key.URI)
-               if err != nil {
-                  return nil, err
-               }
-               seg.Key.URI = addr.String()
-            }
-         }
-      }
+func (s Stream) String() string {
+   var buf []byte
+   if s.Resolution != "" {
+      buf = append(buf, "Resolution:"...)
+      buf = append(buf, s.Resolution...)
+      buf = append(buf, ' ')
    }
-   return &seg, nil
+   buf = append(buf, "Bandwidth:"...)
+   buf = strconv.AppendInt(buf, s.Bandwidth, 10)
+   buf = append(buf, " Codecs:"...)
+   buf = append(buf, s.Codecs...)
+   if s.Audio != "" {
+      buf = append(buf, " Audio:"...)
+      buf = append(buf, s.Audio...)
+   }
+   if s.URI != "" {
+      buf = append(buf, " URI:"...)
+      buf = append(buf, s.URI...)
+   }
+   return string(buf)
 }
+
+

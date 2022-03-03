@@ -4,6 +4,7 @@ import (
    "encoding/json"
    "fmt"
    "net/http"
+   "os"
    "strings"
    "testing"
 )
@@ -54,15 +55,6 @@ func TestMaster(t *testing.T) {
       fmt.Println(str)
    }
 }
-
-package hls
-
-import (
-   "fmt"
-   "net/http"
-   "testing"
-   "os"
-)
 
 func doKey(seg *Segment) (*Decrypter, error) {
    res, err := http.Get(seg.Key.URI)

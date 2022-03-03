@@ -27,15 +27,15 @@ type Decrypter struct {
    IV []byte
 }
 
-type Information struct {
-   Duration string
-   URI string
-}
-
 type Segment struct {
    Key struct {
       Method string
       URI string
    }
    Info []Information
+}
+
+type Information struct {
+   Duration string
+   URI string
 }
