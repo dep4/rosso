@@ -72,9 +72,11 @@ func TestSegment(t *testing.T) {
    if err != nil {
       t.Fatal(err)
    }
-   streams := []string{mas.Stream[0].URI, mas.Media[0].URI}
-   for _, stream := range streams {
-      res, err := http.Get(stream)
+   uris := mas.URIs(func(s Stream) bool {
+      return s.Bandwidth < 400_000
+   })
+   for _, uri := range uris {
+      res, err := http.Get(uri)
       if err != nil {
          t.Fatal(err)
       }
