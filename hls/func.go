@@ -1,6 +1,8 @@
 package hls
 
 import (
+   "crypto/aes"
+   "crypto/cipher"
    "io"
    "net/url"
    "strconv"
@@ -22,16 +24,6 @@ func scanWords(buf *scanner.Scanner) {
    buf.Whitespace = 1 << ' '
 }
 
-type Master struct {
-   Media []Media
-   Stream []Stream
-}
-
-type Media struct {
-   AutoSelect string
-   Type string
-}
-
 func NewMaster(addr *url.URL, body io.Reader) (*Master, error) {
    var (
       buf scanner.Scanner
@@ -49,14 +41,10 @@ func NewMaster(addr *url.URL, body io.Reader) (*Master, error) {
          var med Media
          for buf.Scan() != '\n' {
             switch buf.TokenText() {
-            case "AUTOSELECT":
+            case "GROUP-ID":
                buf.Scan()
                buf.Scan()
-               med.AutoSelect = buf.TokenText()
-            case "TYPE":
-               buf.Scan()
-               buf.Scan()
-               med.Type = buf.TokenText()
+               med.GroupID = buf.TokenText()
             }
          }
          mas.Media = append(mas.Media, med)
@@ -97,13 +85,6 @@ func NewMaster(addr *url.URL, body io.Reader) (*Master, error) {
    return &mas, nil
 }
 
-type Stream struct {
-   Bandwidth int64
-   Codecs string
-   Resolution string
-   URI string
-}
-
 func (s Stream) String() string {
    var buf []byte
    if s.Resolution != "" {
@@ -120,4 +101,84 @@ func (s Stream) String() string {
       buf = append(buf, s.URI...)
    }
    return string(buf)
+}
+
+func NewDecrypter(src io.Reader) (*Decrypter, error) {
+   key, err := io.ReadAll(src)
+   if err != nil {
+      return nil, err
+   }
+   block, err := aes.NewCipher(key)
+   if err != nil {
+      return nil, err
+   }
+   return &Decrypter{block, key}, nil
+}
+
+func (d Decrypter) Decrypt(src io.Reader) ([]byte, error) {
+   buf, err := io.ReadAll(src)
+   if err != nil {
+      return nil, err
+   }
+   cipher.NewCBCDecrypter(d.Block, d.IV).CryptBlocks(buf, buf)
+   if len(buf) >= 1 {
+      pad := buf[len(buf)-1]
+      if len(buf) >= int(pad) {
+         buf = buf[:len(buf)-int(pad)]
+      }
+   }
+   return buf, nil
+}
+
+func NewSegment(addr *url.URL, body io.Reader) (*Segment, error) {
+   var (
+      buf scanner.Scanner
+      err error
+      seg Segment
+   )
+   buf.Init(body)
+   for {
+      scanWords(&buf)
+      if buf.Scan() == scanner.EOF {
+         break
+      }
+      switch buf.TokenText() {
+      case "EXTINF":
+         var info Information
+         buf.Scan()
+         buf.Scan()
+         info.Duration = buf.TokenText()
+         scanLines(&buf)
+         buf.Scan()
+         buf.Scan()
+         addr, err = addr.Parse(buf.TokenText())
+         if err != nil {
+            return nil, err
+         }
+         info.URI = addr.String()
+         seg.Info = append(seg.Info, info)
+      case "EXT-X-KEY":
+         for buf.Scan() != '\n' {
+            switch buf.TokenText() {
+            case "METHOD":
+               buf.Scan()
+               buf.Scan()
+               seg.Key.Method = buf.TokenText()
+            case "URI":
+               buf.Scan()
+               buf.Scan()
+               seg.Key.URI, err = strconv.Unquote(buf.TokenText())
+               if err != nil {
+                  return nil, err
+               }
+               addr, err = addr.Parse(seg.Key.URI)
+               if err != nil {
+                  return nil, err
+               }
+               seg.Key.URI = addr.String()
+            }
+         }
+      }
+   }
+   return &seg, nil
 }
