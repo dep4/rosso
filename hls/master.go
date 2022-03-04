@@ -7,37 +7,9 @@ import (
    "text/scanner"
 )
 
-func (m Master) URIs(f func(Stream) bool) []string {
-   for _, str := range m.Stream {
-      if f(str) {
-         uris := []string{str.URI}
-         for _, med := range m.Media {
-            if med.GroupID == str.Audio {
-               uris = append(uris, med.URI)
-            }
-         }
-         return uris
-      }
-   }
-   return nil
-}
-
 type Master struct {
    Stream []Stream
    Media []Media
-}
-
-type Stream struct {
-   Resolution string
-   Bandwidth int64 // handle duplicate resolution
-   Codecs string // handle audio only
-   Audio string // link to Media
-   URI string
-}
-
-type Media struct {
-   GroupID string
-   URI string
 }
 
 func NewMaster(addr *url.URL, body io.Reader) (*Master, error) {
@@ -117,6 +89,34 @@ func NewMaster(addr *url.URL, body io.Reader) (*Master, error) {
    return &mas, nil
 }
 
+func (m Master) URIs(f func(Stream) bool) []string {
+   for _, str := range m.Stream {
+      if f(str) {
+         uris := []string{str.URI}
+         for _, med := range m.Media {
+            if med.GroupID == str.Audio {
+               uris = append(uris, med.URI)
+            }
+         }
+         return uris
+      }
+   }
+   return nil
+}
+
+type Media struct {
+   GroupID string
+   URI string
+}
+
+type Stream struct {
+   Resolution string
+   Bandwidth int64 // handle duplicate resolution
+   Codecs string // handle audio only
+   Audio string // link to Media
+   URI string
+}
+
 func (s Stream) String() string {
    var buf []byte
    if s.Resolution != "" {
@@ -138,4 +138,3 @@ func (s Stream) String() string {
    }
    return string(buf)
 }
-

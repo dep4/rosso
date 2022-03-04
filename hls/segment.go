@@ -11,33 +11,64 @@ import (
    "unicode"
 )
 
-func (s Segment) Ext() (string, error) {
-   for _, info := range s.Info {
-      addr, err := url.Parse(info.URI)
-      if err != nil {
-         return "", err
-      }
-      ext := path.Ext(addr.Path)
-      if ext != "" {
-         return ext, nil
+func scanLines(buf *scanner.Scanner) {
+   buf.IsIdentRune = func(r rune, i int) bool {
+      return r != '\n'
+   }
+   buf.Whitespace = 1 << '\n'
+}
+
+func scanWords(buf *scanner.Scanner) {
+   buf.IsIdentRune = func(r rune, i int) bool {
+      return r == '-' || r == '.' || unicode.IsLetter(r) || unicode.IsDigit(r)
+   }
+   buf.Whitespace = 1 << ' '
+}
+
+type Decrypter struct {
+   cipher.Block
+   IV []byte
+}
+
+func NewDecrypter(src io.Reader) (*Decrypter, error) {
+   key, err := io.ReadAll(src)
+   if err != nil {
+      return nil, err
+   }
+   block, err := aes.NewCipher(key)
+   if err != nil {
+      return nil, err
+   }
+   return &Decrypter{block, key}, nil
+}
+
+func (d Decrypter) Copy(dst io.Writer, src io.Reader) (int, error) {
+   buf, err := io.ReadAll(src)
+   if err != nil {
+      return 0, err
+   }
+   cipher.NewCBCDecrypter(d.Block, d.IV).CryptBlocks(buf, buf)
+   if len(buf) >= 1 {
+      pad := buf[len(buf)-1]
+      if len(buf) >= int(pad) {
+         buf = buf[:len(buf)-int(pad)]
       }
    }
-   return "", notPresent{"path.Ext"}
+   return dst.Write(buf)
 }
 
-type notPresent struct {
-   value string
+type Information struct {
+   Duration string
+   URI string
 }
 
-func (n notPresent) Error() string {
-   return strconv.Quote(n.value) + " is not present"
+type Key struct {
+   Method string
+   URI string
 }
 
 type Segment struct {
-   Key struct {
-      Method string
-      URI string
-   }
+   Key *Key
    Info []Information
 }
 
@@ -55,6 +86,7 @@ func NewSegment(addr *url.URL, body io.Reader) (*Segment, error) {
       }
       switch buf.TokenText() {
       case "EXT-X-KEY":
+         seg.Key = new(Key)
          for buf.Scan() != '\n' {
             switch buf.TokenText() {
             case "METHOD":
@@ -94,53 +126,24 @@ func NewSegment(addr *url.URL, body io.Reader) (*Segment, error) {
    return &seg, nil
 }
 
-type Information struct {
-   Duration string
-   URI string
-}
-
-func (d Decrypter) Copy(dst io.Writer, src io.Reader) (int, error) {
-   buf, err := io.ReadAll(src)
-   if err != nil {
-      return 0, err
-   }
-   cipher.NewCBCDecrypter(d.Block, d.IV).CryptBlocks(buf, buf)
-   if len(buf) >= 1 {
-      pad := buf[len(buf)-1]
-      if len(buf) >= int(pad) {
-         buf = buf[:len(buf)-int(pad)]
+func (s Segment) Ext() (string, error) {
+   for _, info := range s.Info {
+      addr, err := url.Parse(info.URI)
+      if err != nil {
+         return "", err
+      }
+      ext := path.Ext(addr.Path)
+      if ext != "" {
+         return ext, nil
       }
    }
-   return dst.Write(buf)
+   return "", notPresent{"path.Ext"}
 }
 
-func NewDecrypter(src io.Reader) (*Decrypter, error) {
-   key, err := io.ReadAll(src)
-   if err != nil {
-      return nil, err
-   }
-   block, err := aes.NewCipher(key)
-   if err != nil {
-      return nil, err
-   }
-   return &Decrypter{block, key}, nil
+type notPresent struct {
+   value string
 }
 
-type Decrypter struct {
-   cipher.Block
-   IV []byte
-}
-
-func scanLines(buf *scanner.Scanner) {
-   buf.IsIdentRune = func(r rune, i int) bool {
-      return r != '\n'
-   }
-   buf.Whitespace = 1 << '\n'
-}
-
-func scanWords(buf *scanner.Scanner) {
-   buf.IsIdentRune = func(r rune, i int) bool {
-      return r == '-' || r == '.' || unicode.IsLetter(r) || unicode.IsDigit(r)
-   }
-   buf.Whitespace = 1 << ' '
+func (n notPresent) Error() string {
+   return strconv.Quote(n.value) + " is not present"
 }
