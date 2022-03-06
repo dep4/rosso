@@ -13,9 +13,9 @@ import (
 
 func scanLines(buf *scanner.Scanner) {
    buf.IsIdentRune = func(r rune, i int) bool {
-      return r != '\n'
+      return r != '\r' && r != '\n'
    }
-   buf.Whitespace = 1 << '\n'
+   buf.Whitespace = 1 << '\r' | 1 << '\n'
 }
 
 func scanWords(buf *scanner.Scanner) {
@@ -59,12 +59,12 @@ func (d Decrypter) Copy(dst io.Writer, src io.Reader) (int, error) {
 
 type Information struct {
    Duration string
-   URI string
+   URI *url.URL
 }
 
 type Key struct {
    Method string
-   URI string
+   URI *url.URL
 }
 
 type Segment struct {
@@ -96,15 +96,14 @@ func NewSegment(addr *url.URL, body io.Reader) (*Segment, error) {
             case "URI":
                buf.Scan()
                buf.Scan()
-               seg.Key.URI, err = strconv.Unquote(buf.TokenText())
+               ref, err := strconv.Unquote(buf.TokenText())
                if err != nil {
                   return nil, err
                }
-               addr, err := addr.Parse(seg.Key.URI)
+               seg.Key.URI, err = addr.Parse(ref)
                if err != nil {
                   return nil, err
                }
-               seg.Key.URI = addr.String()
             }
          }
       case "EXTINF":
@@ -115,35 +114,22 @@ func NewSegment(addr *url.URL, body io.Reader) (*Segment, error) {
          scanLines(&buf)
          buf.Scan()
          buf.Scan()
-         addr, err := addr.Parse(buf.TokenText())
+         info.URI, err = addr.Parse(buf.TokenText())
          if err != nil {
             return nil, err
          }
-         info.URI = addr.String()
          seg.Info = append(seg.Info, info)
       }
    }
    return &seg, nil
 }
 
-func (s Segment) Ext() (string, error) {
+func (s Segment) Ext() string {
    for _, info := range s.Info {
-      addr, err := url.Parse(info.URI)
-      if err != nil {
-         return "", err
-      }
-      ext := path.Ext(addr.Path)
+      ext := path.Ext(info.URI.Path)
       if ext != "" {
-         return ext, nil
+         return ext
       }
    }
-   return "", notPresent{"path.Ext"}
-}
-
-type notPresent struct {
-   value string
-}
-
-func (n notPresent) Error() string {
-   return strconv.Quote(n.value) + " is not present"
+   return ""
 }

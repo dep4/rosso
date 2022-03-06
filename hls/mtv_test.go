@@ -2,15 +2,15 @@ package hls
 
 import (
    "encoding/json"
-   "fmt"
    "net/http"
+   "net/url"
    "os"
    "path"
    "strings"
    "testing"
 )
 
-func TestSegment(t *testing.T) {
+func TestMTV(t *testing.T) {
    mas, err := newMaster()
    if err != nil {
       t.Fatal(err)
@@ -18,9 +18,9 @@ func TestSegment(t *testing.T) {
    str := mas.GetStream(func(s Stream) bool {
       return s.Bandwidth < 400_000
    })
-   uris := []string{str.URI, mas.GetMedia(str).URI}
-   for _, uri := range uris {
-      res, err := http.Get(uri)
+   addrs := []*url.URL{str.URI, mas.GetMedia(str).URI}
+   for _, addr := range addrs {
+      res, err := http.Get(addr.String())
       if err != nil {
          t.Fatal(err)
       }
@@ -40,12 +40,12 @@ func decrypt(seg *Segment) error {
    if err != nil {
       return err
    }
-   res, err := http.Get(seg.Info[0].URI)
+   res, err := http.Get(seg.Info[0].URI.String())
    if err != nil {
       return err
    }
    defer res.Body.Close()
-   file, err := os.Create("ignore/" + path.Base(seg.Info[0].URI))
+   file, err := os.Create("ignore/" + path.Base(seg.Info[0].URI.String()))
    if err != nil {
       return err
    }
@@ -54,18 +54,6 @@ func decrypt(seg *Segment) error {
       return err
    }
    return nil
-}
-func TestMaster(t *testing.T) {
-   mas, err := newMaster()
-   if err != nil {
-      t.Fatal(err)
-   }
-   for _, med := range mas.Media {
-      fmt.Printf("%+v\n", med)
-   }
-   for _, str := range mas.Stream {
-      fmt.Println(str)
-   }
 }
 
 func newTopaz() (string, error) {
@@ -102,14 +90,11 @@ func newMaster() (*Master, error) {
    return NewMaster(res.Request.URL, res.Body)
 }
 
-
 func doKey(seg *Segment) (*Decrypter, error) {
-   res, err := http.Get(seg.Key.URI)
+   res, err := http.Get(seg.Key.URI.String())
    if err != nil {
       return nil, err
    }
    defer res.Body.Close()
    return NewDecrypter(res.Body)
 }
-
-

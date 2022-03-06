@@ -25,32 +25,6 @@ func NewMaster(addr *url.URL, body io.Reader) (*Master, error) {
          break
       }
       switch buf.TokenText() {
-      case "EXT-X-MEDIA":
-         var med Media
-         for buf.Scan() != '\n' {
-            switch buf.TokenText() {
-            case "GROUP-ID":
-               buf.Scan()
-               buf.Scan()
-               med.GroupID, err = strconv.Unquote(buf.TokenText())
-               if err != nil {
-                  return nil, err
-               }
-            case "URI":
-               buf.Scan()
-               buf.Scan()
-               med.URI, err = strconv.Unquote(buf.TokenText())
-               if err != nil {
-                  return nil, err
-               }
-               addr, err := addr.Parse(med.URI)
-               if err != nil {
-                  return nil, err
-               }
-               med.URI = addr.String()
-            }
-         }
-         mas.Media = append(mas.Media, med)
       case "EXT-X-STREAM-INF":
          var str Stream
          for buf.Scan() != '\n' {
@@ -78,12 +52,36 @@ func NewMaster(addr *url.URL, body io.Reader) (*Master, error) {
          }
          scanLines(&buf)
          buf.Scan()
-         addr, err := addr.Parse(buf.TokenText())
+         str.URI, err = addr.Parse(buf.TokenText())
          if err != nil {
             return nil, err
          }
-         str.URI = addr.String()
          mas.Stream = append(mas.Stream, str)
+      case "EXT-X-MEDIA":
+         var med Media
+         for buf.Scan() != '\n' {
+            switch buf.TokenText() {
+            case "GROUP-ID":
+               buf.Scan()
+               buf.Scan()
+               med.GroupID, err = strconv.Unquote(buf.TokenText())
+               if err != nil {
+                  return nil, err
+               }
+            case "URI":
+               buf.Scan()
+               buf.Scan()
+               ref, err := strconv.Unquote(buf.TokenText())
+               if err != nil {
+                  return nil, err
+               }
+               med.URI, err = addr.Parse(ref)
+               if err != nil {
+                  return nil, err
+               }
+            }
+         }
+         mas.Media = append(mas.Media, med)
       }
    }
    return &mas, nil
@@ -109,15 +107,15 @@ func (m Master) GetStream(fn func(Stream) bool) *Stream {
 
 type Media struct {
    GroupID string
-   URI string
+   URI *url.URL
 }
 
 type Stream struct {
    Resolution string
    Bandwidth int64 // handle duplicate resolution
-   Codecs string // handle audio only
+   Codecs string // handle missing resolution
    Audio string // link to Media
-   URI string
+   URI *url.URL
 }
 
 func (s Stream) String() string {
@@ -135,9 +133,9 @@ func (s Stream) String() string {
       buf = append(buf, " Audio:"...)
       buf = append(buf, s.Audio...)
    }
-   if s.URI != "" {
+   if s.URI != nil {
       buf = append(buf, " URI:"...)
-      buf = append(buf, s.URI...)
+      buf = append(buf, s.URI.String()...)
    }
    return string(buf)
 }
