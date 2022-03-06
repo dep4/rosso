@@ -13,9 +13,9 @@ import (
 
 func scanLines(buf *scanner.Scanner) {
    buf.IsIdentRune = func(r rune, i int) bool {
-      return r != '\n'
+      return r != '\r' && r != '\n'
    }
-   buf.Whitespace = 1 << '\n'
+   buf.Whitespace = 1 << '\r' | 1 << '\n'
 }
 
 func scanWords(buf *scanner.Scanner) {

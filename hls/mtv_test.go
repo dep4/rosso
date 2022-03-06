@@ -2,7 +2,6 @@ package hls
 
 import (
    "encoding/json"
-   "fmt"
    "net/http"
    "os"
    "path"
@@ -10,7 +9,7 @@ import (
    "testing"
 )
 
-func TestSegment(t *testing.T) {
+func TestMTV(t *testing.T) {
    mas, err := newMaster()
    if err != nil {
       t.Fatal(err)
@@ -55,18 +54,6 @@ func decrypt(seg *Segment) error {
    }
    return nil
 }
-func TestMaster(t *testing.T) {
-   mas, err := newMaster()
-   if err != nil {
-      t.Fatal(err)
-   }
-   for _, med := range mas.Media {
-      fmt.Printf("%+v\n", med)
-   }
-   for _, str := range mas.Stream {
-      fmt.Println(str)
-   }
-}
 
 func newTopaz() (string, error) {
    var buf strings.Builder
@@ -102,7 +89,6 @@ func newMaster() (*Master, error) {
    return NewMaster(res.Request.URL, res.Body)
 }
 
-
 func doKey(seg *Segment) (*Decrypter, error) {
    res, err := http.Get(seg.Key.URI)
    if err != nil {
@@ -111,5 +97,3 @@ func doKey(seg *Segment) (*Decrypter, error) {
    defer res.Body.Close()
    return NewDecrypter(res.Body)
 }
-
-
