@@ -42,23 +42,6 @@ func appendField(buf []byte, num protowire.Number, val interface{}) []byte {
    return buf
 }
 
-func consumeField(buf []byte) (Number, protowire.Type, int, error) {
-   num, typ, fLen := protowire.ConsumeField(buf)
-   return Number(num), typ, fLen, protowire.ParseError(fLen)
-}
-
-func (m Message) addString(num Number, val string) {
-   num += bytesType
-   switch value := m[num].(type) {
-   case nil:
-      m[num] = val
-   case string:
-      m[num] = []string{value, val}
-   case []string:
-      m[num] = append(value, val)
-   }
-}
-
 // In some cases if input is binary, then result could be a Message or byte
 // slice. We assume for now its always a Message. If input is not binary, then
 // result could be a Message or string. Since its not possible to tell Message
@@ -92,6 +75,23 @@ func (m Message) consumeBytes(num Number, buf []byte) error {
       }
    }
    return nil
+}
+
+func consumeField(buf []byte) (Number, protowire.Type, int, error) {
+   num, typ, fLen := protowire.ConsumeField(buf)
+   return Number(num), typ, fLen, protowire.ParseError(fLen)
+}
+
+func (m Message) addString(num Number, val string) {
+   num += bytesType
+   switch value := m[num].(type) {
+   case nil:
+      m[num] = val
+   case string:
+      m[num] = []string{value, val}
+   case []string:
+      m[num] = append(value, val)
+   }
 }
 
 func (m Message) consumeFixed64(num Number, buf []byte) error {

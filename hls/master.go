@@ -89,16 +89,19 @@ func NewMaster(addr *url.URL, body io.Reader) (*Master, error) {
    return &mas, nil
 }
 
-func (m Master) URIs(f func(Stream) bool) []string {
+func (m Master) GetMedia(str *Stream) *Media {
+   for _, med := range m.Media {
+      if med.GroupID == str.Audio {
+         return &med
+      }
+   }
+   return nil
+}
+
+func (m Master) GetStream(fn func(Stream) bool) *Stream {
    for _, str := range m.Stream {
-      if f(str) {
-         uris := []string{str.URI}
-         for _, med := range m.Media {
-            if med.GroupID == str.Audio {
-               uris = append(uris, med.URI)
-            }
-         }
-         return uris
+      if fn(str) {
+         return &str
       }
    }
    return nil

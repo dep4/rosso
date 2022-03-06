@@ -10,6 +10,51 @@ import (
    "testing"
 )
 
+func TestSegment(t *testing.T) {
+   mas, err := newMaster()
+   if err != nil {
+      t.Fatal(err)
+   }
+   str := mas.GetStream(func(s Stream) bool {
+      return s.Bandwidth < 400_000
+   })
+   uris := []string{str.URI, mas.GetMedia(str).URI}
+   for _, uri := range uris {
+      res, err := http.Get(uri)
+      if err != nil {
+         t.Fatal(err)
+      }
+      defer res.Body.Close()
+      seg, err := NewSegment(res.Request.URL, res.Body)
+      if err != nil {
+         t.Fatal(err)
+      }
+      if err := decrypt(seg); err != nil {
+         t.Fatal(err)
+      }
+   }
+}
+
+func decrypt(seg *Segment) error {
+   dec, err := doKey(seg)
+   if err != nil {
+      return err
+   }
+   res, err := http.Get(seg.Info[0].URI)
+   if err != nil {
+      return err
+   }
+   defer res.Body.Close()
+   file, err := os.Create("ignore/" + path.Base(seg.Info[0].URI))
+   if err != nil {
+      return err
+   }
+   defer file.Close()
+   if _, err := dec.Copy(file, res.Body); err != nil {
+      return err
+   }
+   return nil
+}
 func TestMaster(t *testing.T) {
    mas, err := newMaster()
    if err != nil {
@@ -67,47 +112,4 @@ func doKey(seg *Segment) (*Decrypter, error) {
    return NewDecrypter(res.Body)
 }
 
-func TestSegment(t *testing.T) {
-   mas, err := newMaster()
-   if err != nil {
-      t.Fatal(err)
-   }
-   uris := mas.URIs(func(s Stream) bool {
-      return s.Bandwidth < 400_000
-   })
-   for _, uri := range uris {
-      res, err := http.Get(uri)
-      if err != nil {
-         t.Fatal(err)
-      }
-      defer res.Body.Close()
-      seg, err := NewSegment(res.Request.URL, res.Body)
-      if err != nil {
-         t.Fatal(err)
-      }
-      if err := decrypt(seg); err != nil {
-         t.Fatal(err)
-      }
-   }
-}
 
-func decrypt(seg *Segment) error {
-   dec, err := doKey(seg)
-   if err != nil {
-      return err
-   }
-   res, err := http.Get(seg.Info[0].URI)
-   if err != nil {
-      return err
-   }
-   defer res.Body.Close()
-   file, err := os.Create("ignore/" + path.Base(seg.Info[0].URI))
-   if err != nil {
-      return err
-   }
-   defer file.Close()
-   if _, err := dec.Copy(file, res.Body); err != nil {
-      return err
-   }
-   return nil
-}
