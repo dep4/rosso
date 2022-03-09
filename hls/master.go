@@ -118,6 +118,12 @@ type Stream struct {
    URI *url.URL
 }
 
+func (s *Stream) RemoveURI() *url.URL {
+   addr := s.URI
+   s.URI = nil
+   return addr
+}
+
 func (s Stream) String() string {
    var buf []byte
    if s.Resolution != "" {
