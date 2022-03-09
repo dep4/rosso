@@ -133,3 +133,11 @@ func (s Segment) Ext() string {
    }
    return ""
 }
+
+func (s Segment) Progress(i int) string {
+   pro := strconv.Itoa(len(s.Info)-i)
+   if i == len(s.Info)-1 {
+      return pro + "\n"
+   }
+   return pro + " "
+}

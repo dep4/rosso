@@ -7,6 +7,26 @@ import (
    "testing"
 )
 
+func TestProgress(t *testing.T) {
+   seg := Segment{
+      Info: make([]Information, 9),
+   }
+   for i := range seg.Info {
+      fmt.Print(seg.Progress(i))
+   }
+   fmt.Println("END")
+}
+
+func TestRemove(t *testing.T) {
+   str := Stream{
+      Bandwidth: 1, Codecs: "Codecs",
+      URI: &url.URL{Scheme: "http", Host: "example.com"},
+   }
+   addr := str.RemoveURI()
+   fmt.Println(addr)
+   fmt.Println(str)
+}
+
 func TestCwtvMaster(t *testing.T) {
    file, err := os.Open("m3u8/master-cwtv.m3u8")
    if err != nil {
