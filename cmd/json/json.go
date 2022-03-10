@@ -1,9 +1,7 @@
 package main
 
 import (
-   "bytes"
    "encoding/json"
-   "flag"
    "os"
 )
 
@@ -22,14 +20,8 @@ func doJSON(input, output string) error {
    if err := json.NewDecoder(src).Decode(&val); err != nil {
       return err
    }
-   indent := new(bytes.Buffer)
-   enc := json.NewEncoder(indent)
+   enc := json.NewEncoder(dst)
    enc.SetEscapeHTML(false)
    enc.SetIndent("", " ")
-   if err := enc.Encode(mes); err != nil {
-      panic(err)
-   }
-   if _, err := file.ReadFrom(indent); err != nil {
-      panic(err)
-   }
+   return enc.Encode(val)
 }

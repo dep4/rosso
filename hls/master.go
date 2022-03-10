@@ -96,13 +96,25 @@ func (m Master) GetMedia(str *Stream) *Media {
    return nil
 }
 
-func (m Master) GetStream(fn func(Stream) bool) *Stream {
+func (m Master) GetStream(bandwidth int64) *Stream {
+   if len(m.Stream) == 0 || bandwidth <= -1 {
+      return nil
+   }
+   var (
+      sMin Stream
+      iMin int64 = -1
+   )
    for _, str := range m.Stream {
-      if fn(str) {
-         return &str
+      score := bandwidth - str.Bandwidth
+      if score <= -1 {
+         score = str.Bandwidth - bandwidth
+      }
+      if iMin == -1 || score < iMin {
+         sMin = str
+         iMin = score
       }
    }
-   return nil
+   return &sMin
 }
 
 type Media struct {

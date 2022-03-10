@@ -1,10 +1,7 @@
 package main
 
 import (
-   "bytes"
-   "encoding/json"
    "flag"
-   "os"
 )
 
 func main() {
@@ -15,7 +12,7 @@ func main() {
    var output string
    flag.StringVar(&output, "o", "", "output file")
    flag.Parse()
-   if name != "" {
+   if input != "" {
       err := doJSON(input, output)
       if err != nil {
          panic(err)

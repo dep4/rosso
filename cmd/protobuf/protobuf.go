@@ -1,35 +1,27 @@
 package main
 
 import (
-   "bytes"
    "encoding/json"
-   "flag"
    "github.com/89z/format/protobuf"
    "os"
 )
 
-func doProtoBuf() error {
-   buf, err := os.ReadFile(name)
+func doProtoBuf(input, output string) error {
+   buf, err := os.ReadFile(input)
    if err != nil {
-      panic(err)
+      return err
    }
-   file, err := os.Create(output)
-   if err != nil {
-      file = os.Stdout
-   }
-   defer file.Close()
    mes, err := protobuf.Unmarshal(buf)
    if err != nil {
-      panic(err)
+      return err
    }
-   indent := new(bytes.Buffer)
-   enc := json.NewEncoder(indent)
+   dst, err := os.Create(output)
+   if err != nil {
+      dst = os.Stdout
+   }
+   defer dst.Close()
+   enc := json.NewEncoder(dst)
    enc.SetEscapeHTML(false)
    enc.SetIndent("", " ")
-   if err := enc.Encode(mes); err != nil {
-      panic(err)
-   }
-   if _, err := file.ReadFrom(indent); err != nil {
-      panic(err)
-   }
+   return enc.Encode(mes)
 }
