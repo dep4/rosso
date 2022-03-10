@@ -4,23 +4,23 @@ import (
    "bytes"
    "encoding/json"
    "flag"
-   "github.com/89z/format/protobuf"
    "os"
 )
 
-func doProtoBuf() error {
-   buf, err := os.ReadFile(name)
+func doJSON(input, output string) error {
+   src, err := os.Open(input)
    if err != nil {
-      panic(err)
+      return err
    }
-   file, err := os.Create(output)
+   defer src.Close()
+   dst, err := os.Create(output)
    if err != nil {
-      file = os.Stdout
+      dst = os.Stdout
    }
-   defer file.Close()
-   mes, err := protobuf.Unmarshal(buf)
-   if err != nil {
-      panic(err)
+   defer dst.Close()
+   var val interface{}
+   if err := json.NewDecoder(src).Decode(&val); err != nil {
+      return err
    }
    indent := new(bytes.Buffer)
    enc := json.NewEncoder(indent)
