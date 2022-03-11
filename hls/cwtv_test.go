@@ -4,41 +4,27 @@ import (
    "fmt"
    "net/url"
    "os"
+   "sort"
    "testing"
 )
 
-var masters = []Master{
-   {Stream: []Stream{
-      {Bandwidth: 144},
-      {Bandwidth: 480},
-      {Bandwidth: 720},
-      {Bandwidth: 1080},
-      {Bandwidth: 2160},
-   }},
-   {Stream: []Stream{
-      {Bandwidth: 480},
-      {Bandwidth: 1080},
-   }},
-   {Stream: []Stream{
-      {Bandwidth: 480},
-      {Bandwidth: 2160},
-   }},
-   {Stream: []Stream{
-      {Bandwidth: 144},
-      {Bandwidth: 1080},
-   }},
-   {Stream: []Stream{
-      {Bandwidth: 480},
-   }},
-   {Stream: []Stream{
-   }},
-}
-
-func TestQuality(t *testing.T) {
-   for _, master := range masters {
-      fmt.Printf("%#v\n", master.GetStream(720))
+func TestSort(t *testing.T) {
+   ban := Bandwidth{
+      &Master{Stream: []Stream{
+         {Bandwidth: 480},
+         {Bandwidth: 144},
+         {Bandwidth: 1080},
+         {Bandwidth: 720},
+         {Bandwidth: 2160},
+      }},
+      720,
    }
-   fmt.Printf("%#v\n", masters[0].GetStream(-1))
+   sort.Slice(ban.Stream, func(a, b int) bool {
+      return ban.Distance(a) < ban.Distance(b)
+   })
+   for _, str := range ban.Stream {
+      fmt.Printf("%+v\n", str)
+   }
 }
 
 func TestProgress(t *testing.T) {
