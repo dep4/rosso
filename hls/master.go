@@ -7,6 +7,23 @@ import (
    "text/scanner"
 )
 
+type Bandwidth struct {
+   *Master
+   Target int64
+}
+
+func (b Bandwidth) distance(i int) int64 {
+   diff := b.Stream[i].Bandwidth - b.Target
+   if diff >= 0 {
+      return diff
+   }
+   return -diff
+}
+
+func (b Bandwidth) Less(i, j int) bool {
+   return b.distance(i) < b.distance(j)
+}
+
 type Master struct {
    Stream []Stream
    Media []Media
@@ -87,7 +104,7 @@ func NewMaster(addr *url.URL, body io.Reader) (*Master, error) {
    return &mas, nil
 }
 
-func (m Master) GetMedia(str *Stream) *Media {
+func (m Master) GetMedia(str Stream) *Media {
    for _, med := range m.Media {
       if med.GroupID == str.Audio {
          return &med
@@ -96,25 +113,12 @@ func (m Master) GetMedia(str *Stream) *Media {
    return nil
 }
 
-func (m Master) GetStream(bandwidth int64) *Stream {
-   if len(m.Stream) == 0 || bandwidth <= -1 {
-      return nil
-   }
-   var (
-      sMin Stream
-      iMin int64 = -1
-   )
-   for _, str := range m.Stream {
-      score := bandwidth - str.Bandwidth
-      if score <= -1 {
-         score = str.Bandwidth - bandwidth
-      }
-      if iMin == -1 || score < iMin {
-         sMin = str
-         iMin = score
-      }
-   }
-   return &sMin
+func (m Master) Len() int {
+   return len(m.Stream)
+}
+
+func (m Master) Swap(i, j int) {
+   m.Stream[i], m.Stream[j] = m.Stream[j], m.Stream[i]
 }
 
 type Media struct {
