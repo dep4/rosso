@@ -15,7 +15,7 @@ func TestMTV(t *testing.T) {
    if err != nil {
       t.Fatal(err)
    }
-   str := mas.GetStream(400_000)
+   str := mas.Stream[0]
    addrs := []*url.URL{str.URI, mas.GetMedia(str).URI}
    for _, addr := range addrs {
       res, err := http.Get(addr.String())
