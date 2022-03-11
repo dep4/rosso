@@ -4,41 +4,22 @@ import (
    "fmt"
    "net/url"
    "os"
+   "sort"
    "testing"
 )
 
-var masters = []Master{
-   {Stream: []Stream{
-      {Bandwidth: 144},
+func TestSort(t *testing.T) {
+   mas := Master{Stream: []Stream{
       {Bandwidth: 480},
+      {Bandwidth: 144},
+      {Bandwidth: 1080},
       {Bandwidth: 720},
-      {Bandwidth: 1080},
       {Bandwidth: 2160},
-   }},
-   {Stream: []Stream{
-      {Bandwidth: 480},
-      {Bandwidth: 1080},
-   }},
-   {Stream: []Stream{
-      {Bandwidth: 480},
-      {Bandwidth: 2160},
-   }},
-   {Stream: []Stream{
-      {Bandwidth: 144},
-      {Bandwidth: 1080},
-   }},
-   {Stream: []Stream{
-      {Bandwidth: 480},
-   }},
-   {Stream: []Stream{
-   }},
-}
-
-func TestQuality(t *testing.T) {
-   for _, master := range masters {
-      fmt.Printf("%#v\n", master.GetStream(720))
+   }}
+   sort.Sort(Bandwidth{&mas, 720})
+   for _, str := range mas.Stream {
+      fmt.Printf("%+v\n", str)
    }
-   fmt.Printf("%#v\n", masters[0].GetStream(-1))
 }
 
 func TestProgress(t *testing.T) {
