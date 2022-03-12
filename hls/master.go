@@ -12,16 +12,16 @@ type Bandwidth struct {
    Target int64
 }
 
+func (b Bandwidth) Less(i, j int) bool {
+   return b.distance(i) < b.distance(j)
+}
+
 func (b Bandwidth) distance(i int) int64 {
    diff := b.Stream[i].Bandwidth - b.Target
    if diff >= 0 {
       return diff
    }
    return -diff
-}
-
-func (b Bandwidth) Less(i, j int) bool {
-   return b.distance(i) < b.distance(j)
 }
 
 type Master struct {
@@ -134,12 +134,6 @@ type Stream struct {
    URI *url.URL
 }
 
-func (s *Stream) RemoveURI() *url.URL {
-   addr := s.URI
-   s.URI = nil
-   return addr
-}
-
 func (s Stream) String() string {
    var buf []byte
    if s.Resolution != "" {
@@ -160,4 +154,10 @@ func (s Stream) String() string {
       buf = append(buf, s.URI.String()...)
    }
    return string(buf)
+}
+
+// godocs.io/encoding/base64#Encoding.WithPadding
+func (s Stream) WithURI(u *url.URL) Stream {
+   s.URI = u
+   return s
 }

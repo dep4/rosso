@@ -8,6 +8,15 @@ import (
    "testing"
 )
 
+func TestWith(t *testing.T) {
+   str := Stream{
+      Bandwidth: 1, Codecs: "Codecs",
+      URI: &url.URL{Scheme: "http", Host: "example.com"},
+   }
+   fmt.Println(str.WithURI(nil))
+   fmt.Println(str)
+}
+
 func TestSort(t *testing.T) {
    mas := &Master{Stream: []Stream{
       {Bandwidth: 480},
@@ -30,16 +39,6 @@ func TestProgress(t *testing.T) {
       fmt.Print(seg.Progress(i))
    }
    fmt.Println("END")
-}
-
-func TestRemove(t *testing.T) {
-   str := Stream{
-      Bandwidth: 1, Codecs: "Codecs",
-      URI: &url.URL{Scheme: "http", Host: "example.com"},
-   }
-   addr := str.RemoveURI()
-   fmt.Println(addr)
-   fmt.Println(str)
 }
 
 func TestCwtvMaster(t *testing.T) {
