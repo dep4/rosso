@@ -8,18 +8,26 @@ import (
    "text/scanner"
 )
 
-func (s Stream) Format(f fmt.State, r rune) {
-   if s.Resolution != "" {
-      fmt.Fprint(f, "Resolution:", s.Resolution, " ")
+type Bandwidth struct {
+   *Master
+   Target int
+}
+
+func (b Bandwidth) Less(i, j int) bool {
+   return b.distance(i) < b.distance(j)
+}
+
+func (b Bandwidth) distance(i int) int {
+   diff := b.Stream[i].Bandwidth - b.Target
+   if diff >= 0 {
+      return diff
    }
-   fmt.Fprint(f, "Bandwidth:", s.Bandwidth)
-   fmt.Fprint(f, " Codecs:", s.Codecs)
-   if s.Audio != "" {
-      fmt.Fprint(f, " Audio:", s.Audio)
-   }
-   if r == 'u' {
-      fmt.Fprint(f, " URI:", s.URI)
-   }
+   return -diff
+}
+
+type Master struct {
+   Stream []Stream
+   Media []Media
 }
 
 func NewMaster(addr *url.URL, body io.Reader) (*Master, error) {
@@ -97,28 +105,6 @@ func NewMaster(addr *url.URL, body io.Reader) (*Master, error) {
    return &mas, nil
 }
 
-type Bandwidth struct {
-   *Master
-   Target int
-}
-
-func (b Bandwidth) Less(i, j int) bool {
-   return b.distance(i) < b.distance(j)
-}
-
-func (b Bandwidth) distance(i int) int {
-   diff := b.Stream[i].Bandwidth - b.Target
-   if diff >= 0 {
-      return diff
-   }
-   return -diff
-}
-
-type Master struct {
-   Stream []Stream
-   Media []Media
-}
-
 func (m Master) GetMedia(str Stream) *Media {
    for _, med := range m.Media {
       if med.GroupID == str.Audio {
@@ -147,4 +133,18 @@ type Stream struct {
    Codecs string // handle missing resolution
    Audio string // link to Media
    URI *url.URL
+}
+
+func (s Stream) Format(f fmt.State, verb rune) {
+   if s.Resolution != "" {
+      fmt.Fprint(f, "Resolution:", s.Resolution, " ")
+   }
+   fmt.Fprint(f, "Bandwidth:", s.Bandwidth)
+   fmt.Fprint(f, " Codecs:", s.Codecs)
+   if s.Audio != "" {
+      fmt.Fprint(f, " Audio:", s.Audio)
+   }
+   if verb == 'u' {
+      fmt.Fprint(f, " URI:", s.URI)
+   }
 }
