@@ -8,13 +8,19 @@ import (
    "testing"
 )
 
-func TestWith(t *testing.T) {
-   str := Stream{
-      Bandwidth: 1, Codecs: "Codecs",
-      URI: &url.URL{Scheme: "http", Host: "example.com"},
+func TestCwtvMaster(t *testing.T) {
+   file, err := os.Open("m3u8/master-cwtv.m3u8")
+   if err != nil {
+      t.Fatal(err)
    }
-   fmt.Println(str.WithURI(nil))
-   fmt.Println(str)
+   mas, err := NewMaster(&url.URL{}, file)
+   if err != nil {
+      t.Fatal(err)
+   }
+   for _, str := range mas.Stream {
+      fmt.Println(str)
+      // fmt.Printf("%u\n", str)
+   }
 }
 
 func TestSort(t *testing.T) {
@@ -39,20 +45,6 @@ func TestProgress(t *testing.T) {
       fmt.Print(seg.Progress(i))
    }
    fmt.Println("END")
-}
-
-func TestCwtvMaster(t *testing.T) {
-   file, err := os.Open("m3u8/master-cwtv.m3u8")
-   if err != nil {
-      t.Fatal(err)
-   }
-   mas, err := NewMaster(&url.URL{}, file)
-   if err != nil {
-      t.Fatal(err)
-   }
-   for _, str := range mas.Stream {
-      fmt.Println(str)
-   }
 }
 
 func TestCwtvSegment(t *testing.T) {

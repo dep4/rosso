@@ -1,32 +1,25 @@
 package hls
 
 import (
+   "fmt"
    "io"
    "net/url"
    "strconv"
    "text/scanner"
 )
 
-type Bandwidth struct {
-   *Master
-   Target int64
-}
-
-func (b Bandwidth) Less(i, j int) bool {
-   return b.distance(i) < b.distance(j)
-}
-
-func (b Bandwidth) distance(i int) int64 {
-   diff := b.Stream[i].Bandwidth - b.Target
-   if diff >= 0 {
-      return diff
+func (s Stream) Format(f fmt.State, r rune) {
+   if s.Resolution != "" {
+      fmt.Fprint(f, "Resolution:", s.Resolution, " ")
    }
-   return -diff
-}
-
-type Master struct {
-   Stream []Stream
-   Media []Media
+   fmt.Fprint(f, "Bandwidth:", s.Bandwidth)
+   fmt.Fprint(f, " Codecs:", s.Codecs)
+   if s.Audio != "" {
+      fmt.Fprint(f, " Audio:", s.Audio)
+   }
+   if r == 'u' {
+      fmt.Fprint(f, " URI:", s.URI)
+   }
 }
 
 func NewMaster(addr *url.URL, body io.Reader) (*Master, error) {
@@ -53,7 +46,7 @@ func NewMaster(addr *url.URL, body io.Reader) (*Master, error) {
             case "BANDWIDTH":
                buf.Scan()
                buf.Scan()
-               str.Bandwidth, err = strconv.ParseInt(buf.TokenText(), 10, 64)
+               str.Bandwidth, err = strconv.Atoi(buf.TokenText())
             case "CODECS":
                buf.Scan()
                buf.Scan()
@@ -104,6 +97,28 @@ func NewMaster(addr *url.URL, body io.Reader) (*Master, error) {
    return &mas, nil
 }
 
+type Bandwidth struct {
+   *Master
+   Target int
+}
+
+func (b Bandwidth) Less(i, j int) bool {
+   return b.distance(i) < b.distance(j)
+}
+
+func (b Bandwidth) distance(i int) int {
+   diff := b.Stream[i].Bandwidth - b.Target
+   if diff >= 0 {
+      return diff
+   }
+   return -diff
+}
+
+type Master struct {
+   Stream []Stream
+   Media []Media
+}
+
 func (m Master) GetMedia(str Stream) *Media {
    for _, med := range m.Media {
       if med.GroupID == str.Audio {
@@ -128,36 +143,8 @@ type Media struct {
 
 type Stream struct {
    Resolution string
-   Bandwidth int64 // handle duplicate resolution
+   Bandwidth int // handle duplicate resolution
    Codecs string // handle missing resolution
    Audio string // link to Media
    URI *url.URL
-}
-
-func (s Stream) String() string {
-   var buf []byte
-   if s.Resolution != "" {
-      buf = append(buf, "Resolution:"...)
-      buf = append(buf, s.Resolution...)
-      buf = append(buf, ' ')
-   }
-   buf = append(buf, "Bandwidth:"...)
-   buf = strconv.AppendInt(buf, s.Bandwidth, 10)
-   buf = append(buf, " Codecs:"...)
-   buf = append(buf, s.Codecs...)
-   if s.Audio != "" {
-      buf = append(buf, " Audio:"...)
-      buf = append(buf, s.Audio...)
-   }
-   if s.URI != nil {
-      buf = append(buf, " URI:"...)
-      buf = append(buf, s.URI.String()...)
-   }
-   return string(buf)
-}
-
-// godocs.io/encoding/base64#Encoding.WithPadding
-func (s Stream) WithURI(u *url.URL) Stream {
-   s.URI = u
-   return s
 }
