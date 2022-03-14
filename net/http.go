@@ -110,6 +110,7 @@ func main() {
    req.URL = new(url.URL)
    req.URL.Host = {{ printf "%q" .URL.Host }}
    req.URL.Path = {{ printf "%q" .URL.Path }}
+   req.URL.RawPath = {{ printf "%q" .URL.RawPath }}
    val := make(url.Values)
    {{ range $key, $val := .Query -}}
       val[{{ printf "%q" $key }}] = {{ printf "%#v" $val }}

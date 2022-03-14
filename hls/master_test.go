@@ -2,8 +2,6 @@ package hls
 
 import (
    "fmt"
-   "net/url"
-   "os"
    "sort"
    "testing"
 )
