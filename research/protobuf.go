@@ -6,132 +6,16 @@ import (
 )
 
 const (
-   bytesType = protowire.BytesType
-   fixed64Type = protowire.Fixed64Type
+   bytesType = 2
+   fixed64Type = 1
    messageType = 6
-   varintType = protowire.VarintType
+   varintType = 0
 )
 
-type token struct {
-   protowire.Number
-   protowire.Type
-   value interface{}
-}
+type Message []Field
 
-type message []token
-
-func (m message) consumeFixed64(num protowire.Number, buf []byte) error {
-   val, vLen := protowire.ConsumeFixed64(buf)
-   err := protowire.ParseError(vLen)
-   if err != nil {
-      return err
-   }
-   for i, tok := range m {
-      if tok.Number == num {
-         switch value := tok.value.(type) {
-         case uint64:
-            m[i].value = []uint64{value, val}
-         case []uint64:
-            m[i].value = append(value, val)
-         }
-         return nil
-      }
-   }
-   m = append(m, token{num, fixed64Type, val})
-   return nil
-}
-
-func (m message) consumeVarint(num protowire.Number, buf []byte) error {
-   val, vLen := protowire.ConsumeVarint(buf)
-   err := protowire.ParseError(vLen)
-   if err != nil {
-      return err
-   }
-   for i, tok := range m {
-      if tok.Number == num {
-         switch value := tok.value.(type) {
-         case uint64:
-            m[i].value = []uint64{value, val}
-         case []uint64:
-            m[i].value = append(value, val)
-         }
-         return nil
-      }
-   }
-   m = append(m, token{num, varintType, val})
-   return nil
-}
-
-func (m message) add(num protowire.Number, val message) {
-   for i, tok := range m {
-      if tok.Number == num && tok.Type == messageType {
-         switch value := tok.value.(type) {
-         case message:
-            m[i].value = []message{value, val}
-         case []message:
-            m[i].value = append(value, val)
-         }
-         return
-      }
-   }
-   m = append(m, token{num, messageType, val})
-}
-
-func (m message) addString(num protowire.Number, val string) {
-   for i, tok := range m {
-      if tok.Number == num && tok.Type == bytesType {
-         switch value := tok.value.(type) {
-         case string:
-            m[i].value = []string{value, val}
-         case []string:
-            m[i].value = append(value, val)
-         }
-         return
-      }
-   }
-   m = append(m, token{num, bytesType, val})
-}
-
-func (m message) addBytes(num protowire.Number, val []byte) {
-   for i, tok := range m {
-      if tok.Number == num && tok.Type == bytesType {
-         switch value := tok.value.(type) {
-         case []byte:
-            m[i].value = [][]byte{value, val}
-         case [][]byte:
-            m[i].value = append(value, val)
-         }
-         return
-      }
-   }
-   m = append(m, token{num, bytesType, val})
-}
-
-func (m message) consumeBytes(num protowire.Number, buf []byte) error {
-   val, vLen := protowire.ConsumeBytes(buf)
-   err := protowire.ParseError(vLen)
-   if err != nil {
-      return err
-   }
-   binary := format.IsBinary(val)
-   mes, err := unmarshal(val)
-   if err != nil {
-      if binary {
-         m.addBytes(num, val)
-      } else {
-         m.addString(num, string(val))
-      }
-   } else {
-      m.add(num, mes)
-      if !binary {
-         m.addString(num, string(val))
-      }
-   }
-   return nil
-}
-
-func unmarshal(buf []byte) (message, error) {
-   var mes message
+func Unmarshal(buf []byte) (Message, error) {
+   var mes Message
    for len(buf) >= 1 {
       num, typ, fLen := protowire.ConsumeField(buf)
       err := protowire.ParseError(fLen)
@@ -157,4 +41,120 @@ func unmarshal(buf []byte) (message, error) {
       buf = buf[fLen:]
    }
    return mes, nil
+}
+
+func (m Message) add(num protowire.Number, val Message) {
+   for i, field := range m {
+      if field.Number == num && field.Type == messageType {
+         switch value := field.Value.(type) {
+         case Message:
+            m[i].Value = []Message{value, val}
+         case []Message:
+            m[i].Value = append(value, val)
+         }
+         return
+      }
+   }
+   m = append(m, Field{num, messageType, val})
+}
+
+func (m Message) addBytes(num protowire.Number, val []byte) {
+   for i, field := range m {
+      if field.Number == num && field.Type == bytesType {
+         switch value := field.Value.(type) {
+         case []byte:
+            m[i].Value = [][]byte{value, val}
+         case [][]byte:
+            m[i].Value = append(value, val)
+         }
+         return
+      }
+   }
+   m = append(m, Field{num, bytesType, val})
+}
+
+func (m Message) addString(num protowire.Number, val string) {
+   for i, field := range m {
+      if field.Number == num && field.Type == bytesType {
+         switch value := field.Value.(type) {
+         case string:
+            m[i].Value = []string{value, val}
+         case []string:
+            m[i].Value = append(value, val)
+         }
+         return
+      }
+   }
+   m = append(m, Field{num, bytesType, val})
+}
+
+func (m Message) consumeBytes(num protowire.Number, buf []byte) error {
+   val, vLen := protowire.ConsumeBytes(buf)
+   err := protowire.ParseError(vLen)
+   if err != nil {
+      return err
+   }
+   binary := format.IsBinary(val)
+   mes, err := Unmarshal(val)
+   if err != nil {
+      if binary {
+         m.addBytes(num, val)
+      } else {
+         m.addString(num, string(val))
+      }
+   } else {
+      m.add(num, mes)
+      if !binary {
+         m.addString(num, string(val))
+      }
+   }
+   return nil
+}
+
+func (m Message) consumeFixed64(num protowire.Number, buf []byte) error {
+   val, vLen := protowire.ConsumeFixed64(buf)
+   err := protowire.ParseError(vLen)
+   if err != nil {
+      return err
+   }
+   for i, field := range m {
+      if field.Number == num {
+         switch value := field.Value.(type) {
+         case uint64:
+            m[i].Value = []uint64{value, val}
+         case []uint64:
+            m[i].Value = append(value, val)
+         }
+         return nil
+      }
+   }
+   m = append(m, Field{num, fixed64Type, val})
+   return nil
+}
+
+func (m Message) consumeVarint(num protowire.Number, buf []byte) error {
+   val, vLen := protowire.ConsumeVarint(buf)
+   err := protowire.ParseError(vLen)
+   if err != nil {
+      return err
+   }
+   for i, field := range m {
+      if field.Number == num {
+         switch value := field.Value.(type) {
+         case uint64:
+            m[i].Value = []uint64{value, val}
+         case []uint64:
+            m[i].Value = append(value, val)
+         }
+         return nil
+      }
+   }
+   m = append(m, Field{num, varintType, val})
+   return nil
+}
+
+type Field struct {
+   protowire.Number
+   protowire.Type
+   Value interface{}
 }
