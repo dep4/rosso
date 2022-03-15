@@ -1,18 +1,12 @@
 package protobuf
 
 import (
-   "fmt"
    "google.golang.org/protobuf/encoding/protowire"
    "io"
    "strconv"
-   "strings"
 )
 
-// We cannot include the name in the key. When you Unmarshal, the name will be
-// empty. If you then try to Get with a name, it will fail. Max valid number is
-// 536,870,911, so better to use float64:
-// stackoverflow.com/questions/3793838
-type Message map[Number]interface{}
+type Message map[Tag]interface{}
 
 func Decode(src io.Reader) (Message, error) {
    buf, err := io.ReadAll(src)
@@ -25,7 +19,8 @@ func Decode(src io.Reader) (Message, error) {
 func Unmarshal(buf []byte) (Message, error) {
    mes := make(Message)
    for len(buf) >= 1 {
-      num, typ, fLen, err := consumeField(buf)
+      num, typ, fLen := protowire.ConsumeField(buf)
+      err := protowire.ParseError(fLen)
       if err != nil {
          return nil, err
       }
@@ -33,14 +28,14 @@ func Unmarshal(buf []byte) (Message, error) {
       if err := protowire.ParseError(tLen); err != nil {
          return nil, err
       }
-      val := buf[tLen:fLen]
+      value := buf[tLen:fLen]
       switch typ {
       case protowire.BytesType:
-         err = mes.consumeBytes(num, val)
+         err = mes.consumeBytes(num, value)
       case protowire.Fixed64Type:
-         err = mes.consumeFixed64(num, val)
+         err = mes.consumeFixed64(num, value)
       case protowire.VarintType:
-         err = mes.consumeVarint(num, val)
+         err = mes.consumeVarint(num, value)
       }
       if err != nil {
          return nil, err
@@ -50,45 +45,48 @@ func Unmarshal(buf []byte) (Message, error) {
    return mes, nil
 }
 
-func (m Message) Add(num Number, name string, val Message) error {
-   num += messageType
-   switch value := m[num].(type) {
+func (m Message) Add(num protowire.Number, s string, v Message) {
+   tag := Tag{num, messageType}
+   switch value := m[tag].(type) {
    case nil:
-      m[num] = val
+      m[tag] = v
    case Message:
-      m[num] = []Message{value, val}
+      m[tag] = []Message{value, v}
    case []Message:
-      m[num] = append(value, val)
+      m[tag] = append(value, v)
+   }
+}
+
+func (m Message) Get(num protowire.Number, s string) Message {
+   tag := Tag{num, messageType}
+   value, ok := m[tag].(Message)
+   if ok {
+      return value
    }
    return nil
 }
 
-func (m Message) Get(num Number, name string) Message {
-   val, ok := m[num + messageType].(Message)
+func (m Message) GetBytes(num protowire.Number, s string) []byte {
+   tag := Tag{num, bytesType}
+   value, ok := m[tag].([]byte)
    if ok {
-      return val
+      return value
    }
    return nil
 }
 
-func (m Message) GetBytes(num Number, name string) []byte {
-   val, ok := m[num + bytesType].([]byte)
+func (m Message) GetFixed64(num protowire.Number, s string) uint64 {
+   tag := Tag{num, fixed64Type}
+   value, ok := m[tag].(uint64)
    if ok {
-      return val
-   }
-   return nil
-}
-
-func (m Message) GetFixed64(num Number, name string) uint64 {
-   val, ok := m[num + fixed64Type].(uint64)
-   if ok {
-      return val
+      return value
    }
    return 0
 }
 
-func (m Message) GetMessages(num Number, name string) []Message {
-   switch value := m[num + messageType].(type) {
+func (m Message) GetMessages(num protowire.Number, s string) []Message {
+   tag := Tag{num, messageType}
+   switch value := m[tag].(type) {
    case []Message:
       return value
    case Message:
@@ -97,59 +95,56 @@ func (m Message) GetMessages(num Number, name string) []Message {
    return nil
 }
 
-func (m Message) GetString(num Number, name string) string {
-   val, ok := m[num + bytesType].(string)
+func (m Message) GetString(num protowire.Number, s string) string {
+   tag := Tag{num, bytesType}
+   value, ok := m[tag].(string)
    if ok {
-      return val
+      return value
    }
    return ""
 }
 
-func (m Message) GetVarint(num Number, name string) uint64 {
-   val, ok := m[num + varintType].(uint64)
+func (m Message) GetVarint(num protowire.Number, s string) uint64 {
+   tag := Tag{num, varintType}
+   value, ok := m[tag].(uint64)
    if ok {
-      return val
+      return value
    }
    return 0
 }
 
-func (m Message) GoString() string {
-   buf := new(strings.Builder)
-   buf.WriteString("protobuf.Message{")
-   first := true
-   for tag, val := range m {
-      if first {
-         first = false
-      } else {
-         buf.WriteString(",\n")
-      }
-      fmt.Fprintf(buf, "%#v:", tag)
-      num, ok := val.(uint64)
-      if ok {
-         fmt.Fprintf(buf, "uint64(%v)", num)
-      } else {
-         fmt.Fprintf(buf, "%#v", val)
-      }
-   }
-   buf.WriteByte('}')
-   return buf.String()
-}
-
 func (m Message) Marshal() []byte {
    var buf []byte
-   for num, val := range m {
-      buf = appendField(buf, protowire.Number(num), val)
+   for tag, value := range m {
+      buf = appendField(buf, tag.Number, value)
    }
    return buf
 }
 
-type Number float64
-
-func Tag(num Number, name string) Number {
-   return num
+type Tag struct {
+   protowire.Number
+   protowire.Type
 }
 
-func (n Number) MarshalText() ([]byte, error) {
-   f := float64(n)
-   return strconv.AppendFloat(nil, f, 'f', -1, 64), nil
+func MessageTag(num protowire.Number, s string) Tag {
+   return Tag{num, messageType}
+}
+
+func NewTag(num protowire.Number, s string) Tag {
+   return Tag{Number: num}
+}
+
+func (t Tag) MarshalText() ([]byte, error) {
+   buf := strconv.AppendInt(nil, int64(t.Number), 10)
+   switch t.Type {
+   case bytesType:
+      buf = append(buf, " bytes"...)
+   case fixed64Type:
+      buf = append(buf, " fixed64"...)
+   case messageType:
+      buf = append(buf, " message"...)
+   case varintType:
+      buf = append(buf, " varint"...)
+   }
+   return buf, nil
 }
