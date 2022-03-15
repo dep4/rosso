@@ -6,48 +6,56 @@ import (
 )
 
 const (
-   messageType Number = 0
-   bytesType Number = 0.1
-   varintType Number = 0.2
-   fixed64Type Number = 0.3
+   bytesType = 2
+   fixed64Type = 1
+   messageType = 6
+   varintType = 0
 )
 
-func appendField(buf []byte, num protowire.Number, val interface{}) []byte {
-   switch val := val.(type) {
+func appendField(b []byte, num protowire.Number, v interface{}) []byte {
+   switch v := v.(type) {
    case uint64:
-      buf = protowire.AppendTag(buf, num, protowire.VarintType)
-      buf = protowire.AppendVarint(buf, val)
+      b = protowire.AppendTag(b, num, protowire.VarintType)
+      b = protowire.AppendVarint(b, v)
    case string:
-      buf = protowire.AppendTag(buf, num, protowire.BytesType)
-      buf = protowire.AppendString(buf, val)
+      b = protowire.AppendTag(b, num, protowire.BytesType)
+      b = protowire.AppendString(b, v)
    case []byte:
-      buf = protowire.AppendTag(buf, num, protowire.BytesType)
-      buf = protowire.AppendBytes(buf, val)
+      b = protowire.AppendTag(b, num, protowire.BytesType)
+      b = protowire.AppendBytes(b, v)
    case Message:
-      buf = protowire.AppendTag(buf, num, protowire.BytesType)
-      buf = protowire.AppendBytes(buf, val.Marshal())
+      b = protowire.AppendTag(b, num, protowire.BytesType)
+      b = protowire.AppendBytes(b, v.Marshal())
    case []uint64:
-      for _, value := range val {
-         buf = appendField(buf, num, value)
+      for _, value := range v {
+         b = appendField(b, num, value)
       }
    case []string:
-      for _, value := range val {
-         buf = appendField(buf, num, value)
+      for _, value := range v {
+         b = appendField(b, num, value)
       }
    case []Message:
-      for _, value := range val {
-         buf = appendField(buf, num, value)
+      for _, value := range v {
+         b = appendField(b, num, value)
       }
    }
-   return buf
+   return b
 }
 
-// In some cases if input is binary, then result could be a Message or byte
-// slice. We assume for now its always a Message. If input is not binary, then
-// result could be a Message or string. Since its not possible to tell Message
-// from string, we just add both under the same number, each with its own type.
-func (m Message) consumeBytes(num Number, buf []byte) error {
-   val, vLen := protowire.ConsumeBytes(buf)
+func (m Message) addString(num protowire.Number, v string) {
+   tag := Tag{num, bytesType}
+   switch value := m[tag].(type) {
+   case nil:
+      m[tag] = v
+   case string:
+      m[tag] = []string{value, v}
+   case []string:
+      m[tag] = append(value, v)
+   }
+}
+
+func (m Message) consumeBytes(num protowire.Number, b []byte) error {
+   val, vLen := protowire.ConsumeBytes(b)
    err := protowire.ParseError(vLen)
    if err != nil {
       return err
@@ -56,20 +64,20 @@ func (m Message) consumeBytes(num Number, buf []byte) error {
    mes, err := Unmarshal(val)
    if err != nil {
       if binary {
-         num += bytesType
-         switch value := m[num].(type) {
+         tag := Tag{num, bytesType}
+         switch value := m[tag].(type) {
          case nil:
-            m[num] = val
+            m[tag] = val
          case []byte:
-            m[num] = [][]byte{value, val}
+            m[tag] = [][]byte{value, val}
          case [][]byte:
-            m[num] = append(value, val)
+            m[tag] = append(value, val)
          }
       } else {
          m.addString(num, string(val))
       }
    } else {
-      m.Add(num, "", mes)
+      m.Add(num, mes)
       if !binary {
          m.addString(num, string(val))
       }
@@ -77,55 +85,38 @@ func (m Message) consumeBytes(num Number, buf []byte) error {
    return nil
 }
 
-func consumeField(buf []byte) (Number, protowire.Type, int, error) {
-   num, typ, fLen := protowire.ConsumeField(buf)
-   return Number(num), typ, fLen, protowire.ParseError(fLen)
-}
-
-func (m Message) addString(num Number, val string) {
-   num += bytesType
-   switch value := m[num].(type) {
-   case nil:
-      m[num] = val
-   case string:
-      m[num] = []string{value, val}
-   case []string:
-      m[num] = append(value, val)
-   }
-}
-
-func (m Message) consumeFixed64(num Number, buf []byte) error {
-   val, vLen := protowire.ConsumeFixed64(buf)
+func (m Message) consumeFixed64(num protowire.Number, b []byte) error {
+   val, vLen := protowire.ConsumeFixed64(b)
    err := protowire.ParseError(vLen)
    if err != nil {
       return err
    }
-   num += fixed64Type
-   switch value := m[num].(type) {
+   tag := Tag{num, fixed64Type}
+   switch value := m[tag].(type) {
    case nil:
-      m[num] = val
+      m[tag] = val
    case uint64:
-      m[num] = []uint64{value, val}
+      m[tag] = []uint64{value, val}
    case []uint64:
-      m[num] = append(value, val)
+      m[tag] = append(value, val)
    }
    return nil
 }
 
-func (m Message) consumeVarint(num Number, buf []byte) error {
-   val, vLen := protowire.ConsumeVarint(buf)
+func (m Message) consumeVarint(num protowire.Number, b []byte) error {
+   val, vLen := protowire.ConsumeVarint(b)
    err := protowire.ParseError(vLen)
    if err != nil {
       return err
    }
-   num += varintType
-   switch value := m[num].(type) {
+   tag := Tag{num, varintType}
+   switch value := m[tag].(type) {
    case nil:
-      m[num] = val
+      m[tag] = val
    case uint64:
-      m[num] = []uint64{value, val}
+      m[tag] = []uint64{value, val}
    case []uint64:
-      m[num] = append(value, val)
+      m[tag] = append(value, val)
    }
    return nil
 }
