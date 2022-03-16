@@ -6,7 +6,7 @@ import (
 )
 
 func TestMeasure(t *testing.T) {
-   fmt.Println(MeasureNumber(9_999))
-   fmt.Println(MeasureSize(9_999))
-   fmt.Println(MeasureRate(9_999))
+   fmt.Println(LabelNumber(9_999))
+   fmt.Println(LabelSize(9_999))
+   fmt.Println(LabelRate(9_999))
 }

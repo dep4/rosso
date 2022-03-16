@@ -34,15 +34,6 @@ func IsBinary(buf []byte) bool {
    return false
 }
 
-// godocs.io/github.com/google/pprof/internal/measurement#Percentage
-func Percent[T int|int64](value, total T) string {
-   var ratio float64
-   if total != 0 {
-      ratio = 100 * float64(value) / float64(total)
-   }
-   return strconv.FormatFloat(ratio, 'f', 1, 64) + "%"
-}
-
 // Use 0 for INFO, 1 for VERBOSE and any other value for QUIET.
 type LogLevel int
 
@@ -71,6 +62,48 @@ func (l LogLevel) Dump(req *http.Request) error {
    return nil
 }
 
+type Number interface {
+   float64 | int | int64 | uint64
+}
+
+func Label[T Number](value T, unit ...string) string {
+   var (
+      i int
+      symbol string
+      val = float64(value)
+   )
+   for i, symbol = range unit {
+      if val < 1000 {
+         break
+      }
+      val /= 1000
+   }
+   if i >= 1 {
+      i = 3
+   }
+   return strconv.FormatFloat(val, 'f', i, 64) + symbol
+}
+
+func LabelNumber[T Number](value T) string {
+   return Label(value, "", " K", " M", " B", " T")
+}
+
+func LabelRate[T Number](value T) string {
+   return Label(value, " B/s", " kB/s", " MB/s", " GB/s", " TB/s")
+}
+
+func LabelSize[T Number](value T) string {
+   return Label(value, " B", " kB", " MB", " GB", " TB")
+}
+
+func Percent[T Number](value, total T) string {
+   var ratio float64
+   if total != 0 {
+      ratio = 100 * float64(value) / float64(total)
+   }
+   return strconv.FormatFloat(ratio, 'f', 1, 64) + "%"
+}
+
 type Progress struct {
    *http.Response
    content int64
@@ -88,9 +121,9 @@ func NewProgress(src *http.Response) *Progress {
 func (p *Progress) Read(buf []byte) (int, error) {
    since := time.Since(p.part)
    if since >= time.Second/2 {
-      os.Stdout.WriteString(PercentInt64(p.content, p.ContentLength))
+      os.Stdout.WriteString(Percent(p.content, p.ContentLength))
       os.Stdout.WriteString("\t")
-      os.Stdout.WriteString(Size.GetInt64(p.content))
+      os.Stdout.WriteString(LabelSize(p.content))
       os.Stdout.WriteString("\t")
       os.Stdout.WriteString(p.getRate())
       os.Stdout.WriteString("\n")
@@ -105,40 +138,5 @@ func (p *Progress) Read(buf []byte) (int, error) {
 
 func (p Progress) getRate() string {
    rate := float64(p.content) / time.Since(p.partLength).Seconds()
-   return Rate.Get(rate)
-}
-
-type Symbols []string
-
-var (
-   Number = Symbols{"", " K", " M", " B", " T"}
-   Rate = Symbols{" B/s", " kB/s", " MB/s", " GB/s", " TB/s"}
-   Size = Symbols{" B", " kB", " MB", " GB", " TB"}
-)
-
-func (s Symbols) Get(f float64) string {
-   var (
-      i int
-      symbol string
-   )
-   for i, symbol = range s {
-      if f < 1000 {
-         break
-      }
-      f /= 1000
-   }
-   if i >= 1 {
-      i = 3
-   }
-   return strconv.FormatFloat(f, 'f', i, 64) + symbol
-}
-
-func (s Symbols) GetInt64(i int64) string {
-   f := float64(i)
-   return s.Get(f)
-}
-
-func (s Symbols) GetUint64(i uint64) string {
-   f := float64(i)
-   return s.Get(f)
+   return LabelRate(rate)
 }
