@@ -1,23 +1,25 @@
 package format
 
 import (
-   "strconv"
+   "fmt"
 )
 
-func PercentInt(value, total int) string {
-   val, tot := float64(value), float64(total)
-   return percent(val, tot)
+func AlfaLabel[T int|int64](value T, unit string) string {
+   return fmt.Sprint(value, " ", unit)
 }
 
-func PercentInt64(value, total int64) string {
-   val, tot := float64(value), float64(total)
-   return percent(val, tot)
+type Bravo[T int|int64] struct {
+   Value T
 }
 
-func percent(value, total float64) string {
-   var ratio float64
-   if total != 0 {
-      ratio = 100 * value / total
-   }
-   return strconv.FormatFloat(ratio, 'f', 1, 64) + "%"
+func (b Bravo[T]) Label(unit string) string {
+   return fmt.Sprint(b.Value, " ", unit)
+}
+
+type Charlie[T int|int64] struct {
+   Unit string
+}
+
+func (c Charlie[T]) Label(value T) string {
+   return fmt.Sprint(value, " ", c.Unit)
 }

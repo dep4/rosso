@@ -1,6 +1,6 @@
 module github.com/89z/format
 
-go 1.17
+go 1.18
 
 require (
 	github.com/refraction-networking/utls v1.0.0
