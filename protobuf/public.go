@@ -57,6 +57,38 @@ func (m Message) Add(num protowire.Number, s string, v Message) {
    }
 }
 
+func (m Message) Marshal() []byte {
+   var buf []byte
+   for tag, value := range m {
+      buf = appendField(buf, tag.Number, value)
+   }
+   return buf
+}
+
+type Tag struct {
+   protowire.Number
+   protowire.Type
+}
+
+func NewTag(num protowire.Number, s string) Tag {
+   return Tag{Number: num}
+}
+
+func (t Tag) MarshalText() ([]byte, error) {
+   buf := strconv.AppendInt(nil, int64(t.Number), 10)
+   switch t.Type {
+   case bytesType:
+      buf = append(buf, " bytes"...)
+   case fixed64Type:
+      buf = append(buf, " fixed64"...)
+   case messageType:
+      buf = append(buf, " message"...)
+   case varintType:
+      buf = append(buf, " varint"...)
+   }
+   return buf, nil
+}
+
 func (m Message) Get(num protowire.Number, s string) Message {
    tag := Tag{num, messageType}
    value, ok := m[tag].(Message)
@@ -111,36 +143,4 @@ func (m Message) GetVarint(num protowire.Number, s string) uint64 {
       return value
    }
    return 0
-}
-
-func (m Message) Marshal() []byte {
-   var buf []byte
-   for tag, value := range m {
-      buf = appendField(buf, tag.Number, value)
-   }
-   return buf
-}
-
-type Tag struct {
-   protowire.Number
-   protowire.Type
-}
-
-func NewTag(num protowire.Number, s string) Tag {
-   return Tag{Number: num}
-}
-
-func (t Tag) MarshalText() ([]byte, error) {
-   buf := strconv.AppendInt(nil, int64(t.Number), 10)
-   switch t.Type {
-   case bytesType:
-      buf = append(buf, " bytes"...)
-   case fixed64Type:
-      buf = append(buf, " fixed64"...)
-   case messageType:
-      buf = append(buf, " message"...)
-   case varintType:
-      buf = append(buf, " varint"...)
-   }
-   return buf, nil
 }

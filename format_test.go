@@ -17,15 +17,12 @@ func TestProgress(t *testing.T) {
    io.ReadAll(pro)
 }
 
-func TestPercent(t *testing.T) {
-   per := percent(2, 3)
-   fmt.Println(per)
+func TestMeasure(t *testing.T) {
+   fmt.Println(LabelNumber(9_999))
+   fmt.Println(LabelSize(9_999))
+   fmt.Println(LabelRate(9_999))
 }
 
-func TestSymbol(t *testing.T) {
-   nums := []int64{999, 1_234_567_890}
-   for _, num := range nums {
-      get := Number.GetInt64(num)
-      fmt.Println(get)
-   }
+func TestPercent(t *testing.T) {
+   fmt.Println(Percent(2, 3))
 }

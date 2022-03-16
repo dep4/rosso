@@ -34,38 +34,6 @@ func IsBinary(buf []byte) bool {
    return false
 }
 
-// Use 0 for INFO, 1 for VERBOSE and any other value for QUIET.
-type LogLevel int
-
-func (l LogLevel) Dump(req *http.Request) error {
-   switch l {
-   case 0:
-      os.Stdout.WriteString(req.Method)
-      os.Stdout.WriteString(" ")
-      os.Stdout.WriteString(req.URL.String())
-      os.Stdout.WriteString("\n")
-   case 1:
-      buf, err := httputil.DumpRequest(req, true)
-      if err != nil {
-         return err
-      }
-      if IsBinary(buf) {
-         quote := strconv.Quote(string(buf))
-         os.Stdout.WriteString(quote)
-      } else {
-         os.Stdout.Write(buf)
-      }
-      if !bytes.HasSuffix(buf, []byte{'\n'}) {
-         os.Stdout.WriteString("\n")
-      }
-   }
-   return nil
-}
-
-type Number interface {
-   float64 | int | int64 | uint64
-}
-
 func Label[T Number](value T, unit ...string) string {
    var (
       i int
@@ -102,6 +70,38 @@ func Percent[T Number](value, total T) string {
       ratio = 100 * float64(value) / float64(total)
    }
    return strconv.FormatFloat(ratio, 'f', 1, 64) + "%"
+}
+
+// Use 0 for INFO, 1 for VERBOSE and any other value for QUIET.
+type LogLevel int
+
+func (l LogLevel) Dump(req *http.Request) error {
+   switch l {
+   case 0:
+      os.Stdout.WriteString(req.Method)
+      os.Stdout.WriteString(" ")
+      os.Stdout.WriteString(req.URL.String())
+      os.Stdout.WriteString("\n")
+   case 1:
+      buf, err := httputil.DumpRequest(req, true)
+      if err != nil {
+         return err
+      }
+      if IsBinary(buf) {
+         quote := strconv.Quote(string(buf))
+         os.Stdout.WriteString(quote)
+      } else {
+         os.Stdout.Write(buf)
+      }
+      if !bytes.HasSuffix(buf, []byte{'\n'}) {
+         os.Stdout.WriteString("\n")
+      }
+   }
+   return nil
+}
+
+type Number interface {
+   float64 | int | int64 | uint64
 }
 
 type Progress struct {
