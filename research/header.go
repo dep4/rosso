@@ -6,6 +6,15 @@ import (
 
 type message map[int]interface{}
 
+type alfa struct {
+   in message
+   out message
+}
+
+func (a alfa) get(n int) alfa {
+   return a
+}
+
 func main() {
    docV2 := message{
       13: message{
