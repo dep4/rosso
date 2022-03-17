@@ -6,13 +6,9 @@ import (
 
 type message map[int]interface{}
 
-type alfa struct {
+type token[T message | string]struct {
    in message
-   out message
-}
-
-func (a alfa) get(n int) alfa {
-   return a
+   out T
 }
 
 func main() {
@@ -23,5 +19,6 @@ func main() {
          },
       },
    }
-   fmt.Println(docV2)
+   tok := token[message]{in: docV2}
+   fmt.Println(tok)
 }
