@@ -6,10 +6,6 @@ import (
    "strconv"
 )
 
-type Token interface {
-   Message | []byte | string | uint64
-}
-
 const (
    BytesType Type = 2
    Fixed64Type Type = 1
@@ -17,25 +13,7 @@ const (
    VarintType Type = 6
 )
 
-func Get[T Token](mes Message, num Number, typ Type) T {
-   key := Tag{num, typ}
-   val, _ := mes[key].(T)
-   return val
-}
-
 type Type = protowire.Type
-
-func Add[T Token](mes Message, num Number, typ Type, val T) {
-   key := Tag{num, typ}
-   switch value := mes[key].(type) {
-   case nil:
-      mes[key] = val
-   case T:
-      mes[key] = []T{value, val}
-   case []T:
-      mes[key] = append(value, val)
-   }
-}
 
 func appendField(buf []byte, num Number, val interface{}) []byte {
    switch val := val.(type) {
@@ -66,8 +44,6 @@ func appendField(buf []byte, num Number, val interface{}) []byte {
    }
    return buf
 }
-
-type Message map[Tag]interface{}
 
 func Unmarshal(buf []byte) (Message, error) {
    mes := make(Message)
@@ -151,4 +127,39 @@ func (t Tag) MarshalText() ([]byte, error) {
       buf = append(buf, " varint"...)
    }
    return buf, nil
+}
+
+type Message map[Tag]interface{}
+
+func Add[T any](mes Message, num Number, typ Type, val T) {
+   key := Tag{num, typ}
+   switch value := mes[key].(type) {
+   case nil:
+      mes[key] = val
+   case T:
+      mes[key] = []T{value, val}
+   case []T:
+      mes[key] = append(value, val)
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+type token[T any] struct {
+   Message
+   value T
+}
+
+func newToken[T any](m Message) token[T] {
+   return token[T]{Message: m}
+}
+
+func (t token[T]) get(key Tag) token[T] {
+   switch val := t.Message[key].(type) {
+   case Message:
+      t.Message = val
+   case T:
+      t.value = val
+   }
+   return t
 }
