@@ -15,7 +15,7 @@ const (
 
 type Type = protowire.Type
 
-func appendField(buf []byte, num Number, val interface{}) []byte {
+func appendField(buf []byte, num Number, val any) []byte {
    switch val := val.(type) {
    case uint64:
       buf = protowire.AppendTag(buf, num, protowire.VarintType)
@@ -129,7 +129,7 @@ func (t Tag) MarshalText() ([]byte, error) {
    return buf, nil
 }
 
-type Message map[Tag]interface{}
+type Message map[Tag]any
 
 func Add[T any](mes Message, num Number, typ Type, val T) {
    key := Tag{num, typ}
@@ -145,21 +145,21 @@ func Add[T any](mes Message, num Number, typ Type, val T) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-type token[T any] struct {
+type Token[T any] struct {
    Message
-   value T
+   Value T
 }
 
-func newToken[T any](m Message) token[T] {
-   return token[T]{Message: m}
+func newToken[T any](m Message) Token[T] {
+   return Token[T]{Message: m}
 }
 
-func (t token[T]) get(key Tag) token[T] {
+func (t Token[T]) get(key Tag) Token[T] {
    switch val := t.Message[key].(type) {
    case Message:
       t.Message = val
    case T:
-      t.value = val
+      t.Value = val
    }
    return t
 }
