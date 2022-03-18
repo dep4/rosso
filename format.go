@@ -6,18 +6,35 @@ import (
    "net/http/httputil"
    "os"
    "strconv"
-   "strings"
    "time"
 )
 
-func Clean(path string) string {
-   fn := func(r rune) rune {
-      if strings.ContainsRune(`"*/:<>?\|`, r) {
-         return -1
+// Use 0 for INFO, 1 for VERBOSE and any other value for QUIET.
+type LogLevel int
+
+func (l LogLevel) Dump(req *http.Request) error {
+   switch l {
+   case 0:
+      os.Stdout.WriteString(req.Method)
+      os.Stdout.WriteString(" ")
+      os.Stdout.WriteString(req.URL.String())
+      os.Stdout.WriteString("\n")
+   case 1:
+      buf, err := httputil.DumpRequest(req, true)
+      if err != nil {
+         return err
       }
-      return r
+      if IsBinary(buf) {
+         quote := strconv.Quote(string(buf))
+         os.Stdout.WriteString(quote)
+      } else {
+         os.Stdout.Write(buf)
+      }
+      if !bytes.HasSuffix(buf, []byte{'\n'}) {
+         os.Stdout.WriteString("\n")
+      }
    }
-   return strings.Map(fn, path)
+   return nil
 }
 
 // mimesniff.spec.whatwg.org#binary-data-byte
@@ -32,6 +49,43 @@ func IsBinary(buf []byte) bool {
       }
    }
    return false
+}
+
+type Progress struct {
+   *http.Response
+   content int64
+   part, partLength time.Time
+}
+
+func NewProgress(src *http.Response) *Progress {
+   var pro Progress
+   pro.Response = src
+   pro.part = time.Now()
+   pro.partLength = time.Now()
+   return &pro
+}
+
+func (p *Progress) Read(buf []byte) (int, error) {
+   since := time.Since(p.part)
+   if since >= time.Second/2 {
+      os.Stdout.WriteString(Percent(p.content, p.ContentLength))
+      os.Stdout.WriteString("\t")
+      os.Stdout.WriteString(LabelSize(p.content))
+      os.Stdout.WriteString("\t")
+      os.Stdout.WriteString(p.getRate())
+      os.Stdout.WriteString("\n")
+      p.part = p.part.Add(since)
+   }
+   // Callers should always process the n > 0 bytes returned before considering
+   // the error err.
+   read, err := p.Body.Read(buf)
+   p.content += int64(read)
+   return read, err
+}
+
+func (p Progress) getRate() string {
+   rate := float64(p.content) / time.Since(p.partLength).Seconds()
+   return LabelRate(rate)
 }
 
 func Label[T Number](value T, unit ...string) string {
@@ -72,71 +126,6 @@ func Percent[T Number](value, total T) string {
    return strconv.FormatFloat(ratio, 'f', 1, 64) + "%"
 }
 
-// Use 0 for INFO, 1 for VERBOSE and any other value for QUIET.
-type LogLevel int
-
-func (l LogLevel) Dump(req *http.Request) error {
-   switch l {
-   case 0:
-      os.Stdout.WriteString(req.Method)
-      os.Stdout.WriteString(" ")
-      os.Stdout.WriteString(req.URL.String())
-      os.Stdout.WriteString("\n")
-   case 1:
-      buf, err := httputil.DumpRequest(req, true)
-      if err != nil {
-         return err
-      }
-      if IsBinary(buf) {
-         quote := strconv.Quote(string(buf))
-         os.Stdout.WriteString(quote)
-      } else {
-         os.Stdout.Write(buf)
-      }
-      if !bytes.HasSuffix(buf, []byte{'\n'}) {
-         os.Stdout.WriteString("\n")
-      }
-   }
-   return nil
-}
-
 type Number interface {
    float64 | int | int64 | uint64
-}
-
-type Progress struct {
-   *http.Response
-   content int64
-   part, partLength time.Time
-}
-
-func NewProgress(src *http.Response) *Progress {
-   var pro Progress
-   pro.Response = src
-   pro.part = time.Now()
-   pro.partLength = time.Now()
-   return &pro
-}
-
-func (p *Progress) Read(buf []byte) (int, error) {
-   since := time.Since(p.part)
-   if since >= time.Second/2 {
-      os.Stdout.WriteString(Percent(p.content, p.ContentLength))
-      os.Stdout.WriteString("\t")
-      os.Stdout.WriteString(LabelSize(p.content))
-      os.Stdout.WriteString("\t")
-      os.Stdout.WriteString(p.getRate())
-      os.Stdout.WriteString("\n")
-      p.part = p.part.Add(since)
-   }
-   // Callers should always process the n > 0 bytes returned before considering
-   // the error err.
-   read, err := p.Body.Read(buf)
-   p.content += int64(read)
-   return read, err
-}
-
-func (p Progress) getRate() string {
-   rate := float64(p.content) / time.Since(p.partLength).Seconds()
-   return LabelRate(rate)
 }
