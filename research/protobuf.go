@@ -3,7 +3,10 @@ package protobuf
 import (
    "github.com/89z/format"
    "google.golang.org/protobuf/encoding/protowire"
+   "strconv"
 )
+
+type Message map[Tag]any
 
 func Unmarshal(buf []byte) (Message, error) {
    mes := make(Message)
@@ -54,3 +57,70 @@ func Unmarshal(buf []byte) (Message, error) {
    }
    return mes, nil
 }
+
+type Number = protowire.Number
+
+type Tag struct {
+   Number
+   Type
+}
+
+func NewTag(num Number) Tag {
+   return Tag{Number: num}
+}
+
+func (t Tag) MarshalText() ([]byte, error) {
+   buf := strconv.AppendInt(nil, int64(t.Number), 10)
+   switch t.Type {
+   case BytesType:
+      buf = append(buf, " bytes"...)
+   case Fixed64Type:
+      buf = append(buf, " fixed64"...)
+   case MessageType:
+      buf = append(buf, " message"...)
+   case VarintType:
+      buf = append(buf, " varint"...)
+   }
+   return buf, nil
+}
+
+type Token[T any] struct {
+   Message
+   Value T
+}
+
+func NewToken[T any](mes Message) *Token[T] {
+   return &Token[T]{Message: mes}
+}
+
+func (t *Token[T]) Add(num Number, typ Type, val T) {
+   key := Tag{num, typ}
+   switch value := t.Message[key].(type) {
+   case nil:
+      t.Message[key] = val
+   case T:
+      t.Message[key] = []T{value, val}
+   case []T:
+      t.Message[key] = append(value, val)
+   }
+}
+
+func (t Token[T]) Get(num Number, typ Type) Token[T] {
+   key := Tag{num, typ}
+   switch value := t.Message[key].(type) {
+   case Message:
+      t.Message = value
+   case T:
+      t.Value = value
+   }
+   return t
+}
+
+type Type = protowire.Type
+
+const (
+   BytesType Type = 2
+   Fixed64Type Type = 1
+   MessageType Type = 0
+   VarintType Type = 6
+)
