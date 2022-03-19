@@ -13,45 +13,42 @@ const (
    varintType = 6
 )
 
-func appendField(b []byte, num protowire.Number, v interface{}) []byte {
-   switch v := v.(type) {
+func appendField(b []byte, num protowire.Number, val any) []byte {
+   switch val := val.(type) {
    case uint64:
       b = protowire.AppendTag(b, num, protowire.VarintType)
-      b = protowire.AppendVarint(b, v)
+      b = protowire.AppendVarint(b, val)
    case string:
       b = protowire.AppendTag(b, num, protowire.BytesType)
-      b = protowire.AppendString(b, v)
-   case []byte:
-      b = protowire.AppendTag(b, num, protowire.BytesType)
-      b = protowire.AppendBytes(b, v)
+      b = protowire.AppendString(b, val)
    case Message:
       b = protowire.AppendTag(b, num, protowire.BytesType)
-      b = protowire.AppendBytes(b, v.Marshal())
+      b = protowire.AppendBytes(b, val.Marshal())
    case []uint64:
-      for _, value := range v {
+      for _, value := range val {
          b = appendField(b, num, value)
       }
    case []string:
-      for _, value := range v {
+      for _, value := range val {
          b = appendField(b, num, value)
       }
    case []Message:
-      for _, value := range v {
+      for _, value := range val {
          b = appendField(b, num, value)
       }
    }
    return b
 }
 
-func (m Message) addString(num protowire.Number, v string) {
-   tag := Tag{num, bytesType}
-   switch value := m[tag].(type) {
+func (m Message) addString(num protowire.Number, val string) {
+   key := Tag{num, bytesType}
+   switch value := m[key].(type) {
    case nil:
-      m[tag] = v
+      m[key] = val
    case string:
-      m[tag] = []string{value, v}
+      m[key] = []string{value, val}
    case []string:
-      m[tag] = append(value, v)
+      m[key] = append(value, val)
    }
 }
 
@@ -61,25 +58,12 @@ func (m Message) consumeBytes(num protowire.Number, b []byte) error {
    if err != nil {
       return err
    }
-   binary := format.IsBinary(val)
    mes, err := Unmarshal(val)
    if err != nil {
-      if binary {
-         tag := Tag{num, bytesType}
-         switch value := m[tag].(type) {
-         case nil:
-            m[tag] = val
-         case []byte:
-            m[tag] = [][]byte{value, val}
-         case [][]byte:
-            m[tag] = append(value, val)
-         }
-      } else {
-         m.addString(num, string(val))
-      }
+      m.addString(num, string(val))
    } else {
       m.Add(num, "", mes)
-      if !binary {
+      if !format.IsBinary(val) {
          m.addString(num, string(val))
       }
    }
@@ -92,14 +76,14 @@ func (m Message) consumeFixed64(num protowire.Number, b []byte) error {
    if err != nil {
       return err
    }
-   tag := Tag{num, fixed64Type}
-   switch value := m[tag].(type) {
+   key := Tag{num, fixed64Type}
+   switch value := m[key].(type) {
    case nil:
-      m[tag] = val
+      m[key] = val
    case uint64:
-      m[tag] = []uint64{value, val}
+      m[key] = []uint64{value, val}
    case []uint64:
-      m[tag] = append(value, val)
+      m[key] = append(value, val)
    }
    return nil
 }
@@ -110,14 +94,14 @@ func (m Message) consumeVarint(num protowire.Number, b []byte) error {
    if err != nil {
       return err
    }
-   tag := Tag{num, varintType}
-   switch value := m[tag].(type) {
+   key := Tag{num, varintType}
+   switch value := m[key].(type) {
    case nil:
-      m[tag] = val
+      m[key] = val
    case uint64:
-      m[tag] = []uint64{value, val}
+      m[key] = []uint64{value, val}
    case []uint64:
-      m[tag] = append(value, val)
+      m[key] = append(value, val)
    }
    return nil
 }

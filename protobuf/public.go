@@ -6,7 +6,7 @@ import (
    "strconv"
 )
 
-type Message map[Tag]interface{}
+type Message map[Tag]any
 
 func Decode(src io.Reader) (Message, error) {
    buf, err := io.ReadAll(src)
@@ -92,15 +92,6 @@ func (t Tag) MarshalText() ([]byte, error) {
 func (m Message) Get(num protowire.Number, s string) Message {
    tag := Tag{num, messageType}
    value, ok := m[tag].(Message)
-   if ok {
-      return value
-   }
-   return nil
-}
-
-func (m Message) GetBytes(num protowire.Number, s string) []byte {
-   tag := Tag{num, bytesType}
-   value, ok := m[tag].([]byte)
    if ok {
       return value
    }

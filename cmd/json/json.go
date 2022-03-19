@@ -2,6 +2,7 @@ package main
 
 import (
    "encoding/json"
+   "flag"
    "os"
 )
 
@@ -16,12 +17,30 @@ func doJSON(input, output string) error {
       dst = os.Stdout
    }
    defer dst.Close()
-   var val interface{}
-   if err := json.NewDecoder(src).Decode(&val); err != nil {
+   var value any
+   if err := json.NewDecoder(src).Decode(&value); err != nil {
       return err
    }
    enc := json.NewEncoder(dst)
    enc.SetEscapeHTML(false)
    enc.SetIndent("", " ")
-   return enc.Encode(val)
+   return enc.Encode(value)
+}
+
+func main() {
+   // f
+   var input string
+   flag.StringVar(&input, "f", "", "input file")
+   // o
+   var output string
+   flag.StringVar(&output, "o", "", "output file")
+   flag.Parse()
+   if input != "" {
+      err := doJSON(input, output)
+      if err != nil {
+         panic(err)
+      }
+   } else {
+      flag.Usage()
+   }
 }
