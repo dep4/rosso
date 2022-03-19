@@ -65,10 +65,6 @@ type Tag struct {
    Type
 }
 
-func NewTag(num Number) Tag {
-   return Tag{Number: num}
-}
-
 func (t Tag) MarshalText() ([]byte, error) {
    buf := strconv.AppendInt(nil, int64(t.Number), 10)
    switch t.Type {
