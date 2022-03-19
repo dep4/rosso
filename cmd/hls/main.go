@@ -17,9 +17,6 @@ func main() {
    // o
    var output string
    flag.StringVar(&output, "o", "output", "output")
-   // v
-   var verbose bool
-   flag.BoolVar(&verbose, "v", false, "verbose")
    flag.Parse()
    if address != "" {
       err := doManifest(address, output, bandwidth, info)
