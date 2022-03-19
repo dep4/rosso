@@ -98,15 +98,6 @@ func (m Message) Get(num protowire.Number, s string) Message {
    return nil
 }
 
-func (m Message) GetFixed64(num protowire.Number, s string) uint64 {
-   tag := Tag{num, fixed64Type}
-   value, ok := m[tag].(uint64)
-   if ok {
-      return value
-   }
-   return 0
-}
-
 func (m Message) GetMessages(num protowire.Number, s string) []Message {
    tag := Tag{num, messageType}
    switch value := m[tag].(type) {
@@ -116,6 +107,15 @@ func (m Message) GetMessages(num protowire.Number, s string) []Message {
       return []Message{value}
    }
    return nil
+}
+
+func (m Message) GetFixed64(num protowire.Number, s string) uint64 {
+   tag := Tag{num, fixed64Type}
+   value, ok := m[tag].(uint64)
+   if ok {
+      return value
+   }
+   return 0
 }
 
 func (m Message) GetString(num protowire.Number, s string) string {
