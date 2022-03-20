@@ -5,103 +5,121 @@ import (
    "google.golang.org/protobuf/encoding/protowire"
 )
 
-const (
-   // use messageType as the default Type for Tag
-   messageType = 0
-   fixed64Type = 1
-   bytesType = 2
-   varintType = 6
-)
-
-func appendField(b []byte, num protowire.Number, val any) []byte {
+func appendField(buf []byte, num protowire.Number, val any) []byte {
    switch val := val.(type) {
-   case uint64:
-      b = protowire.AppendTag(b, num, protowire.VarintType)
-      b = protowire.AppendVarint(b, val)
-   case string:
-      b = protowire.AppendTag(b, num, protowire.BytesType)
-      b = protowire.AppendString(b, val)
    case Message:
-      b = protowire.AppendTag(b, num, protowire.BytesType)
-      b = protowire.AppendBytes(b, val.Marshal())
-   case []uint64:
-      for _, value := range val {
-         b = appendField(b, num, value)
-      }
-   case []string:
-      for _, value := range val {
-         b = appendField(b, num, value)
-      }
+      buf = protowire.AppendTag(buf, num, protowire.BytesType)
+      buf = protowire.AppendBytes(buf, val.Marshal())
    case []Message:
       for _, value := range val {
-         b = appendField(b, num, value)
+         buf = appendField(buf, num, value)
+      }
+   case string:
+      buf = protowire.AppendTag(buf, num, protowire.BytesType)
+      buf = protowire.AppendString(buf, val)
+   case []string:
+      for _, value := range val {
+         buf = appendField(buf, num, value)
+      }
+   case uint64:
+      buf = protowire.AppendTag(buf, num, protowire.VarintType)
+      buf = protowire.AppendVarint(buf, val)
+   case []uint64:
+      for _, value := range val {
+         buf = appendField(buf, num, value)
+      }
+   case uint32:
+      buf = protowire.AppendTag(buf, num, protowire.Fixed32Type)
+      buf = protowire.AppendFixed32(buf, val)
+   case []uint32:
+      for _, value := range val {
+         buf = appendField(buf, num, value)
       }
    }
-   return b
+   return buf
 }
 
 func (m Message) addString(num protowire.Number, val string) {
-   key := Tag{num, bytesType}
-   switch value := m[key].(type) {
+   switch value := m[num].(type) {
    case nil:
-      m[key] = val
+      m[num] = val
    case string:
-      m[key] = []string{value, val}
+      m[num] = []string{value, val}
    case []string:
-      m[key] = append(value, val)
+      m[num] = append(value, val)
    }
 }
 
-func (m Message) consumeBytes(num protowire.Number, b []byte) error {
-   val, vLen := protowire.ConsumeBytes(b)
+func (m Message) consumeBytes(num protowire.Number, buf []byte) error {
+   val, vLen := protowire.ConsumeBytes(buf)
    err := protowire.ParseError(vLen)
    if err != nil {
       return err
    }
-   mes, err := Unmarshal(val)
-   if err != nil {
-      m.addString(num, string(val))
-   } else {
-      m.Add(num, "", mes)
-      if !format.IsBinary(val) {
+   if len(val) >= 1 {
+      mes, err := Unmarshal(val)
+      if err != nil {
+         m.addString(num, string(val))
+      } else if format.IsBinary(val) {
+         m.Add(num, mes)
+      } else {
+         // Message should be negative, as string is easier to Marshal
+         m.Add(-num, mes)
          m.addString(num, string(val))
       }
+   } else {
+      m.addString(num, "")
    }
    return nil
 }
 
-func (m Message) consumeFixed64(num protowire.Number, b []byte) error {
-   val, vLen := protowire.ConsumeFixed64(b)
+func (m Message) consumeFixed32(num protowire.Number, buf []byte) error {
+   val, vLen := protowire.ConsumeFixed32(buf)
    err := protowire.ParseError(vLen)
    if err != nil {
       return err
    }
-   key := Tag{num, fixed64Type}
-   switch value := m[key].(type) {
+   switch value := m[num].(type) {
    case nil:
-      m[key] = val
-   case uint64:
-      m[key] = []uint64{value, val}
-   case []uint64:
-      m[key] = append(value, val)
+      m[num] = val
+   case uint32:
+      m[num] = []uint32{value, val}
+   case []uint32:
+      m[num] = append(value, val)
    }
    return nil
 }
 
-func (m Message) consumeVarint(num protowire.Number, b []byte) error {
-   val, vLen := protowire.ConsumeVarint(b)
+func (m Message) consumeFixed64(num protowire.Number, buf []byte) error {
+   val, vLen := protowire.ConsumeFixed64(buf)
    err := protowire.ParseError(vLen)
    if err != nil {
       return err
    }
-   key := Tag{num, varintType}
-   switch value := m[key].(type) {
+   switch value := m[num].(type) {
    case nil:
-      m[key] = val
+      m[num] = val
    case uint64:
-      m[key] = []uint64{value, val}
+      m[num] = []uint64{value, val}
    case []uint64:
-      m[key] = append(value, val)
+      m[num] = append(value, val)
+   }
+   return nil
+}
+
+func (m Message) consumeVarint(num protowire.Number, buf []byte) error {
+   val, vLen := protowire.ConsumeVarint(buf)
+   err := protowire.ParseError(vLen)
+   if err != nil {
+      return err
+   }
+   switch value := m[num].(type) {
+   case nil:
+      m[num] = val
+   case uint64:
+      m[num] = []uint64{value, val}
+   case []uint64:
+      m[num] = append(value, val)
    }
    return nil
 }
