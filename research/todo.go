@@ -5,7 +5,17 @@ import (
    "google.golang.org/protobuf/encoding/protowire"
 )
 
-type Message map[Tag]any
+func (t *Token[T]) Add(num Number, typ Type, val T) {
+   key := Tag{num, typ}
+   switch value := t.Message[key].(type) {
+   case nil:
+      t.Message[key] = val
+   case T:
+      t.Message[key] = []T{value, val}
+   case []T:
+      t.Message[key] = append(value, val)
+   }
+}
 
 func Unmarshal(buf []byte) (Message, error) {
    mes := make(Message)
@@ -55,52 +65,4 @@ func Unmarshal(buf []byte) (Message, error) {
       buf = buf[fLen:]
    }
    return mes, nil
-}
-
-type Number = protowire.Number
-
-type Tag struct {
-   Number
-   Type
-}
-
-type Token[T any] struct {
-   Message
-   Value T
-}
-
-func NewToken[T any](mes Message) *Token[T] {
-   return &Token[T]{Message: mes}
-}
-
-type Type = protowire.Type
-
-const (
-   BytesType Type = 2
-   Fixed64Type Type = 1
-   MessageType Type = 0
-   VarintType Type = 6
-)
-
-func (t Token[T]) Get(num Number, typ Type) Token[T] {
-   key := Tag{num, typ}
-   switch value := t.Message[key].(type) {
-   case Message:
-      t.Message = value
-   case T:
-      t.Value = value
-   }
-   return t
-}
-
-func (t *Token[T]) Add(num Number, typ Type, val T) {
-   key := Tag{num, typ}
-   switch value := t.Message[key].(type) {
-   case nil:
-      t.Message[key] = val
-   case T:
-      t.Message[key] = []T{value, val}
-   case []T:
-      t.Message[key] = append(value, val)
-   }
 }
