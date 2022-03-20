@@ -3,9 +3,63 @@ package protobuf
 import (
    "github.com/89z/format"
    "google.golang.org/protobuf/encoding/protowire"
+   "io"
 )
 
+func Add[T any](mes Message, num Number, val T) {
+   switch value := mes[num].(type) {
+   case nil:
+      mes[num] = val
+   case T:
+      mes[num] = []T{value, val}
+   case []T:
+      mes[num] = append(value, val)
+   }
+}
+
+func appendField(buf []byte, num Number, val any) []byte {
+   switch val := val.(type) {
+   case Message:
+      buf = protowire.AppendTag(buf, num, protowire.BytesType)
+      buf = protowire.AppendBytes(buf, val.Marshal())
+   case string:
+      buf = protowire.AppendTag(buf, num, protowire.BytesType)
+      buf = protowire.AppendString(buf, val)
+   case uint32:
+      buf = protowire.AppendTag(buf, num, protowire.Fixed32Type)
+      buf = protowire.AppendFixed32(buf, val)
+   case uint64:
+      buf = protowire.AppendTag(buf, num, protowire.VarintType)
+      buf = protowire.AppendVarint(buf, val)
+   case []Message:
+      for _, value := range val {
+         buf = appendField(buf, num, value)
+      }
+   case []string:
+      for _, value := range val {
+         buf = appendField(buf, num, value)
+      }
+   case []uint32:
+      for _, value := range val {
+         buf = appendField(buf, num, value)
+      }
+   case []uint64:
+      for _, value := range val {
+         buf = appendField(buf, num, value)
+      }
+   }
+   return buf
+}
+
 type Message map[Number]any
+
+func Decode(src io.Reader) (Message, error) {
+   buf, err := io.ReadAll(src)
+   if err != nil {
+      return nil, err
+   }
+   return Unmarshal(buf)
+}
 
 func Unmarshal(buf []byte) (Message, error) {
    mes := make(Message)
@@ -20,24 +74,6 @@ func Unmarshal(buf []byte) (Message, error) {
       }
       field := buf[tLen:fLen]
       switch typ {
-      case protowire.VarintType:
-         val, vLen := protowire.ConsumeVarint(field)
-         if err := protowire.ParseError(vLen); err != nil {
-            return nil, err
-         }
-         NewToken[uint64](mes).Add(num, val)
-      case protowire.Fixed64Type:
-         val, vLen := protowire.ConsumeFixed64(field)
-         if err := protowire.ParseError(vLen); err != nil {
-            return nil, err
-         }
-         NewToken[uint64](mes).Add(num, val)
-      case protowire.Fixed32Type:
-         val, vLen := protowire.ConsumeFixed32(field)
-         if err := protowire.ParseError(vLen); err != nil {
-            return nil, err
-         }
-         NewToken[uint32](mes).Add(num, val)
       case protowire.BytesType:
          val, vLen := protowire.ConsumeBytes(field)
          if err := protowire.ParseError(vLen); err != nil {
@@ -46,20 +82,48 @@ func Unmarshal(buf []byte) (Message, error) {
          if len(val) >= 1 {
             value, err := Unmarshal(val)
             if err != nil {
-               NewToken[string](mes).Add(num, string(val))
+               Add(mes, num, string(val))
             } else if format.IsBinary(val) {
-               NewToken[Message](mes).Add(num, value)
+               Add(mes, num, value)
             } else {
-               NewToken[string](mes).Add(num, string(val))
-               NewToken[Message](mes).Add(-num, value)
+               Add(mes, num, string(val))
+               Add(mes, -num, value)
             }
          } else {
-            NewToken[string](mes).Add(num, "")
+            Add(mes, num, "")
          }
+      case protowire.Fixed32Type:
+         val, vLen := protowire.ConsumeFixed32(field)
+         if err := protowire.ParseError(vLen); err != nil {
+            return nil, err
+         }
+         Add(mes, num, val)
+      case protowire.Fixed64Type:
+         val, vLen := protowire.ConsumeFixed64(field)
+         if err := protowire.ParseError(vLen); err != nil {
+            return nil, err
+         }
+         Add(mes, num, val)
+      case protowire.VarintType:
+         val, vLen := protowire.ConsumeVarint(field)
+         if err := protowire.ParseError(vLen); err != nil {
+            return nil, err
+         }
+         Add(mes, num, val)
       }
       buf = buf[fLen:]
    }
    return mes, nil
+}
+
+func (m Message) Marshal() []byte {
+   var buf []byte
+   for num, val := range m {
+      if num >= protowire.MinValidNumber {
+         buf = appendField(buf, num, val)
+      }
+   }
+   return buf
 }
 
 type Number = protowire.Number
@@ -68,23 +132,13 @@ type Token[T any] struct {
    Message
 }
 
-func NewToken[T any](m Message) *Token[T] {
-   return &Token[T]{m}
-}
-
-func (t *Token[T]) Add(num Number, val T) {
-   switch value := t.Message[num].(type) {
-   case nil:
-      t.Message[num] = val
-   case T:
-      t.Message[num] = []T{value, val}
-   case []T:
-      t.Message[num] = append(value, val)
-   }
-}
-
 func (t Token[T]) Get(num Number) Token[T] {
-   t.Message, _ = t.Message[num].(Message)
+   switch val := t.Message[num].(type) {
+   case Message:
+      t.Message = val
+   case string:
+      t = t.Get(-num)
+   }
    return t
 }
 
