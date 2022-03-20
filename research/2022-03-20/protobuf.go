@@ -5,9 +5,50 @@ import (
    "google.golang.org/protobuf/encoding/protowire"
 )
 
-type Fixed64 uint64
+func appendField(buf []byte, num protowire.Number, val any) []byte {
+   switch val := val.(type) {
+   case Fixed32:
+      buf = protowire.AppendTag(buf, num, protowire.Fixed32Type)
+      buf = protowire.AppendFixed32(buf, uint32(val))
+   case []Fixed32:
+      for _, value := range val {
+         buf = appendField(buf, num, value)
+      }
+   case Fixed64:
+      buf = protowire.AppendTag(buf, num, protowire.Fixed64Type)
+      buf = protowire.AppendFixed64(buf, uint64(val))
+   case []Fixed64:
+      for _, value := range val {
+         buf = appendField(buf, num, value)
+      }
+   case Message:
+      buf = protowire.AppendTag(buf, num, protowire.BytesType)
+      buf = protowire.AppendBytes(buf, val.Marshal())
+   case []Message:
+      for _, value := range val {
+         buf = appendField(buf, num, value)
+      }
+   case string:
+      buf = protowire.AppendTag(buf, num, protowire.BytesType)
+      buf = protowire.AppendString(buf, val)
+   case []string:
+      for _, value := range val {
+         buf = appendField(buf, num, value)
+      }
+   case Varint:
+      buf = protowire.AppendTag(buf, num, protowire.VarintType)
+      buf = protowire.AppendVarint(buf, uint64(val))
+   case []Varint:
+      for _, value := range val {
+         buf = appendField(buf, num, value)
+      }
+   }
+   return buf
+}
 
 type Fixed32 uint32
+
+type Fixed64 uint64
 
 type Message map[protowire.Number]any
 
@@ -51,6 +92,31 @@ func (m Message) Add(num protowire.Number, val Message) {
    case []Message:
       m[num] = append(value, val)
    }
+}
+
+func (m Message) Get(num protowire.Number) Message {
+   val, _ := m[num].(Message)
+   return val
+}
+
+func (m Message) GetMessages(num protowire.Number) []Message {
+   switch val := m[num].(type) {
+   case []Message:
+      return val
+   case Message:
+      return []Message{val}
+   }
+   return nil
+}
+
+func (m Message) Marshal() []byte {
+   var buf []byte
+   for num, val := range m {
+      if num >= protowire.MinValidNumber {
+         buf = appendField(buf, num, val)
+      }
+   }
+   return buf
 }
 
 func (m Message) addString(num protowire.Number, val string) {

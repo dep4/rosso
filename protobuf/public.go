@@ -57,6 +57,53 @@ func (m Message) Add(num protowire.Number, s string, v Message) {
    }
 }
 
+func (m Message) Get(num protowire.Number, s string) Message {
+   tag := Tag{num, messageType}
+   value, ok := m[tag].(Message)
+   if ok {
+      return value
+   }
+   return nil
+}
+
+func (m Message) GetFixed64(num protowire.Number, s string) uint64 {
+   tag := Tag{num, fixed64Type}
+   value, ok := m[tag].(uint64)
+   if ok {
+      return value
+   }
+   return 0
+}
+
+func (m Message) GetMessages(num protowire.Number, s string) []Message {
+   tag := Tag{num, messageType}
+   switch value := m[tag].(type) {
+   case []Message:
+      return value
+   case Message:
+      return []Message{value}
+   }
+   return nil
+}
+
+func (m Message) GetString(num protowire.Number, s string) string {
+   tag := Tag{num, bytesType}
+   value, ok := m[tag].(string)
+   if ok {
+      return value
+   }
+   return ""
+}
+
+func (m Message) GetVarint(num protowire.Number, s string) uint64 {
+   tag := Tag{num, varintType}
+   value, ok := m[tag].(uint64)
+   if ok {
+      return value
+   }
+   return 0
+}
+
 func (m Message) Marshal() []byte {
    var buf []byte
    for tag, value := range m {
@@ -87,51 +134,4 @@ func (t Tag) MarshalText() ([]byte, error) {
       buf = append(buf, " varint"...)
    }
    return buf, nil
-}
-
-func (m Message) Get(num protowire.Number, s string) Message {
-   tag := Tag{num, messageType}
-   value, ok := m[tag].(Message)
-   if ok {
-      return value
-   }
-   return nil
-}
-
-func (m Message) GetMessages(num protowire.Number, s string) []Message {
-   tag := Tag{num, messageType}
-   switch value := m[tag].(type) {
-   case []Message:
-      return value
-   case Message:
-      return []Message{value}
-   }
-   return nil
-}
-
-func (m Message) GetFixed64(num protowire.Number, s string) uint64 {
-   tag := Tag{num, fixed64Type}
-   value, ok := m[tag].(uint64)
-   if ok {
-      return value
-   }
-   return 0
-}
-
-func (m Message) GetString(num protowire.Number, s string) string {
-   tag := Tag{num, bytesType}
-   value, ok := m[tag].(string)
-   if ok {
-      return value
-   }
-   return ""
-}
-
-func (m Message) GetVarint(num protowire.Number, s string) uint64 {
-   tag := Tag{num, varintType}
-   value, ok := m[tag].(uint64)
-   if ok {
-      return value
-   }
-   return 0
 }
