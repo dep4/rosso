@@ -1,19 +1,11 @@
 package protobuf
 
 import (
+   "encoding/json"
    "fmt"
    "os"
    "testing"
 )
-
-func TestTwo(t *testing.T) {
-   buf := []byte("Instagram")
-   mes, err := Unmarshal(buf)
-   if err != nil {
-      t.Fatal(err)
-   }
-   fmt.Printf("%v %q\n", mes, mes.Marshal())
-}
 
 func TestOne(t *testing.T) {
    buf, err := os.ReadFile("details.txt")
@@ -24,5 +16,8 @@ func TestOne(t *testing.T) {
    if err != nil {
       t.Fatal(err)
    }
-   fmt.Println(mes)
+   enc := json.NewEncoder(os.Stdout)
+   enc.SetIndent("", " ")
+   enc.Encode(mes)
+   fmt.Printf("%q\n", mes.Get(1).Get(2).Get(4).GetString(5))
 }
