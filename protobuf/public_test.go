@@ -19,7 +19,8 @@ func TestCheckin(t *testing.T) {
    enc := json.NewEncoder(os.Stdout)
    enc.SetIndent("", " ")
    enc.Encode(mes)
-   fmt.Println(mes.GetUint64(7))
+   id := Value[uint64](mes, 7)
+   fmt.Println(id)
 }
 
 func TestDetails(t *testing.T) {
@@ -34,5 +35,9 @@ func TestDetails(t *testing.T) {
    enc := json.NewEncoder(os.Stdout)
    enc.SetIndent("", " ")
    enc.Encode(mes)
-   fmt.Printf("%q\n", mes.Get(1).Get(2).Get(4).GetString(5))
+   title := Value[string](mes, 1, 2, 4, 5)
+   fmt.Printf("%q\n", title)
+   for _, image := range Values[Message](mes, 1, 2, 4, 10) {
+      fmt.Println(image)
+   }
 }
