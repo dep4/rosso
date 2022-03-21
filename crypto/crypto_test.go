@@ -21,11 +21,11 @@ func TestFormatJA3(t *testing.T) {
 }
 
 func TestTransport(t *testing.T) {
-   hello, err := ParseJA3(AndroidAPI26)
+   req, err := http.NewRequest("HEAD", "https://example.com", nil)
    if err != nil {
       t.Fatal(err)
    }
-   req, err := http.NewRequest("HEAD", "https://example.com", nil)
+   hello, err := ParseJA3(AndroidAPI26)
    if err != nil {
       t.Fatal(err)
    }
