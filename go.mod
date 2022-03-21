@@ -4,7 +4,6 @@ go 1.18
 
 require (
 	github.com/refraction-networking/utls v1.0.0
-	github.com/tdewolff/parse/v2 v2.5.22
 	google.golang.org/protobuf v1.27.1
 )
 

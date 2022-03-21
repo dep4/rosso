@@ -23,7 +23,7 @@ Path     | Synopsis
 ---------|------------------------
 crypto   | JA3 and TLS fingerprint
 hls      | HLS parser
-net      | HTML and HTTP parsers
+net      | HTTP parser
 protobuf | Protocol Buffers
 
 ## Repo
