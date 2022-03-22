@@ -19,7 +19,7 @@ func TestCheckin(t *testing.T) {
    enc := json.NewEncoder(os.Stdout)
    enc.SetIndent("", " ")
    enc.Encode(mes)
-   fmt.Println(mes.GetUint64(7))
+   fmt.Println(mes.GetFixed64(7))
 }
 
 func TestDetails(t *testing.T) {
