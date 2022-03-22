@@ -4,56 +4,47 @@ import (
    "google.golang.org/protobuf/encoding/protowire"
 )
 
-func add[T token](mes Message, num Number, val T) {
+func add[T Token](mes Message, num Number, val T) {
    switch value := mes[num].(type) {
    case nil:
       mes[num] = val
    case T:
-      mes[num] = []T{value, val}
-   case []T:
+      mes[num] = tokens[T]{value, val}
+   case tokens[T]:
       mes[num] = append(value, val)
    }
 }
 
-func appendField(in []byte, num Number, val any) []byte {
-   switch val := val.(type) {
-   case uint32:
-      in = protowire.AppendTag(in, num, protowire.Fixed32Type)
-      in = protowire.AppendFixed32(in, val)
-   case uint64:
-      in = protowire.AppendTag(in, num, protowire.VarintType)
-      in = protowire.AppendVarint(in, val)
-   case string:
-      in = protowire.AppendTag(in, num, protowire.BytesType)
-      in = protowire.AppendString(in, val)
-   case Message:
-      in = protowire.AppendTag(in, num, protowire.BytesType)
-      in = protowire.AppendBytes(in, val.Marshal())
-   case []uint32:
-      for _, value := range val {
-         in = appendField(in, num, value)
-      }
-   case []uint64:
-      for _, value := range val {
-         in = appendField(in, num, value)
-      }
-   case []string:
-      for _, value := range val {
-         in = appendField(in, num, value)
-      }
-   case []Message:
-      for _, value := range val {
-         in = appendField(in, num, value)
-      }
-   }
-   return in
-}
-
-func get[T token](mes Message, num Number) T {
+func get[T Token](mes Message, num Number) T {
    value, _ := mes[num].(T)
    return value
 }
 
-type token interface {
-   uint32 | uint64 | string | Message
+func (m Message) appendField(b []byte, n Number) []byte {
+   b = protowire.AppendTag(b, n, protowire.BytesType)
+   return protowire.AppendBytes(b, m.Marshal())
+}
+
+func (s String) appendField(b []byte, n Number) []byte {
+   b = protowire.AppendTag(b, n, protowire.BytesType)
+   return protowire.AppendString(b, string(s))
+}
+
+func (u Uint32) appendField(b []byte, n Number) []byte {
+   b = protowire.AppendTag(b, n, protowire.Fixed32Type)
+   return protowire.AppendFixed32(b, uint32(u))
+}
+
+func (u Uint64) appendField(b []byte, n Number) []byte {
+   b = protowire.AppendTag(b, n, protowire.VarintType)
+   return protowire.AppendVarint(b, uint64(u))
+}
+
+type tokens[T Token] []T
+
+func (t tokens[T]) appendField(b []byte, n Number) []byte {
+   for _, tok := range t {
+      b = tok.appendField(b, n)
+   }
+   return b
 }
