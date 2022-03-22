@@ -6,6 +6,10 @@ import (
    "io"
 )
 
+type Fixed32 uint32
+
+type Fixed64 uint64
+
 type Message map[Number]Token
 
 func Decode(in io.Reader) (Message, error) {
@@ -20,7 +24,8 @@ func Unmarshal(in []byte) (Message, error) {
    mes := make(Message)
    for len(in) >= 1 {
       num, typ, fLen := protowire.ConsumeField(in)
-      if err := protowire.ParseError(fLen); err != nil {
+      err := protowire.ParseError(fLen)
+      if err != nil {
          return nil, err
       }
       _, _, tLen := protowire.ConsumeTag(in[:fLen])
@@ -31,7 +36,8 @@ func Unmarshal(in []byte) (Message, error) {
       switch typ {
       case protowire.BytesType:
          val, vLen := protowire.ConsumeBytes(buf)
-         if err := protowire.ParseError(vLen); err != nil {
+         err := protowire.ParseError(vLen)
+         if err != nil {
             return nil, err
          }
          if len(val) >= 1 {
@@ -49,22 +55,25 @@ func Unmarshal(in []byte) (Message, error) {
          }
       case protowire.Fixed32Type:
          val, vLen := protowire.ConsumeFixed32(buf)
-         if err := protowire.ParseError(vLen); err != nil {
+         err := protowire.ParseError(vLen)
+         if err != nil {
             return nil, err
          }
-         add(mes, num, Uint32(val))
+         add(mes, num, Fixed32(val))
       case protowire.Fixed64Type:
          val, vLen := protowire.ConsumeFixed64(buf)
-         if err := protowire.ParseError(vLen); err != nil {
+         err := protowire.ParseError(vLen)
+         if err != nil {
             return nil, err
          }
-         add(mes, num, Uint64(val))
+         add(mes, num, Fixed64(val))
       case protowire.VarintType:
          val, vLen := protowire.ConsumeVarint(buf)
-         if err := protowire.ParseError(vLen); err != nil {
+         err := protowire.ParseError(vLen)
+         if err != nil {
             return nil, err
          }
-         add(mes, num, Uint64(val))
+         add(mes, num, Varint(val))
       }
       in = in[fLen:]
    }
@@ -89,6 +98,10 @@ func (m Message) Get(num Number) Message {
    return nil
 }
 
+func (m Message) GetFixed64(num Number) Fixed64 {
+   return get[Fixed64](m, num)
+}
+
 func (m Message) GetMessages(num Number) []Message {
    switch value := m[num].(type) {
    case tokens[Message]:
@@ -103,21 +116,9 @@ func (m Message) GetString(num Number) String {
    return get[String](m, num)
 }
 
-func (m Message) GetUint64(num Number) Uint64 {
-   return get[Uint64](m, num)
+func (m Message) GetVarint(num Number) Varint {
+   return get[Varint](m, num)
 }
-
-type Number = protowire.Number
-
-type String string
-
-type Token interface {
-   appendField([]byte, Number) []byte
-}
-
-type Uint32 uint32
-
-type Uint64 uint64
 
 func (m Message) Marshal() []byte {
    var buf []byte
@@ -128,3 +129,13 @@ func (m Message) Marshal() []byte {
    }
    return buf
 }
+
+type Number = protowire.Number
+
+type String string
+
+type Token interface {
+   appendField([]byte, Number) []byte
+}
+
+type Varint uint64

@@ -20,31 +20,36 @@ func get[T Token](mes Message, num Number) T {
    return value
 }
 
-func (m Message) appendField(b []byte, n Number) []byte {
-   b = protowire.AppendTag(b, n, protowire.BytesType)
-   return protowire.AppendBytes(b, m.Marshal())
+func (f Fixed32) appendField(in []byte, num Number) []byte {
+   in = protowire.AppendTag(in, num, protowire.Fixed32Type)
+   return protowire.AppendFixed32(in, uint32(f))
 }
 
-func (s String) appendField(b []byte, n Number) []byte {
-   b = protowire.AppendTag(b, n, protowire.BytesType)
-   return protowire.AppendString(b, string(s))
+func (f Fixed64) appendField(in []byte, num Number) []byte {
+   in = protowire.AppendTag(in, num, protowire.Fixed64Type)
+   return protowire.AppendFixed64(in, uint64(f))
 }
 
-func (u Uint32) appendField(b []byte, n Number) []byte {
-   b = protowire.AppendTag(b, n, protowire.Fixed32Type)
-   return protowire.AppendFixed32(b, uint32(u))
+func (m Message) appendField(in []byte, num Number) []byte {
+   in = protowire.AppendTag(in, num, protowire.BytesType)
+   return protowire.AppendBytes(in, m.Marshal())
 }
 
-func (u Uint64) appendField(b []byte, n Number) []byte {
-   b = protowire.AppendTag(b, n, protowire.VarintType)
-   return protowire.AppendVarint(b, uint64(u))
+func (s String) appendField(in []byte, num Number) []byte {
+   in = protowire.AppendTag(in, num, protowire.BytesType)
+   return protowire.AppendString(in, string(s))
+}
+
+func (v Varint) appendField(in []byte, num Number) []byte {
+   in = protowire.AppendTag(in, num, protowire.VarintType)
+   return protowire.AppendVarint(in, uint64(v))
 }
 
 type tokens[T Token] []T
 
-func (t tokens[T]) appendField(b []byte, n Number) []byte {
+func (t tokens[T]) appendField(in []byte, num Number) []byte {
    for _, tok := range t {
-      b = tok.appendField(b, n)
+      in = tok.appendField(in, num)
    }
-   return b
+   return in
 }

@@ -2,12 +2,45 @@ package format
 
 import (
    "bytes"
+   "encoding/json"
    "net/http"
    "net/http/httputil"
    "os"
+   "path/filepath"
    "strconv"
    "time"
 )
+
+func Encode[T any](value T, elem ...string) error {
+   name := filepath.Join(elem...)
+   err := os.MkdirAll(filepath.Dir(name), os.ModeDir)
+   if err != nil {
+      return err
+   }
+   os.Stdout.WriteString("Create " + name + "\n")
+   file, err := os.Create(name)
+   if err != nil {
+      return err
+   }
+   defer file.Close()
+   enc := json.NewEncoder(file)
+   enc.SetIndent("", " ")
+   return enc.Encode(value)
+}
+
+func Open[T any](elem ...string) (*T, error) {
+   name := filepath.Join(elem...)
+   file, err := os.Open(name)
+   if err != nil {
+      return nil, err
+   }
+   defer file.Close()
+   value := new(T)
+   if err := json.NewDecoder(file).Decode(value); err != nil {
+      return nil, err
+   }
+   return value, nil
+}
 
 // Use 0 for INFO, 1 for VERBOSE and any other value for QUIET.
 type LogLevel int
