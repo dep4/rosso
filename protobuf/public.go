@@ -98,7 +98,7 @@ func (m Message) Get(num Number) Message {
    return nil
 }
 
-func (m Message) GetFixed64(num Number) Fixed64 {
+func (m Message) GetFixed64(num Number) (Fixed64, error) {
    return get[Fixed64](m, num)
 }
 
@@ -112,11 +112,11 @@ func (m Message) GetMessages(num Number) []Message {
    return nil
 }
 
-func (m Message) GetString(num Number) String {
+func (m Message) GetString(num Number) (String, error) {
    return get[String](m, num)
 }
 
-func (m Message) GetVarint(num Number) Varint {
+func (m Message) GetVarint(num Number) (Varint, error) {
    return get[Varint](m, num)
 }
 
