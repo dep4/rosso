@@ -8,7 +8,8 @@ import (
 )
 
 type token struct {
-   Services, Token string
+   Services string
+   Token string
 }
 
 func TestDecode(t *testing.T) {

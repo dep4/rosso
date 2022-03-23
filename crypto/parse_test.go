@@ -39,7 +39,7 @@ var hellos = []string{AndroidAPI24, AndroidAPI25, AndroidAPI26, AndroidAPI29}
 
 func TestParseJA3(t *testing.T) {
    val := url.Values{
-      "Email": {"srpen6@gmail.com"},
+      "Email": {email},
       "Passwd": {password},
       "client_sig": {""},
       "droidguard_results": {""},
