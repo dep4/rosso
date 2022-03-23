@@ -15,9 +15,9 @@ func add[T Token](mes Message, num Number, val T) {
    }
 }
 
-func get[T Token](mes Message, num Number) T {
-   value, _ := mes[num].(T)
-   return value
+func get[T Token](mes Message, num Number) (T, bool) {
+   value, ok := mes[num].(T)
+   return value, ok
 }
 
 func (f Fixed32) appendField(in []byte, num Number) []byte {
