@@ -1,6 +1,7 @@
 package protobuf
 
 import (
+   "fmt"
    "google.golang.org/protobuf/encoding/protowire"
 )
 
@@ -15,9 +16,14 @@ func add[T Token](mes Message, num Number, val T) {
    }
 }
 
-func get[T Token](mes Message, num Number) T {
-   value, _ := mes[num].(T)
-   return value
+func get[T Token](mes Message, num Number) (T, error) {
+   a := mes[num]
+   b, ok := a.(T)
+   if !ok {
+      format := "cannot unmarshal %T into field %v of type %T"
+      return *new(T), fmt.Errorf(format, a, num, b)
+   }
+   return b, nil
 }
 
 func (f Fixed32) appendField(in []byte, num Number) []byte {

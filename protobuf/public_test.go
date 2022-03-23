@@ -7,6 +7,25 @@ import (
    "testing"
 )
 
+func TestJSON(t *testing.T) {
+   buf := []byte(`{"month": 12, "day": 31}`)
+   { // pass
+      var date struct { Month int }
+      err := json.Unmarshal(buf, &date)
+      fmt.Printf("%+v %v\n", date, err)
+   }
+   { // fail key
+      var date struct { Year int }
+      err := json.Unmarshal(buf, &date)
+      fmt.Printf("%+v %v\n", date, err)
+   }
+   { // fail type
+      var date struct { Month string }
+      err := json.Unmarshal(buf, &date)
+      fmt.Printf("%+v %v\n", date, err)
+   }
+}
+
 func TestCheckin(t *testing.T) {
    buf, err := os.ReadFile("checkin.txt")
    if err != nil {
@@ -19,7 +38,12 @@ func TestCheckin(t *testing.T) {
    enc := json.NewEncoder(os.Stdout)
    enc.SetIndent("", " ")
    enc.Encode(mes)
-   fmt.Println(mes.GetVarint(3), mes.GetFixed64(7))
+   // pass
+   fmt.Println(mes.GetFixed64(7))
+   // fail key
+   fmt.Println(mes.GetFixed64(6))
+   // fail type
+   fmt.Println(mes.GetVarint(7))
 }
 
 func TestDetails(t *testing.T) {
@@ -35,8 +59,13 @@ func TestDetails(t *testing.T) {
    enc.SetIndent("", " ")
    enc.Encode(mes)
    fmt.Println(len(buf), len(mes.Marshal()))
-   fmt.Printf("%q\n", mes.Get(1).Get(2).Get(4).GetString(5))
-   for _, image := range mes.Get(1).Get(2).Get(4).GetMessages(10) {
-      fmt.Println(image)
+   // .payload.detailsResponse.docV2
+   docV2 := mes.Get(1).Get(2).Get(4)
+   // .title
+   title, ok := docV2.GetString(5)
+   fmt.Printf("%q %v\n", title, ok)
+   // .details.appDetails.file
+   for _, file := range docV2.Get(13).Get(1).GetMessages(17) {
+      fmt.Println(file)
    }
 }
