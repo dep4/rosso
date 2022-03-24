@@ -160,5 +160,5 @@ func Percent[T Number](value, total T) string {
 }
 
 type Number interface {
-   float64 | int | int64 | uint64
+   float64 | int | int64 | ~uint64
 }
