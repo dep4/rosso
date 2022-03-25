@@ -17,7 +17,7 @@ func Create[T any](value T, elem ...string) error {
    if err != nil {
       return err
    }
-   os.Stdout.WriteString("Create " + name + "\n")
+   os.Stderr.WriteString("Create " + name + "\n")
    file, err := os.Create(name)
    if err != nil {
       return err
@@ -48,10 +48,10 @@ type LogLevel int
 func (l LogLevel) Dump(req *http.Request) error {
    switch l {
    case 0:
-      os.Stdout.WriteString(req.Method)
-      os.Stdout.WriteString(" ")
-      os.Stdout.WriteString(req.URL.String())
-      os.Stdout.WriteString("\n")
+      os.Stderr.WriteString(req.Method)
+      os.Stderr.WriteString(" ")
+      os.Stderr.WriteString(req.URL.String())
+      os.Stderr.WriteString("\n")
    case 1:
       buf, err := httputil.DumpRequest(req, true)
       if err != nil {
@@ -59,12 +59,12 @@ func (l LogLevel) Dump(req *http.Request) error {
       }
       if IsBinary(buf) {
          quote := strconv.Quote(string(buf))
-         os.Stdout.WriteString(quote)
+         os.Stderr.WriteString(quote)
       } else {
-         os.Stdout.Write(buf)
+         os.Stderr.Write(buf)
       }
       if !bytes.HasSuffix(buf, []byte{'\n'}) {
-         os.Stdout.WriteString("\n")
+         os.Stderr.WriteString("\n")
       }
    }
    return nil
@@ -101,12 +101,12 @@ func NewProgress(src *http.Response) *Progress {
 func (p *Progress) Read(buf []byte) (int, error) {
    since := time.Since(p.part)
    if since >= time.Second/2 {
-      os.Stdout.WriteString(Percent(p.content, p.ContentLength))
-      os.Stdout.WriteString("\t")
-      os.Stdout.WriteString(LabelSize(p.content))
-      os.Stdout.WriteString("\t")
-      os.Stdout.WriteString(p.getRate())
-      os.Stdout.WriteString("\n")
+      os.Stderr.WriteString(Percent(p.content, p.ContentLength))
+      os.Stderr.WriteString("\t")
+      os.Stderr.WriteString(LabelSize(p.content))
+      os.Stderr.WriteString("\t")
+      os.Stderr.WriteString(p.getRate())
+      os.Stderr.WriteString("\n")
       p.part = p.part.Add(since)
    }
    // Callers should always process the n > 0 bytes returned before considering
