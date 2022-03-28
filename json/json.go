@@ -1,42 +1,38 @@
-// JSON parser
 package json
 
 import (
    "bytes"
    "encoding/json"
+   "io"
+   "strconv"
 )
 
-type Decoder struct {
-   buf []byte
+func Decode(src io.Reader, sep []byte, val any) error {
+   buf, err := io.ReadAll(src)
+   if err != nil {
+      return err
+   }
+   return Unmarshal(buf, sep, val)
 }
 
-func NewDecoder(buf []byte) *Decoder {
-   return &Decoder{buf}
-}
-
-func (d *Decoder) Decode(val interface{}, c byte) bool {
+func Unmarshal(buf, sep []byte, val any) error {
+   _, after, ok := bytes.Cut(buf, sep)
+   if !ok {
+      return notPresent(sep)
+   }
+   dec := json.NewDecoder(bytes.NewReader(after))
    for {
-      off := bytes.IndexByte(d.buf, c)
-      if off == -1 {
-         return false
-      }
-      d.buf = d.buf[off:]
-      dec := json.NewDecoder(bytes.NewReader(d.buf))
-      for {
-         _, err := dec.Token()
-         if err != nil {
-            off := dec.InputOffset()
-            err := json.Unmarshal(d.buf[:off], val)
-            d.buf = d.buf[1:]
-            if err == nil {
-               return true
-            }
-            break
-         }
+      _, err := dec.Token()
+      if err != nil {
+         high := dec.InputOffset()
+         return json.Unmarshal(after[:high], val)
       }
    }
 }
 
-func (d *Decoder) Object(val interface{}) bool {
-   return d.Decode(val, '{')
+type notPresent []byte
+
+func (n notPresent) Error() string {
+   str := string(n)
+   return strconv.Quote(str) + " is not present"
 }
