@@ -14,9 +14,14 @@ func TestJSON(t *testing.T) {
    var videoBridge struct {
       Encodings []string
    }
-   sep := []byte("\twindow.videoBridge = ")
-   if err := Unmarshal(buf, sep, &videoBridge); err != nil {
-      t.Fatal(err)
+   var bufs = [][]byte{nil, buf}
+   var seps = [][]byte{
+      nil, []byte(" = "), []byte("\twindow.videoBridge = "),
    }
-   fmt.Printf("%+v\n", videoBridge)
+   for _, buf := range bufs{
+      for _, sep := range seps {
+         err := Unmarshal(buf, sep, &videoBridge)
+         fmt.Printf("%+v %v\n", videoBridge, err)
+      }
+   }
 }
