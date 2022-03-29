@@ -6,6 +6,26 @@ import (
    "testing"
 )
 
+func TestMaster(t *testing.T) {
+   master, err := newMaster()
+   if err != nil {
+      t.Fatal(err)
+   }
+   for _, stream := range master.Stream {
+      fmt.Println(stream)
+   }
+}
+
+func TestProgress(t *testing.T) {
+   seg := Segment{
+      Info: make([]Information, 9),
+   }
+   for i := range seg.Info {
+      fmt.Print(seg.Progress(i))
+   }
+   fmt.Println("END")
+}
+
 func TestSort(t *testing.T) {
    mas := &Master{Stream: []Stream{
       {Bandwidth: 480},
@@ -18,14 +38,4 @@ func TestSort(t *testing.T) {
    for _, str := range mas.Stream {
       fmt.Println(str)
    }
-}
-
-func TestProgress(t *testing.T) {
-   seg := Segment{
-      Info: make([]Information, 9),
-   }
-   for i := range seg.Info {
-      fmt.Print(seg.Progress(i))
-   }
-   fmt.Println("END")
 }

@@ -141,10 +141,8 @@ func (s Stream) Format(f fmt.State, verb rune) {
    }
    fmt.Fprint(f, "Bandwidth:", s.Bandwidth)
    fmt.Fprint(f, " Codecs:", s.Codecs)
-   if s.Audio != "" {
+   if verb == 'a' {
       fmt.Fprint(f, " Audio:", s.Audio)
-   }
-   if verb == 'u' {
       fmt.Fprint(f, " URI:", s.URI)
    }
 }
