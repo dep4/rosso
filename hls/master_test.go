@@ -14,6 +14,8 @@ func TestMaster(t *testing.T) {
    for _, stream := range master.Stream {
       fmt.Println(stream)
    }
+   media := master.GetMedia(master.Stream[0])
+   fmt.Printf("%+v\n", media)
 }
 
 func TestProgress(t *testing.T) {
