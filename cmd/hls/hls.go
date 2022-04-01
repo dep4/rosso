@@ -25,7 +25,7 @@ func doManifest(address, output string, bandwidth int, info bool) error {
          fmt.Println(str)
       }
    } else {
-      for _, str := range mas.Stream {
+      for i, str := range mas.Stream {
          fmt.Println("GET", str.URI)
          res, err := http.Get(str.URI.String())
          if err != nil {
@@ -55,7 +55,9 @@ func doManifest(address, output string, bandwidth int, info bool) error {
          if err := res.Body.Close(); err != nil {
             return err
          }
-         return file.Close()
+         if i == 0 {
+            return file.Close()
+         }
       }
    }
    return nil

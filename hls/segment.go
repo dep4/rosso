@@ -7,6 +7,7 @@ import (
    "net/url"
    "path"
    "strconv"
+   "strings"
    "text/scanner"
    "unicode"
 )
@@ -24,6 +25,128 @@ func scanWords(buf *scanner.Scanner) {
    }
    buf.Whitespace = 1 << ' '
 }
+
+type Segment struct {
+   Key *Key
+   Info []Information
+}
+
+func (s Segment) Ext() string {
+   for _, info := range s.Info {
+      ext := path.Ext(info.URI.Path)
+      if ext != "" {
+         return ext
+      }
+   }
+   return ""
+}
+
+func (s Segment) Progress(i int) (int, string) {
+   pro := len(s.Info)-i
+   if i == len(s.Info)-1 {
+      return pro, "\n"
+   }
+   return pro, " "
+}
+
+func (s Segment) String() string {
+   var buf strings.Builder
+   if s.Key != nil {
+      buf.WriteString(s.Key.String())
+   }
+   for _, info := range s.Info {
+      buf.WriteByte('\n')
+      buf.WriteString(info.String())
+   }
+   return buf.String()
+}
+
+type Key struct {
+   Method string
+   URI *url.URL
+}
+
+func (k Key) String() string {
+   var buf strings.Builder
+   buf.WriteString("Method: ")
+   buf.WriteString(k.Method)
+   buf.WriteString("\nURI: ")
+   buf.WriteString(k.URI.String())
+   return buf.String()
+}
+
+func (i Information) String() string {
+   var buf strings.Builder
+   buf.WriteString("URI: ")
+   buf.WriteString(i.URI.String())
+   if i.IV != "" {
+      buf.WriteString("\nIV: ")
+      buf.WriteString(i.IV)
+   }
+   return buf.String()
+}
+
+func NewSegment(addr *url.URL, body io.Reader) (*Segment, error) {
+   var (
+      buf scanner.Scanner
+      err error
+      info Information
+      seg Segment
+   )
+   buf.Init(body)
+   for {
+      scanWords(&buf)
+      if buf.Scan() == scanner.EOF {
+         break
+      }
+      switch buf.TokenText() {
+      case "EXT-X-KEY":
+         seg.Key = new(Key)
+         for buf.Scan() != '\n' {
+            switch buf.TokenText() {
+            case "METHOD":
+               buf.Scan()
+               buf.Scan()
+               seg.Key.Method = buf.TokenText()
+            case "URI":
+               buf.Scan()
+               buf.Scan()
+               ref, err := strconv.Unquote(buf.TokenText())
+               if err != nil {
+                  return nil, err
+               }
+               seg.Key.URI, err = addr.Parse(ref)
+               if err != nil {
+                  return nil, err
+               }
+            case "IV":
+               buf.Scan()
+               buf.Scan()
+               info.IV = buf.TokenText()
+            }
+         }
+      case "EXTINF":
+         scanLines(&buf)
+         buf.Scan()
+         buf.Scan()
+         info.URI, err = addr.Parse(buf.TokenText())
+         if err != nil {
+            return nil, err
+         }
+         seg.Info = append(seg.Info, info)
+         info.IV = ""
+         info.URI = nil
+      }
+   }
+   return &seg, nil
+}
+
+type Information struct {
+   URI *url.URL
+   IV string
+}
+
+////////////////////////////////////////////////////////////////////////////////
 
 type Decrypter struct {
    cipher.Block
@@ -55,89 +178,4 @@ func (d Decrypter) Copy(dst io.Writer, src io.Reader) (int, error) {
       }
    }
    return dst.Write(buf)
-}
-
-type Information struct {
-   Duration string
-   URI *url.URL
-}
-
-type Key struct {
-   Method string
-   URI *url.URL
-}
-
-type Segment struct {
-   Key *Key
-   Info []Information
-}
-
-func NewSegment(addr *url.URL, body io.Reader) (*Segment, error) {
-   var (
-      buf scanner.Scanner
-      err error
-      seg Segment
-   )
-   buf.Init(body)
-   for {
-      scanWords(&buf)
-      if buf.Scan() == scanner.EOF {
-         break
-      }
-      switch buf.TokenText() {
-      case "EXT-X-KEY":
-         seg.Key = new(Key)
-         for buf.Scan() != '\n' {
-            switch buf.TokenText() {
-            case "METHOD":
-               buf.Scan()
-               buf.Scan()
-               seg.Key.Method = buf.TokenText()
-            case "URI":
-               buf.Scan()
-               buf.Scan()
-               ref, err := strconv.Unquote(buf.TokenText())
-               if err != nil {
-                  return nil, err
-               }
-               seg.Key.URI, err = addr.Parse(ref)
-               if err != nil {
-                  return nil, err
-               }
-            }
-         }
-      case "EXTINF":
-         var info Information
-         buf.Scan()
-         buf.Scan()
-         info.Duration = buf.TokenText()
-         scanLines(&buf)
-         buf.Scan()
-         buf.Scan()
-         info.URI, err = addr.Parse(buf.TokenText())
-         if err != nil {
-            return nil, err
-         }
-         seg.Info = append(seg.Info, info)
-      }
-   }
-   return &seg, nil
-}
-
-func (s Segment) Ext() string {
-   for _, info := range s.Info {
-      ext := path.Ext(info.URI.Path)
-      if ext != "" {
-         return ext
-      }
-   }
-   return ""
-}
-
-func (s Segment) Progress(i int) (int, string) {
-   pro := len(s.Info)-i
-   if i == len(s.Info)-1 {
-      return pro, "\n"
-   }
-   return pro, " "
 }
