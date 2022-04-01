@@ -3,6 +3,7 @@ package hls
 import (
    "crypto/aes"
    "crypto/cipher"
+   "encoding/hex"
    "io"
    "net/url"
    "path"
@@ -11,6 +12,11 @@ import (
    "text/scanner"
    "unicode"
 )
+
+func hexDecode(s string) ([]byte, error) {
+   s = strings.TrimPrefix(s, "0x")
+   return hex.DecodeString(s)
+}
 
 func scanLines(buf *scanner.Scanner) {
    buf.IsIdentRune = func(r rune, i int) bool {
@@ -26,39 +32,44 @@ func scanWords(buf *scanner.Scanner) {
    buf.Whitespace = 1 << ' '
 }
 
-type Segment struct {
-   Key *Key
-   Info []Information
+type Cipher struct {
+   cipher.Block
+   key []byte
 }
 
-func (s Segment) Ext() string {
-   for _, info := range s.Info {
-      ext := path.Ext(info.URI.Path)
-      if ext != "" {
-         return ext
+func NewCipher(src io.Reader) (*Cipher, error) {
+   key, err := io.ReadAll(src)
+   if err != nil {
+      return nil, err
+   }
+   block, err := aes.NewCipher(key)
+   if err != nil {
+      return nil, err
+   }
+   return &Cipher{block, key}, nil
+}
+
+func (c Cipher) Decrypt(info Information, src io.Reader) ([]byte, error) {
+   buf, err := io.ReadAll(src)
+   if err != nil {
+      return nil, err
+   }
+   if info.IV == nil {
+      info.IV = c.key
+   }
+   cipher.NewCBCDecrypter(c.Block, info.IV).CryptBlocks(buf, buf)
+   if len(buf) >= 1 {
+      pad := buf[len(buf)-1]
+      if len(buf) >= int(pad) {
+         buf = buf[:len(buf)-int(pad)]
       }
    }
-   return ""
+   return buf, nil
 }
 
-func (s Segment) Progress(i int) (int, string) {
-   pro := len(s.Info)-i
-   if i == len(s.Info)-1 {
-      return pro, "\n"
-   }
-   return pro, " "
-}
-
-func (s Segment) String() string {
-   var buf strings.Builder
-   if s.Key != nil {
-      buf.WriteString(s.Key.String())
-   }
-   for _, info := range s.Info {
-      buf.WriteByte('\n')
-      buf.WriteString(info.String())
-   }
-   return buf.String()
+type Information struct {
+   URI *url.URL
+   IV []byte
 }
 
 type Key struct {
@@ -66,24 +77,9 @@ type Key struct {
    URI *url.URL
 }
 
-func (k Key) String() string {
-   var buf strings.Builder
-   buf.WriteString("Method: ")
-   buf.WriteString(k.Method)
-   buf.WriteString("\nURI: ")
-   buf.WriteString(k.URI.String())
-   return buf.String()
-}
-
-func (i Information) String() string {
-   var buf strings.Builder
-   buf.WriteString("URI: ")
-   buf.WriteString(i.URI.String())
-   if i.IV != "" {
-      buf.WriteString("\nIV: ")
-      buf.WriteString(i.IV)
-   }
-   return buf.String()
+type Segment struct {
+   Key *Key
+   Info []Information
 }
 
 func NewSegment(addr *url.URL, body io.Reader) (*Segment, error) {
@@ -122,7 +118,10 @@ func NewSegment(addr *url.URL, body io.Reader) (*Segment, error) {
             case "IV":
                buf.Scan()
                buf.Scan()
-               info.IV = buf.TokenText()
+               info.IV, err = hexDecode(buf.TokenText())
+               if err != nil {
+                  return nil, err
+               }
             }
          }
       case "EXTINF":
@@ -134,48 +133,26 @@ func NewSegment(addr *url.URL, body io.Reader) (*Segment, error) {
             return nil, err
          }
          seg.Info = append(seg.Info, info)
-         info.IV = ""
-         info.URI = nil
+         info = Information{}
       }
    }
    return &seg, nil
 }
 
-type Information struct {
-   URI *url.URL
-   IV string
-}
-
-////////////////////////////////////////////////////////////////////////////////
-
-type Decrypter struct {
-   cipher.Block
-   IV []byte
-}
-
-func NewDecrypter(src io.Reader) (*Decrypter, error) {
-   key, err := io.ReadAll(src)
-   if err != nil {
-      return nil, err
-   }
-   block, err := aes.NewCipher(key)
-   if err != nil {
-      return nil, err
-   }
-   return &Decrypter{block, key}, nil
-}
-
-func (d Decrypter) Copy(dst io.Writer, src io.Reader) (int, error) {
-   buf, err := io.ReadAll(src)
-   if err != nil {
-      return 0, err
-   }
-   cipher.NewCBCDecrypter(d.Block, d.IV).CryptBlocks(buf, buf)
-   if len(buf) >= 1 {
-      pad := buf[len(buf)-1]
-      if len(buf) >= int(pad) {
-         buf = buf[:len(buf)-int(pad)]
+func (s Segment) Ext() string {
+   for _, info := range s.Info {
+      ext := path.Ext(info.URI.Path)
+      if ext != "" {
+         return ext
       }
    }
-   return dst.Write(buf)
+   return ""
+}
+
+func (s Segment) Progress(i int) (int, string) {
+   pro := len(s.Info)-i
+   if i == len(s.Info)-1 {
+      return pro, "\n"
+   }
+   return pro, " "
 }
