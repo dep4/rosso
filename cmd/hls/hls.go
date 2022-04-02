@@ -15,50 +15,50 @@ func doManifest(address, output string, bandwidth int, info bool) error {
       return err
    }
    defer res.Body.Close()
-   mas, err := hls.NewMaster(res.Request.URL, res.Body)
+   master, err := hls.NewMaster(res.Request.URL, res.Body)
    if err != nil {
       return err
    }
-   sort.Sort(hls.Bandwidth{mas, bandwidth})
-   if info {
-      for _, str := range mas.Stream {
-         fmt.Println(str)
-      }
-   } else {
-      for i, str := range mas.Stream {
-         fmt.Println("GET", str.URI)
-         res, err := http.Get(str.URI.String())
-         if err != nil {
-            return err
-         }
-         seg, err := hls.NewSegment(res.Request.URL, res.Body)
-         if err != nil {
-            return err
-         }
-         file, err := os.Create(output + seg.Ext())
-         if err != nil {
-            return err
-         }
-         for i, info := range seg.Info {
-            fmt.Print(seg.Progress(i))
-            res, err := http.Get(info.URI.String())
-            if err != nil {
-               return err
-            }
-            if _, err := file.ReadFrom(res.Body); err != nil {
-               return err
-            }
-            if err := res.Body.Close(); err != nil {
-               return err
-            }
-         }
-         if err := res.Body.Close(); err != nil {
-            return err
-         }
-         if i == 0 {
-            return file.Close()
-         }
+   sort.Sort(hls.Bandwidth{master, bandwidth})
+   for _, stream := range master.Stream {
+      if info {
+         fmt.Println(stream)
+      } else {
+         return download(stream, output)
       }
    }
    return nil
+}
+
+func download(stream hls.Stream, output string) error {
+   fmt.Println("GET", stream.URI)
+   res, err := http.Get(stream.URI.String())
+   if err != nil {
+      return err
+   }
+   seg, err := hls.NewSegment(res.Request.URL, res.Body)
+   if err != nil {
+      return err
+   }
+   file, err := os.Create(output + seg.Ext())
+   if err != nil {
+      return err
+   }
+   for i, info := range seg.Info {
+      fmt.Print(seg.Progress(i))
+      res, err := http.Get(info.URI.String())
+      if err != nil {
+         return err
+      }
+      if _, err := file.ReadFrom(res.Body); err != nil {
+         return err
+      }
+      if err := res.Body.Close(); err != nil {
+         return err
+      }
+   }
+   if err := res.Body.Close(); err != nil {
+      return err
+   }
+   return file.Close()
 }
