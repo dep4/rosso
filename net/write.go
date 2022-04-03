@@ -2,11 +2,38 @@ package net
 
 import (
    "bytes"
+   "fmt"
    "io"
    "net/http"
    "net/url"
    "text/template"
 )
+
+func WriteRequest(req *http.Request, w io.Writer) error {
+   var request requestTemplate
+   if req.Body != nil && req.Method != "GET" {
+      buf, err := io.ReadAll(req.Body)
+      if err != nil {
+         return err
+      }
+      req.Body = io.NopCloser(bytes.NewReader(buf))
+      request.BodyIO = "io.NopCloser(body)"
+      if bytes.IndexByte(buf, '`') >= 0 {
+         request.VarBody = fmt.Sprintf("%q", buf)
+      } else {
+         request.VarBody = fmt.Sprintf("`%s`", buf)
+      }
+   } else {
+      request.BodyIO = "io.ReadCloser(nil)"
+   }
+   request.Query = req.URL.Query()
+   request.Request = req
+   temp, err := new(template.Template).Parse(format)
+   if err != nil {
+      return err
+   }
+   return temp.Execute(w, request)
+}
 
 const format = `package main
 
@@ -49,30 +76,8 @@ func main() {
    os.Stdout.Write(buf)
 }
 
-var body = strings.NewReader({{ printf "%q" .VarBody }})
+var body = strings.NewReader({{ .VarBody }})
 `
-
-func WriteRequest(req *http.Request, w io.Writer) error {
-   var request requestTemplate
-   if req.Body != nil && req.Method != "GET" {
-      buf, err := io.ReadAll(req.Body)
-      if err != nil {
-         return err
-      }
-      req.Body = io.NopCloser(bytes.NewReader(buf))
-      request.BodyIO = "io.NopCloser(body)"
-      request.VarBody = string(buf)
-   } else {
-      request.BodyIO = "io.ReadCloser(nil)"
-   }
-   request.Query = req.URL.Query()
-   request.Request = req
-   temp, err := new(template.Template).Parse(format)
-   if err != nil {
-      return err
-   }
-   return temp.Execute(w, request)
-}
 
 type requestTemplate struct {
    *http.Request
