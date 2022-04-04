@@ -10,9 +10,9 @@ func main() {
    // f
    var name string
    flag.StringVar(&name, "f", "", "input file")
-   // i
-   var info bool
-   flag.BoolVar(&info, "i", false, "info")
+   // g
+   var golang bool
+   flag.BoolVar(&golang, "g", false, "request as Go code")
    // o
    var output string
    flag.StringVar(&output, "o", "", "output file")
@@ -38,7 +38,7 @@ func main() {
          dst = os.Stdout
       }
       defer dst.Close()
-      if info {
+      if golang {
          err := net.WriteRequest(req, dst)
          if err != nil {
             panic(err)
