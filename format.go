@@ -42,30 +42,43 @@ func Open[T any](elem ...string) (*T, error) {
    return value, nil
 }
 
-// Use 0 for INFO, 1 for VERBOSE and any other value for QUIET.
 type LogLevel int
 
+const (
+   Info LogLevel = iota
+   Debug
+   Quiet
+   Verbose
+)
+
 func (l LogLevel) Dump(req *http.Request) error {
+   quote := func(b []byte) []byte {
+      if IsBinary(b) {
+         b = strconv.AppendQuote(nil, string(b))
+      }
+      if !bytes.HasSuffix(b, []byte{'\n'}) {
+         b = append(b, '\n')
+      }
+      return b
+   }
    switch l {
-   case 0:
+   case Info:
       os.Stderr.WriteString(req.Method)
       os.Stderr.WriteString(" ")
       os.Stderr.WriteString(req.URL.String())
       os.Stderr.WriteString("\n")
-   case 1:
+   case Verbose:
       buf, err := httputil.DumpRequest(req, true)
       if err != nil {
          return err
       }
-      if IsBinary(buf) {
-         quote := strconv.Quote(string(buf))
-         os.Stderr.WriteString(quote)
-      } else {
-         os.Stderr.Write(buf)
+      os.Stderr.Write(quote(buf))
+   case Debug:
+      buf, err := httputil.DumpRequestOut(req, true)
+      if err != nil {
+         return err
       }
-      if !bytes.HasSuffix(buf, []byte{'\n'}) {
-         os.Stderr.WriteString("\n")
-      }
+      os.Stderr.Write(quote(buf))
    }
    return nil
 }
