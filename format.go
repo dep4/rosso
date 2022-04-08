@@ -42,34 +42,6 @@ func Open[T any](elem ...string) (*T, error) {
    return value, nil
 }
 
-// Use 0 for INFO, 1 for VERBOSE and any other value for QUIET.
-type LogLevel int
-
-func (l LogLevel) Dump(req *http.Request) error {
-   switch l {
-   case 0:
-      os.Stderr.WriteString(req.Method)
-      os.Stderr.WriteString(" ")
-      os.Stderr.WriteString(req.URL.String())
-      os.Stderr.WriteString("\n")
-   case 1:
-      buf, err := httputil.DumpRequest(req, true)
-      if err != nil {
-         return err
-      }
-      if IsBinary(buf) {
-         quote := strconv.Quote(string(buf))
-         os.Stderr.WriteString(quote)
-      } else {
-         os.Stderr.Write(buf)
-      }
-      if !bytes.HasSuffix(buf, []byte{'\n'}) {
-         os.Stderr.WriteString("\n")
-      }
-   }
-   return nil
-}
-
 // mimesniff.spec.whatwg.org#binary-data-byte
 func IsBinary(buf []byte) bool {
    for _, b := range buf {
@@ -161,4 +133,38 @@ func Percent[T Number](value, total T) string {
 
 type Number interface {
    float64 | int | int64 | ~uint64
+}
+
+type LogLevel int
+
+func (l LogLevel) Dump(req *http.Request) error {
+   quote := func(b []byte) []byte {
+      if IsBinary(b) {
+         b = strconv.AppendQuote(nil, string(b))
+      }
+      if !bytes.HasSuffix(b, []byte{'\n'}) {
+         b = append(b, '\n')
+      }
+      return b
+   }
+   switch l {
+   case 0:
+      os.Stderr.WriteString(req.Method)
+      os.Stderr.WriteString(" ")
+      os.Stderr.WriteString(req.URL.String())
+      os.Stderr.WriteString("\n")
+   case 1:
+      buf, err := httputil.DumpRequest(req, true)
+      if err != nil {
+         return err
+      }
+      os.Stderr.Write(quote(buf))
+   case 2:
+      buf, err := httputil.DumpRequestOut(req, true)
+      if err != nil {
+         return err
+      }
+      os.Stderr.Write(quote(buf))
+   }
+   return nil
 }
