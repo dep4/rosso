@@ -13,7 +13,7 @@ import (
 
 func Create[T any](value T, elem ...string) error {
    name := filepath.Join(elem...)
-   err := os.MkdirAll(filepath.Dir(name), os.ModeDir)
+   err := os.MkdirAll(filepath.Dir(name), os.ModePerm)
    if err != nil {
       return err
    }
