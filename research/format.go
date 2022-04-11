@@ -1,39 +1,46 @@
 package format
 
 import (
-   "fmt"
-   "net/http"
+   "github.com/89z/format"
+   "io"
+   "os"
    "time"
 )
 
 type Progress struct {
    io.Writer
-   time struct {
-      value time.Time
-      total time.Time
-   }
-   length struct {
-      value int64
-      total int64
-   }
+   length int
+   lengthTotal int64
+   time time.Time
+   timeTotal time.Time
 }
 
 func NewProgress(src io.Writer, length int64) *Progress {
-   var p Progress
-   p.Writer = src
-   p.length.total = length
-   p.time.total = time.Now()
-   p.time.value = time.Now()
-   return &p
+   var pro Progress
+   pro.Writer = src
+   pro.lengthTotal = length
+   pro.time = time.Now()
+   pro.timeTotal = time.Now()
+   return &pro
 }
 
-func (p *Progress) Read(buf []byte) (int, error) {
-   since := time.Since(p.part)
+func (p *Progress) Write(buf []byte) (int, error) {
+   since := time.Since(p.time)
    if since >= time.Second/2 {
-      fmt.Println(p.content, p.ContentLength, time.Since(p.partLength))
-      p.part = p.part.Add(since)
+      p.progress()
+      p.time = p.time.Add(since)
    }
-   read, err := p.Body.Read(buf)
-   p.content += int64(read)
-   return read, err
+   write, err := p.Writer.Write(buf)
+   p.length += write
+   return write, err
+}
+
+func (p Progress) progress() {
+   rate := float64(p.length) / time.Since(p.timeTotal).Seconds()
+   os.Stderr.WriteString(format.Percent(p.length, p.lengthTotal))
+   os.Stderr.WriteString("\t")
+   os.Stderr.WriteString(format.LabelSize(p.length))
+   os.Stderr.WriteString("\t")
+   os.Stderr.WriteString(format.LabelRate(rate))
+   os.Stderr.WriteString("\n")
 }

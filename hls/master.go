@@ -6,6 +6,7 @@ import (
    "net/url"
    "strconv"
    "text/scanner"
+   "time"
 )
 
 type Bandwidth struct {
@@ -14,15 +15,14 @@ type Bandwidth struct {
 }
 
 func (b Bandwidth) Less(i, j int) bool {
-   return b.distance(i) < b.distance(j)
-}
-
-func (b Bandwidth) distance(i int) int {
-   diff := b.Stream[i].Bandwidth - b.Target
-   if diff >= 0 {
-      return diff
+   distance := func(k int) int {
+      diff := b.Stream[k].Bandwidth - b.Target
+      if diff >= 0 {
+         return diff
+      }
+      return -diff
    }
-   return -diff
+   return distance(i) < distance(j)
 }
 
 type Master struct {
@@ -145,4 +145,15 @@ func (s Stream) Format(f fmt.State, verb rune) {
       fmt.Fprint(f, " Audio:", s.Audio)
       fmt.Fprint(f, " URI:", s.URI)
    }
+}
+
+type Information struct {
+   time.Duration
+   IV []byte
+   URI *url.URL
+}
+
+type Segment struct {
+   Key *url.URL
+   Info []Information
 }

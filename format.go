@@ -73,12 +73,7 @@ func NewProgress(src *http.Response) *Progress {
 func (p *Progress) Read(buf []byte) (int, error) {
    since := time.Since(p.part)
    if since >= time.Second/2 {
-      os.Stderr.WriteString(Percent(p.content, p.ContentLength))
-      os.Stderr.WriteString("\t")
-      os.Stderr.WriteString(LabelSize(p.content))
-      os.Stderr.WriteString("\t")
-      os.Stderr.WriteString(p.getRate())
-      os.Stderr.WriteString("\n")
+      p.progress()
       p.part = p.part.Add(since)
    }
    // Callers should always process the n > 0 bytes returned before considering
@@ -88,9 +83,14 @@ func (p *Progress) Read(buf []byte) (int, error) {
    return read, err
 }
 
-func (p Progress) getRate() string {
+func (p Progress) progress() {
    rate := float64(p.content) / time.Since(p.partLength).Seconds()
-   return LabelRate(rate)
+   os.Stderr.WriteString(Percent(p.content, p.ContentLength))
+   os.Stderr.WriteString("\t")
+   os.Stderr.WriteString(LabelSize(p.content))
+   os.Stderr.WriteString("\t")
+   os.Stderr.WriteString(LabelRate(rate))
+   os.Stderr.WriteString("\n")
 }
 
 func Label[T Number](value T, unit ...string) string {
@@ -123,7 +123,7 @@ func LabelSize[T Number](value T) string {
    return Label(value, " B", " kB", " MB", " GB", " TB")
 }
 
-func Percent[T Number](value, total T) string {
+func Percent[T, U Number](value T, total U) string {
    var ratio float64
    if total != 0 {
       ratio = 100 * float64(value) / float64(total)
