@@ -75,86 +75,9 @@ func (s Stream) Format(f fmt.State, verb rune) {
    }
 }
 
-type Information struct {
-   time.Duration
-   IV []byte
-   URI *url.URL
-}
-
 type Segment struct {
    Key *url.URL
    Info []Information
-}
-
-func (s *Scanner) Master(addr *url.URL) (*Master, error) {
-   var (
-      err error
-      mas Master
-   )
-   for {
-      s.splitWords()
-      if s.Scan() == scanner.EOF {
-         break
-      }
-      switch s.TokenText() {
-      case "EXT-X-STREAM-INF":
-         var str Stream
-         for s.Scan() != '\n' {
-            switch s.TokenText() {
-            case "RESOLUTION":
-               str.Resolution = s.text()
-            case "CODECS":
-               s.Scan()
-               s.Scan()
-               str.Codecs, err = strconv.Unquote(s.TokenText())
-            case "AUDIO":
-               s.Scan()
-               s.Scan()
-               str.Audio, err = strconv.Unquote(s.TokenText())
-            case "BANDWIDTH":
-               s.Scan()
-               s.Scan()
-               str.Bandwidth, err = strconv.Atoi(s.TokenText())
-            }
-            if err != nil {
-               return nil, err
-            }
-         }
-         s.splitLines()
-         s.Scan()
-         str.URI, err = addr.Parse(s.TokenText())
-         if err != nil {
-            return nil, err
-         }
-         mas.Stream = append(mas.Stream, str)
-      case "EXT-X-MEDIA":
-         var med Media
-         for s.Scan() != '\n' {
-            switch s.TokenText() {
-            case "GROUP-ID":
-               s.Scan()
-               s.Scan()
-               med.GroupID, err = strconv.Unquote(s.TokenText())
-               if err != nil {
-                  return nil, err
-               }
-            case "URI":
-               s.Scan()
-               s.Scan()
-               ref, err := strconv.Unquote(s.TokenText())
-               if err != nil {
-                  return nil, err
-               }
-               med.URI, err = addr.Parse(ref)
-               if err != nil {
-                  return nil, err
-               }
-            }
-         }
-         mas.Media = append(mas.Media, med)
-      }
-   }
-   return &mas, nil
 }
 
 type Cipher struct {
@@ -202,9 +125,72 @@ func (s Segment) Ext() string {
    return ""
 }
 
+func (s *Scanner) Master(addr *url.URL) (*Master, error) {
+   var mas Master
+   for {
+      s.splitWords()
+      if s.Scan() == scanner.EOF {
+         break
+      }
+      var err error
+      switch s.TokenText() {
+      case "EXT-X-STREAM-INF":
+         var str Stream
+         for s.Scan() != '\n' {
+            switch s.TokenText() {
+            case "RESOLUTION":
+               s.Scan()
+               s.Scan()
+               str.Resolution = s.TokenText()
+            case "BANDWIDTH":
+               s.Scan()
+               s.Scan()
+               str.Bandwidth, err = strconv.Atoi(s.TokenText())
+            case "CODECS":
+               s.Scan()
+               s.Scan()
+               str.Codecs, err = strconv.Unquote(s.TokenText())
+            case "AUDIO":
+               s.Scan()
+               s.Scan()
+               str.Audio, err = strconv.Unquote(s.TokenText())
+            }
+            if err != nil {
+               return nil, err
+            }
+         }
+         s.splitLines()
+         s.Scan()
+         str.URI, err = addr.Parse(s.TokenText())
+         if err != nil {
+            return nil, err
+         }
+         mas.Stream = append(mas.Stream, str)
+      case "EXT-X-MEDIA":
+         var med Media
+         for s.Scan() != '\n' {
+            switch s.TokenText() {
+            case "GROUP-ID":
+               s.Scan()
+               s.Scan()
+               med.GroupID, err = strconv.Unquote(s.TokenText())
+            case "URI":
+               s.Scan()
+               s.Scan()
+               med.URI, err = scanURL(s.TokenText(), addr)
+            }
+            if err != nil {
+               return nil, err
+            }
+         }
+         mas.Media = append(mas.Media, med)
+      }
+   }
+   return &mas, nil
+}
+
 func (s *Scanner) Segment(addr *url.URL) (*Segment, error) {
    var (
-      err error
       info Information
       seg Segment
    )
@@ -213,7 +199,24 @@ func (s *Scanner) Segment(addr *url.URL) (*Segment, error) {
       if s.Scan() == scanner.EOF {
          break
       }
+      var err error
       switch s.TokenText() {
+      case "EXT-X-KEY":
+         for s.Scan() != '\n' {
+            switch s.TokenText() {
+            case "IV":
+               s.Scan()
+               s.Scan()
+               info.IV, err = scanHex(s.TokenText())
+            case "URI":
+               s.Scan()
+               s.Scan()
+               seg.Key, err = scanURL(s.TokenText(), addr)
+            }
+            if err != nil {
+               return nil, err
+            }
+         }
       case "EXTINF":
          s.splitLines()
          s.Scan()
@@ -224,28 +227,13 @@ func (s *Scanner) Segment(addr *url.URL) (*Segment, error) {
          }
          seg.Info = append(seg.Info, info)
          info = Information{}
-      case "EXT-X-KEY":
-         for s.Scan() != '\n' {
-            switch s.TokenText() {
-            case "IV":
-               info.IV, err = s.hex()
-               if err != nil {
-                  return nil, err
-               }
-            case "URI":
-               s.Scan()
-               s.Scan()
-               ref, err := strconv.Unquote(s.TokenText())
-               if err != nil {
-                  return nil, err
-               }
-               seg.Key, err = addr.Parse(ref)
-               if err != nil {
-                  return nil, err
-               }
-            }
-         }
       }
    }
    return &seg, nil
+}
+
+type Information struct {
+   IV []byte
+   time.Duration
+   URI *url.URL
 }

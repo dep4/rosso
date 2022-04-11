@@ -3,10 +3,25 @@ package hls
 import (
    "encoding/hex"
    "io"
+   "net/url"
+   "strconv"
    "strings"
    "text/scanner"
    "unicode"
 )
+
+func scanHex(s string) ([]byte, error) {
+   s = strings.TrimPrefix(s, "0x")
+   return hex.DecodeString(s)
+}
+
+func scanURL(s string, addr *url.URL) (*url.URL, error) {
+   ref, err := strconv.Unquote(s)
+   if err != nil {
+      return nil, err
+   }
+   return addr.Parse(ref)
+}
 
 type Scanner struct {
    scanner.Scanner
@@ -16,13 +31,6 @@ func NewScanner(body io.Reader) *Scanner {
    var scan Scanner
    scan.Init(body)
    return &scan
-}
-
-func (s *Scanner) hex() ([]byte, error) {
-   s.Scan()
-   s.Scan()
-   trim := strings.TrimPrefix(s.TokenText(), "0x")
-   return hex.DecodeString(trim)
 }
 
 func (s *Scanner) splitLines() {
@@ -56,10 +64,4 @@ func (s *Scanner) splitWords() {
       }
       return false
    }
-}
-
-func (s *Scanner) text() string {
-   s.Scan()
-   s.Scan()
-   return s.TokenText()
 }
