@@ -8,22 +8,7 @@ import (
    "path"
    "strconv"
    "text/scanner"
-   "unicode"
 )
-
-func scanLines(buf *scanner.Scanner) {
-   buf.IsIdentRune = func(r rune, i int) bool {
-      return r != '\r' && r != '\n'
-   }
-   buf.Whitespace = 1 << '\r' | 1 << '\n'
-}
-
-func scanWords(buf *scanner.Scanner) {
-   buf.IsIdentRune = func(r rune, i int) bool {
-      return r == '-' || r == '.' || unicode.IsLetter(r) || unicode.IsDigit(r)
-   }
-   buf.Whitespace = 1 << ' '
-}
 
 type Cipher struct {
    cipher.Block
@@ -70,44 +55,42 @@ func (s Segment) Ext() string {
    return ""
 }
 
-func NewSegment(addr *url.URL, body io.Reader) (*Segment, error) {
+func (s *Scanner) Segment(addr *url.URL) (*Segment, error) {
    var (
-      buf scanner.Scanner
       err error
       info Information
       seg Segment
    )
-   buf.Init(body)
    for {
-      scanWords(&buf)
-      if buf.Scan() == scanner.EOF {
+      s.splitWords()
+      if s.Scan() == scanner.EOF {
          break
       }
-      switch buf.TokenText() {
+      switch s.TokenText() {
       case "EXTINF":
-         scanLines(&buf)
-         buf.Scan()
-         buf.Scan()
-         info.URI, err = addr.Parse(buf.TokenText())
+         s.splitLines()
+         s.Scan()
+         s.Scan()
+         info.URI, err = addr.Parse(s.TokenText())
          if err != nil {
             return nil, err
          }
          seg.Info = append(seg.Info, info)
          info = Information{}
       case "EXT-X-KEY":
-         for buf.Scan() != '\n' {
-            switch buf.TokenText() {
+         for s.Scan() != '\n' {
+            switch s.TokenText() {
             case "IV":
-               buf.Scan()
-               buf.Scan()
-               info.IV, err = hexDecode(buf.TokenText())
+               s.Scan()
+               s.Scan()
+               info.IV, err = hexDecode(s.TokenText())
                if err != nil {
                   return nil, err
                }
             case "URI":
-               buf.Scan()
-               buf.Scan()
-               ref, err := strconv.Unquote(buf.TokenText())
+               s.Scan()
+               s.Scan()
+               ref, err := strconv.Unquote(s.TokenText())
                if err != nil {
                   return nil, err
                }

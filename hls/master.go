@@ -2,7 +2,6 @@ package hls
 
 import (
    "fmt"
-   "io"
    "net/url"
    "strconv"
    "text/scanner"
@@ -28,81 +27,6 @@ func (b Bandwidth) Less(i, j int) bool {
 type Master struct {
    Stream []Stream
    Media []Media
-}
-
-func NewMaster(addr *url.URL, body io.Reader) (*Master, error) {
-   var (
-      buf scanner.Scanner
-      err error
-      mas Master
-   )
-   buf.Init(body)
-   for {
-      scanWords(&buf)
-      if buf.Scan() == scanner.EOF {
-         break
-      }
-      switch buf.TokenText() {
-      case "EXT-X-STREAM-INF":
-         var str Stream
-         for buf.Scan() != '\n' {
-            switch buf.TokenText() {
-            case "RESOLUTION":
-               buf.Scan()
-               buf.Scan()
-               str.Resolution = buf.TokenText()
-            case "BANDWIDTH":
-               buf.Scan()
-               buf.Scan()
-               str.Bandwidth, err = strconv.Atoi(buf.TokenText())
-            case "CODECS":
-               buf.Scan()
-               buf.Scan()
-               str.Codecs, err = strconv.Unquote(buf.TokenText())
-            case "AUDIO":
-               buf.Scan()
-               buf.Scan()
-               str.Audio, err = strconv.Unquote(buf.TokenText())
-            }
-            if err != nil {
-               return nil, err
-            }
-         }
-         scanLines(&buf)
-         buf.Scan()
-         str.URI, err = addr.Parse(buf.TokenText())
-         if err != nil {
-            return nil, err
-         }
-         mas.Stream = append(mas.Stream, str)
-      case "EXT-X-MEDIA":
-         var med Media
-         for buf.Scan() != '\n' {
-            switch buf.TokenText() {
-            case "GROUP-ID":
-               buf.Scan()
-               buf.Scan()
-               med.GroupID, err = strconv.Unquote(buf.TokenText())
-               if err != nil {
-                  return nil, err
-               }
-            case "URI":
-               buf.Scan()
-               buf.Scan()
-               ref, err := strconv.Unquote(buf.TokenText())
-               if err != nil {
-                  return nil, err
-               }
-               med.URI, err = addr.Parse(ref)
-               if err != nil {
-                  return nil, err
-               }
-            }
-         }
-         mas.Media = append(mas.Media, med)
-      }
-   }
-   return &mas, nil
 }
 
 func (m Master) GetMedia(str Stream) *Media {
@@ -156,4 +80,77 @@ type Information struct {
 type Segment struct {
    Key *url.URL
    Info []Information
+}
+
+func (s *Scanner) Master(addr *url.URL) (*Master, error) {
+   var (
+      err error
+      mas Master
+   )
+   for {
+      s.splitWords()
+      if s.Scan() == scanner.EOF {
+         break
+      }
+      switch s.TokenText() {
+      case "EXT-X-STREAM-INF":
+         var str Stream
+         for s.Scan() != '\n' {
+            switch s.TokenText() {
+            case "RESOLUTION":
+               s.Scan()
+               s.Scan()
+               str.Resolution = s.TokenText()
+            case "BANDWIDTH":
+               s.Scan()
+               s.Scan()
+               str.Bandwidth, err = strconv.Atoi(s.TokenText())
+            case "CODECS":
+               s.Scan()
+               s.Scan()
+               str.Codecs, err = strconv.Unquote(s.TokenText())
+            case "AUDIO":
+               s.Scan()
+               s.Scan()
+               str.Audio, err = strconv.Unquote(s.TokenText())
+            }
+            if err != nil {
+               return nil, err
+            }
+         }
+         s.splitLines()
+         s.Scan()
+         str.URI, err = addr.Parse(s.TokenText())
+         if err != nil {
+            return nil, err
+         }
+         mas.Stream = append(mas.Stream, str)
+      case "EXT-X-MEDIA":
+         var med Media
+         for s.Scan() != '\n' {
+            switch s.TokenText() {
+            case "GROUP-ID":
+               s.Scan()
+               s.Scan()
+               med.GroupID, err = strconv.Unquote(s.TokenText())
+               if err != nil {
+                  return nil, err
+               }
+            case "URI":
+               s.Scan()
+               s.Scan()
+               ref, err := strconv.Unquote(s.TokenText())
+               if err != nil {
+                  return nil, err
+               }
+               med.URI, err = addr.Parse(ref)
+               if err != nil {
+                  return nil, err
+               }
+            }
+         }
+         mas.Media = append(mas.Media, med)
+      }
+   }
+   return &mas, nil
 }
