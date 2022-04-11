@@ -7,17 +7,24 @@ import (
 )
 
 type Progress struct {
-   *http.Response
-   content int64
-   part, partLength time.Time
+   io.Writer
+   time struct {
+      value time.Time
+      total time.Time
+   }
+   length struct {
+      value int64
+      total int64
+   }
 }
 
-func NewProgress(src *http.Response) *Progress {
-   var pro Progress
-   pro.Response = src
-   pro.part = time.Now()
-   pro.partLength = time.Now()
-   return &pro
+func NewProgress(src io.Writer, length int64) *Progress {
+   var p Progress
+   p.Writer = src
+   p.length.total = length
+   p.time.total = time.Now()
+   p.time.value = time.Now()
+   return &p
 }
 
 func (p *Progress) Read(buf []byte) (int, error) {
