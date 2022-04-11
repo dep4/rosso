@@ -18,6 +18,13 @@ func NewScanner(body io.Reader) *Scanner {
    return &scan
 }
 
+func (s *Scanner) hex() ([]byte, error) {
+   s.Scan()
+   s.Scan()
+   trim := strings.TrimPrefix(s.TokenText(), "0x")
+   return hex.DecodeString(trim)
+}
+
 func (s *Scanner) splitLines() {
    s.Whitespace |= 1 << '\n'
    s.Whitespace |= 1 << '\r'
@@ -51,9 +58,8 @@ func (s *Scanner) splitWords() {
    }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-
-func hexDecode(in string) ([]byte, error) {
-   in = strings.TrimPrefix(in, "0x")
-   return hex.DecodeString(in)
+func (s *Scanner) text() string {
+   s.Scan()
+   s.Scan()
+   return s.TokenText()
 }
