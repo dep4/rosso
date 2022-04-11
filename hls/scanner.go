@@ -7,8 +7,17 @@ import (
    "strconv"
    "strings"
    "text/scanner"
+   "time"
    "unicode"
 )
+
+func scanDuration(s string) (time.Duration, error) {
+   sec, err := strconv.ParseFloat(s, 64)
+   if err != nil {
+      return 0, err
+   }
+   return time.Duration(sec * 1000) * time.Millisecond, nil
+}
 
 func scanHex(s string) ([]byte, error) {
    s = strings.TrimPrefix(s, "0x")

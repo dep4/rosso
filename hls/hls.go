@@ -28,58 +28,6 @@ func (b Bandwidth) Less(i, j int) bool {
    return distance(i) < distance(j)
 }
 
-type Master struct {
-   Stream []Stream
-   Media []Media
-}
-
-func (m Master) GetMedia(str Stream) *Media {
-   for _, med := range m.Media {
-      if med.GroupID == str.Audio {
-         return &med
-      }
-   }
-   return nil
-}
-
-func (m Master) Len() int {
-   return len(m.Stream)
-}
-
-func (m Master) Swap(i, j int) {
-   m.Stream[i], m.Stream[j] = m.Stream[j], m.Stream[i]
-}
-
-type Media struct {
-   GroupID string
-   URI *url.URL
-}
-
-type Stream struct {
-   Resolution string
-   Bandwidth int // handle duplicate resolution
-   Codecs string // handle missing resolution
-   Audio string // link to Media
-   URI *url.URL
-}
-
-func (s Stream) Format(f fmt.State, verb rune) {
-   if s.Resolution != "" {
-      fmt.Fprint(f, "Resolution:", s.Resolution, " ")
-   }
-   fmt.Fprint(f, "Bandwidth:", s.Bandwidth)
-   fmt.Fprint(f, " Codecs:", s.Codecs)
-   if verb == 'a' {
-      fmt.Fprint(f, " Audio:", s.Audio)
-      fmt.Fprint(f, " URI:", s.URI)
-   }
-}
-
-type Segment struct {
-   Key *url.URL
-   Info []Information
-}
-
 type Cipher struct {
    cipher.Block
    key []byte
@@ -115,14 +63,37 @@ func (c Cipher) Decrypt(info Information, src io.Reader) ([]byte, error) {
    return buf, nil
 }
 
-func (s Segment) Ext() string {
-   for _, info := range s.Info {
-      ext := path.Ext(info.URI.Path)
-      if ext != "" {
-         return ext
+type Information struct {
+   IV []byte
+   time.Duration
+   URI *url.URL
+}
+
+type Master struct {
+   Stream []Stream
+   Media []Media
+}
+
+func (m Master) GetMedia(str Stream) *Media {
+   for _, med := range m.Media {
+      if med.GroupID == str.Audio {
+         return &med
       }
    }
-   return ""
+   return nil
+}
+
+func (m Master) Len() int {
+   return len(m.Stream)
+}
+
+func (m Master) Swap(i, j int) {
+   m.Stream[i], m.Stream[j] = m.Stream[j], m.Stream[i]
+}
+
+type Media struct {
+   GroupID string
+   URI *url.URL
 }
 
 func (s *Scanner) Master(addr *url.URL) (*Master, error) {
@@ -218,6 +189,12 @@ func (s *Scanner) Segment(addr *url.URL) (*Segment, error) {
             }
          }
       case "EXTINF":
+         s.Scan()
+         s.Scan()
+         info.Duration, err = scanDuration(s.TokenText())
+         if err != nil {
+            return nil, err
+         }
          s.splitLines()
          s.Scan()
          s.Scan()
@@ -232,8 +209,37 @@ func (s *Scanner) Segment(addr *url.URL) (*Segment, error) {
    return &seg, nil
 }
 
-type Information struct {
-   IV []byte
-   time.Duration
+type Segment struct {
+   Key *url.URL
+   Info []Information
+}
+
+func (s Segment) Ext() string {
+   for _, info := range s.Info {
+      ext := path.Ext(info.URI.Path)
+      if ext != "" {
+         return ext
+      }
+   }
+   return ""
+}
+
+type Stream struct {
+   Resolution string
+   Bandwidth int // handle duplicate resolution
+   Codecs string // handle missing resolution
+   Audio string // link to Media
    URI *url.URL
+}
+
+func (s Stream) Format(f fmt.State, verb rune) {
+   if s.Resolution != "" {
+      fmt.Fprint(f, "Resolution:", s.Resolution, " ")
+   }
+   fmt.Fprint(f, "Bandwidth:", s.Bandwidth)
+   fmt.Fprint(f, " Codecs:", s.Codecs)
+   if verb == 'a' {
+      fmt.Fprint(f, " Audio:", s.Audio)
+      fmt.Fprint(f, " URI:", s.URI)
+   }
 }
