@@ -3,13 +3,16 @@ package hls
 import (
    "crypto/aes"
    "crypto/cipher"
+   "encoding/hex"
    "fmt"
    "io"
    "net/url"
    "path"
    "strconv"
+   "strings"
    "text/scanner"
    "time"
+   "unicode"
 )
 
 type Bandwidth struct {
@@ -65,99 +68,14 @@ func (c Cipher) Decrypt(info Information, src io.Reader) ([]byte, error) {
 
 type Information struct {
    IV []byte
-   time.Duration
+   // If we embed this, it will hijack String method
+   Duration time.Duration
    URI *url.URL
-}
-
-type Master struct {
-   Stream []Stream
-   Media []Media
-}
-
-func (m Master) GetMedia(str Stream) *Media {
-   for _, med := range m.Media {
-      if med.GroupID == str.Audio {
-         return &med
-      }
-   }
-   return nil
-}
-
-func (m Master) Len() int {
-   return len(m.Stream)
-}
-
-func (m Master) Swap(i, j int) {
-   m.Stream[i], m.Stream[j] = m.Stream[j], m.Stream[i]
 }
 
 type Media struct {
    GroupID string
    URI *url.URL
-}
-
-func (s *Scanner) Master(addr *url.URL) (*Master, error) {
-   var mas Master
-   for {
-      s.splitWords()
-      if s.Scan() == scanner.EOF {
-         break
-      }
-      var err error
-      switch s.TokenText() {
-      case "EXT-X-STREAM-INF":
-         var str Stream
-         for s.Scan() != '\n' {
-            switch s.TokenText() {
-            case "RESOLUTION":
-               s.Scan()
-               s.Scan()
-               str.Resolution = s.TokenText()
-            case "BANDWIDTH":
-               s.Scan()
-               s.Scan()
-               str.Bandwidth, err = strconv.Atoi(s.TokenText())
-            case "CODECS":
-               s.Scan()
-               s.Scan()
-               str.Codecs, err = strconv.Unquote(s.TokenText())
-            case "AUDIO":
-               s.Scan()
-               s.Scan()
-               str.Audio, err = strconv.Unquote(s.TokenText())
-            }
-            if err != nil {
-               return nil, err
-            }
-         }
-         s.splitLines()
-         s.Scan()
-         str.URI, err = addr.Parse(s.TokenText())
-         if err != nil {
-            return nil, err
-         }
-         mas.Stream = append(mas.Stream, str)
-      case "EXT-X-MEDIA":
-         var med Media
-         for s.Scan() != '\n' {
-            switch s.TokenText() {
-            case "GROUP-ID":
-               s.Scan()
-               s.Scan()
-               med.GroupID, err = strconv.Unquote(s.TokenText())
-            case "URI":
-               s.Scan()
-               s.Scan()
-               med.URI, err = scanURL(s.TokenText(), addr)
-            }
-            if err != nil {
-               return nil, err
-            }
-         }
-         mas.Media = append(mas.Media, med)
-      }
-   }
-   return &mas, nil
 }
 
 func (s *Scanner) Segment(addr *url.URL) (*Segment, error) {
@@ -241,5 +159,69 @@ func (s Stream) Format(f fmt.State, verb rune) {
    if verb == 'a' {
       fmt.Fprint(f, " Audio:", s.Audio)
       fmt.Fprint(f, " URI:", s.URI)
+   }
+}
+
+func scanDuration(s string) (time.Duration, error) {
+   sec, err := strconv.ParseFloat(s, 64)
+   if err != nil {
+      return 0, err
+   }
+   return time.Duration(sec * 1000) * time.Millisecond, nil
+}
+
+func scanHex(s string) ([]byte, error) {
+   s = strings.TrimPrefix(s, "0x")
+   return hex.DecodeString(s)
+}
+
+func scanURL(s string, addr *url.URL) (*url.URL, error) {
+   ref, err := strconv.Unquote(s)
+   if err != nil {
+      return nil, err
+   }
+   return addr.Parse(ref)
+}
+
+type Scanner struct {
+   scanner.Scanner
+}
+
+func NewScanner(body io.Reader) *Scanner {
+   var scan Scanner
+   scan.Init(body)
+   return &scan
+}
+
+func (s *Scanner) splitLines() {
+   s.Whitespace |= 1 << '\n'
+   s.Whitespace |= 1 << '\r'
+   s.IsIdentRune = func(r rune, i int) bool {
+      if r == '\n' {
+         return false
+      }
+      if r == '\r' {
+         return false
+      }
+      return true
+   }
+}
+
+func (s *Scanner) splitWords() {
+   s.Whitespace = 1 << ' '
+   s.IsIdentRune = func(r rune, i int) bool {
+      if r == '-' {
+         return true
+      }
+      if r == '.' {
+         return true
+      }
+      if unicode.IsDigit(r) {
+         return true
+      }
+      if unicode.IsLetter(r) {
+         return true
+      }
+      return false
    }
 }
