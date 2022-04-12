@@ -52,41 +52,6 @@ func (b Bandwidth) Less(i, j int) bool {
    return distance(i) < distance(j)
 }
 
-type Cipher struct {
-   cipher.Block
-   key []byte
-}
-
-func NewCipher(src io.Reader) (*Cipher, error) {
-   key, err := io.ReadAll(src)
-   if err != nil {
-      return nil, err
-   }
-   block, err := aes.NewCipher(key)
-   if err != nil {
-      return nil, err
-   }
-   return &Cipher{block, key}, nil
-}
-
-func (c Cipher) Decrypt(info Information, src io.Reader) ([]byte, error) {
-   buf, err := io.ReadAll(src)
-   if err != nil {
-      return nil, err
-   }
-   if info.IV == nil {
-      info.IV = c.key
-   }
-   cipher.NewCBCDecrypter(c.Block, info.IV).CryptBlocks(buf, buf)
-   if len(buf) >= 1 {
-      pad := buf[len(buf)-1]
-      if len(buf) >= int(pad) {
-         buf = buf[:len(buf)-int(pad)]
-      }
-   }
-   return buf, nil
-}
-
 type Information struct {
    IV []byte
    // If we embed this, it will hijack String method
@@ -233,4 +198,39 @@ func (s Stream) Format(f fmt.State, verb rune) {
       fmt.Fprint(f, " Audio:", s.Audio)
       fmt.Fprint(f, " URI:", s.URI)
    }
+}
+
+type Cipher struct {
+   cipher.Block
+   key []byte
+}
+
+func NewCipher(src io.Reader) (*Cipher, error) {
+   key, err := io.ReadAll(src)
+   if err != nil {
+      return nil, err
+   }
+   block, err := aes.NewCipher(key)
+   if err != nil {
+      return nil, err
+   }
+   return &Cipher{block, key}, nil
+}
+
+func (c Cipher) Copy(w io.Writer, r io.Reader, iv []byte) (int, error) {
+   buf, err := io.ReadAll(r)
+   if err != nil {
+      return 0, err
+   }
+   if iv == nil {
+      iv = c.key
+   }
+   cipher.NewCBCDecrypter(c.Block, iv).CryptBlocks(buf, buf)
+   if len(buf) >= 1 {
+      pad := buf[len(buf)-1]
+      if len(buf) >= int(pad) {
+         buf = buf[:len(buf)-int(pad)]
+      }
+   }
+   return w.Write(buf)
 }
