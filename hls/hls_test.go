@@ -2,7 +2,9 @@ package hls
 
 import (
    "fmt"
+   "github.com/89z/format"
    "net/http"
+   "os"
    "sort"
    "testing"
 )
@@ -42,7 +44,6 @@ const segmentURL =
    "/naat4008_r-hls-16x9-1080pAudio+Selector+1.m3u8"
 
 func TestSegment(t *testing.T) {
-   fmt.Println("GET", segmentURL)
    res, err := http.Get(segmentURL)
    if err != nil {
       t.Fatal(err)
@@ -52,8 +53,22 @@ func TestSegment(t *testing.T) {
    if err != nil {
       t.Fatal(err)
    }
-   fmt.Println(len(seg.Info))
+   file, err := os.Create("ignore.aac")
+   if err != nil {
+      t.Fatal(err)
+   }
+   defer file.Close()
+   pro := format.NewProgress(file, len(seg.Info))
    for _, info := range seg.Info {
-      fmt.Printf("%+v\n", info)
+      res, err := http.Get(info.URI.String())
+      if err != nil {
+         t.Fatal(err)
+      }
+      if _, err := pro.Copy(res); err != nil {
+         t.Fatal(err)
+      }
+      if err := res.Body.Close(); err != nil {
+         t.Fatal(err)
+      }
    }
 }

@@ -69,22 +69,22 @@ func NewCipher(src io.Reader) (*Cipher, error) {
    return &Cipher{block, key}, nil
 }
 
-func (c Cipher) Decrypt(info Information, src io.Reader) ([]byte, error) {
-   buf, err := io.ReadAll(src)
+func (c Cipher) Copy(w io.Writer, r io.Reader, iv []byte) (int, error) {
+   buf, err := io.ReadAll(r)
    if err != nil {
-      return nil, err
+      return 0, err
    }
-   if info.IV == nil {
-      info.IV = c.key
+   if iv == nil {
+      iv = c.key
    }
-   cipher.NewCBCDecrypter(c.Block, info.IV).CryptBlocks(buf, buf)
+   cipher.NewCBCDecrypter(c.Block, iv).CryptBlocks(buf, buf)
    if len(buf) >= 1 {
       pad := buf[len(buf)-1]
       if len(buf) >= int(pad) {
          buf = buf[:len(buf)-int(pad)]
       }
    }
-   return buf, nil
+   return w.Write(buf)
 }
 
 type Information struct {

@@ -9,6 +9,7 @@ import (
    "os"
    "path/filepath"
    "strconv"
+   "strings"
    "time"
 )
 
@@ -133,40 +134,54 @@ func (l LogLevel) Dump(req *http.Request) error {
    return nil
 }
 
-type Progress struct {
-   io.Writer
-   length int
-   lengthTotal int64
-   time time.Time
-   timeTotal time.Time
-}
-
-func NewProgress(src io.Writer, length int64) *Progress {
+func NewProgress(src io.Writer, chunks int) *Progress {
    var pro Progress
    pro.Writer = src
-   pro.lengthTotal = length
+   pro.chunks = int64(chunks)
    pro.time = time.Now()
-   pro.timeTotal = time.Now()
+   pro.lapTime = time.Now()
    return &pro
 }
 
+func (p Progress) String() string {
+   length := p.chunks * p.readLength / p.readChunks
+   rate := float64(p.length) / time.Since(p.time).Seconds()
+   var buf strings.Builder
+   buf.WriteString(Percent(p.length, length))
+   buf.WriteByte('\t')
+   buf.WriteString(LabelSize(p.length))
+   buf.WriteByte('\t')
+   buf.WriteString(LabelRate(rate))
+   return buf.String()
+}
+
+type Progress struct {
+   io.Writer
+   // chunk
+   chunks int64
+   readChunks int64
+   // length
+   length int
+   readLength int64
+   // time
+   time time.Time
+   lapTime time.Time
+}
+
 func (p *Progress) Write(buf []byte) (int, error) {
-   since := time.Since(p.time)
+   since := time.Since(p.lapTime)
    if since >= time.Second/2 {
-      p.progress()
-      p.time = p.time.Add(since)
+      os.Stderr.WriteString(p.String())
+      os.Stderr.WriteString("\n")
+      p.lapTime = p.lapTime.Add(since)
    }
    write, err := p.Writer.Write(buf)
    p.length += write
    return write, err
 }
 
-func (p Progress) progress() {
-   rate := float64(p.length) / time.Since(p.timeTotal).Seconds()
-   os.Stderr.WriteString(Percent(p.length, p.lengthTotal))
-   os.Stderr.WriteString("\t")
-   os.Stderr.WriteString(LabelSize(p.length))
-   os.Stderr.WriteString("\t")
-   os.Stderr.WriteString(LabelRate(rate))
-   os.Stderr.WriteString("\n")
+func (p *Progress) Copy(res *http.Response) (int64, error) {
+   p.readChunks += 1
+   p.readLength += res.ContentLength
+   return io.Copy(p, res.Body)
 }

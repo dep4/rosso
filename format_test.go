@@ -13,23 +13,11 @@ type token struct {
 }
 
 func TestDecode(t *testing.T) {
-   tok, err := Open[token]("token.json")
+   tok, err := Open[token]("ignore.json")
    if err != nil {
       t.Fatal(err)
    }
    fmt.Printf("%+v\n", tok)
-}
-
-func TestProgress(t *testing.T) {
-   res, err := http.Get("https://speedtest.lax.hivelocity.net/100mb.file")
-   if err != nil {
-      t.Fatal(err)
-   }
-   defer res.Body.Close()
-   pro := NewProgress(io.Discard, res.ContentLength)
-   if _, err := io.Copy(pro, res.Body); err != nil {
-      t.Fatal(err)
-   }
 }
 
 func TestLabel(t *testing.T) {
@@ -40,4 +28,16 @@ func TestLabel(t *testing.T) {
 
 func TestPercent(t *testing.T) {
    fmt.Println(Percent(2, 3))
+}
+
+func TestProgress(t *testing.T) {
+   pro := NewProgress(io.Discard, 1)
+   res, err := http.Get("https://speedtest.lax.hivelocity.net/100mb.file")
+   if err != nil {
+      t.Fatal(err)
+   }
+   defer res.Body.Close()
+   if _, err := pro.Copy(res); err != nil {
+      t.Fatal(err)
+   }
 }
