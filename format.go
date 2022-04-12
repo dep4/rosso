@@ -3,6 +3,7 @@ package format
 import (
    "bytes"
    "encoding/json"
+   "io"
    "net/http"
    "net/http/httputil"
    "os"
@@ -54,43 +55,6 @@ func IsBinary(buf []byte) bool {
       }
    }
    return false
-}
-
-type Progress struct {
-   *http.Response
-   content int64
-   part, partLength time.Time
-}
-
-func NewProgress(src *http.Response) *Progress {
-   var pro Progress
-   pro.Response = src
-   pro.part = time.Now()
-   pro.partLength = time.Now()
-   return &pro
-}
-
-func (p *Progress) Read(buf []byte) (int, error) {
-   since := time.Since(p.part)
-   if since >= time.Second/2 {
-      p.progress()
-      p.part = p.part.Add(since)
-   }
-   // Callers should always process the n > 0 bytes returned before considering
-   // the error err.
-   read, err := p.Body.Read(buf)
-   p.content += int64(read)
-   return read, err
-}
-
-func (p Progress) progress() {
-   rate := float64(p.content) / time.Since(p.partLength).Seconds()
-   os.Stderr.WriteString(Percent(p.content, p.ContentLength))
-   os.Stderr.WriteString("\t")
-   os.Stderr.WriteString(LabelSize(p.content))
-   os.Stderr.WriteString("\t")
-   os.Stderr.WriteString(LabelRate(rate))
-   os.Stderr.WriteString("\n")
 }
 
 func Label[T Number](value T, unit ...string) string {
@@ -167,4 +131,42 @@ func (l LogLevel) Dump(req *http.Request) error {
       os.Stderr.Write(quote(buf))
    }
    return nil
+}
+
+type Progress struct {
+   io.Writer
+   length int
+   lengthTotal int64
+   time time.Time
+   timeTotal time.Time
+}
+
+func NewProgress(src io.Writer, length int64) *Progress {
+   var pro Progress
+   pro.Writer = src
+   pro.lengthTotal = length
+   pro.time = time.Now()
+   pro.timeTotal = time.Now()
+   return &pro
+}
+
+func (p *Progress) Write(buf []byte) (int, error) {
+   since := time.Since(p.time)
+   if since >= time.Second/2 {
+      p.progress()
+      p.time = p.time.Add(since)
+   }
+   write, err := p.Writer.Write(buf)
+   p.length += write
+   return write, err
+}
+
+func (p Progress) progress() {
+   rate := float64(p.length) / time.Since(p.timeTotal).Seconds()
+   os.Stderr.WriteString(Percent(p.length, p.lengthTotal))
+   os.Stderr.WriteString("\t")
+   os.Stderr.WriteString(LabelSize(p.length))
+   os.Stderr.WriteString("\t")
+   os.Stderr.WriteString(LabelRate(rate))
+   os.Stderr.WriteString("\n")
 }
