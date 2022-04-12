@@ -37,38 +37,6 @@ func (s *Scanner) Master(addr *url.URL) (*Master, error) {
       }
       var err error
       switch s.TokenText() {
-      case "EXT-X-STREAM-INF":
-         var str Stream
-         for s.Scan() != '\n' {
-            switch s.TokenText() {
-            case "RESOLUTION":
-               s.Scan()
-               s.Scan()
-               str.Resolution = s.TokenText()
-            case "BANDWIDTH":
-               s.Scan()
-               s.Scan()
-               str.Bandwidth, err = strconv.Atoi(s.TokenText())
-            case "CODECS":
-               s.Scan()
-               s.Scan()
-               str.Codecs, err = strconv.Unquote(s.TokenText())
-            case "AUDIO":
-               s.Scan()
-               s.Scan()
-               str.Audio, err = strconv.Unquote(s.TokenText())
-            }
-            if err != nil {
-               return nil, err
-            }
-         }
-         s.splitLines()
-         s.Scan()
-         str.URI, err = addr.Parse(s.TokenText())
-         if err != nil {
-            return nil, err
-         }
-         mas.Stream = append(mas.Stream, str)
       case "EXT-X-MEDIA":
          var med Media
          for s.Scan() != '\n' {
@@ -87,6 +55,38 @@ func (s *Scanner) Master(addr *url.URL) (*Master, error) {
             }
          }
          mas.Media = append(mas.Media, med)
+      case "EXT-X-STREAM-INF":
+         var str Stream
+         for s.Scan() != '\n' {
+            switch s.TokenText() {
+            case "AUDIO":
+               s.Scan()
+               s.Scan()
+               str.Audio, err = strconv.Unquote(s.TokenText())
+            case "BANDWIDTH":
+               s.Scan()
+               s.Scan()
+               str.Bandwidth, err = strconv.Atoi(s.TokenText())
+            case "CODECS":
+               s.Scan()
+               s.Scan()
+               str.Codecs, err = strconv.Unquote(s.TokenText())
+            case "RESOLUTION":
+               s.Scan()
+               s.Scan()
+               str.Resolution = s.TokenText()
+            }
+            if err != nil {
+               return nil, err
+            }
+         }
+         s.splitLines()
+         s.Scan()
+         str.URI, err = addr.Parse(s.TokenText())
+         if err != nil {
+            return nil, err
+         }
+         mas.Stream = append(mas.Stream, str)
       }
    }
    return &mas, nil

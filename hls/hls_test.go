@@ -2,25 +2,43 @@ package hls
 
 import (
    "fmt"
-   "net/url"
-   "os"
+   "net/http"
    "sort"
    "testing"
 )
 
+const masterURL =
+   "https://link.theplatform.com/s/dJ5BDC/media/guid/2198311517" +
+   "/uOkB1qnYXZXeAM34djVYNHje2_gK4mmO?formats=MPEG4,M3U"
+
 func TestSegment(t *testing.T) {
-   file, err := os.Open("m3u8/paramount-segment.m3u8")
+   fmt.Println("GET", masterURL)
+   res, err := http.Get(masterURL)
    if err != nil {
       t.Fatal(err)
    }
-   defer file.Close()
-   seg, err := NewScanner(file).Segment(&url.URL{})
+   defer res.Body.Close()
+   master, err := NewScanner(res.Body).Master(res.Request.URL)
    if err != nil {
       t.Fatal(err)
    }
-   fmt.Printf("%+v\n", seg.Key)
-   for _, info := range seg.Info {
-      fmt.Printf("%+v\n", info)
+   for _, stream := range master.Stream {
+      if stream.Bandwidth == 497000 {
+         fmt.Println("GET", stream.URI)
+         res, err := http.Get(stream.URI.String())
+         if err != nil {
+            t.Fatal(err)
+         }
+         defer res.Body.Close()
+         seg, err := NewScanner(res.Body).Segment(stream.URI)
+         if err != nil {
+            t.Fatal(err)
+         }
+         length := seg.Length(stream)
+         if length != 82456897 {
+            t.Fatal(length)
+         }
+      }
    }
 }
 

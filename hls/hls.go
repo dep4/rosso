@@ -15,6 +15,27 @@ import (
    "unicode"
 )
 
+func scanDuration(s string) (time.Duration, error) {
+   sec, err := strconv.ParseFloat(s, 64)
+   if err != nil {
+      return 0, err
+   }
+   return time.Duration(sec * 1000) * time.Millisecond, nil
+}
+
+func scanHex(s string) ([]byte, error) {
+   s = strings.TrimPrefix(s, "0x")
+   return hex.DecodeString(s)
+}
+
+func scanURL(s string, addr *url.URL) (*url.URL, error) {
+   ref, err := strconv.Unquote(s)
+   if err != nil {
+      return nil, err
+   }
+   return addr.Parse(ref)
+}
+
 type Bandwidth struct {
    *Master
    Target int
@@ -78,6 +99,16 @@ type Media struct {
    URI *url.URL
 }
 
+type Scanner struct {
+   scanner.Scanner
+}
+
+func NewScanner(body io.Reader) *Scanner {
+   var scan Scanner
+   scan.Init(body)
+   return &scan
+}
+
 func (s *Scanner) Segment(addr *url.URL) (*Segment, error) {
    var (
       info Information
@@ -127,6 +158,39 @@ func (s *Scanner) Segment(addr *url.URL) (*Segment, error) {
    return &seg, nil
 }
 
+func (s *Scanner) splitLines() {
+   s.IsIdentRune = func(r rune, i int) bool {
+      if r == '\n' {
+         return false
+      }
+      if r == '\r' {
+         return false
+      }
+      return true
+   }
+   s.Whitespace |= 1 << '\n'
+   s.Whitespace |= 1 << '\r'
+}
+
+func (s *Scanner) splitWords() {
+   s.IsIdentRune = func(r rune, i int) bool {
+      if r == '-' {
+         return true
+      }
+      if r == '.' {
+         return true
+      }
+      if unicode.IsDigit(r) {
+         return true
+      }
+      if unicode.IsLetter(r) {
+         return true
+      }
+      return false
+   }
+   s.Whitespace = 1 << ' '
+}
+
 type Segment struct {
    Key *url.URL
    Info []Information
@@ -140,6 +204,15 @@ func (s Segment) Ext() string {
       }
    }
    return ""
+}
+
+func (s Segment) Length(str Stream) int64 {
+   var dur time.Duration
+   for _, info := range s.Info {
+      dur += info.Duration
+   }
+   length := float64(str.Bandwidth) / 8 * dur.Seconds()
+   return int64(length)
 }
 
 type Stream struct {
@@ -159,69 +232,5 @@ func (s Stream) Format(f fmt.State, verb rune) {
    if verb == 'a' {
       fmt.Fprint(f, " Audio:", s.Audio)
       fmt.Fprint(f, " URI:", s.URI)
-   }
-}
-
-func scanDuration(s string) (time.Duration, error) {
-   sec, err := strconv.ParseFloat(s, 64)
-   if err != nil {
-      return 0, err
-   }
-   return time.Duration(sec * 1000) * time.Millisecond, nil
-}
-
-func scanHex(s string) ([]byte, error) {
-   s = strings.TrimPrefix(s, "0x")
-   return hex.DecodeString(s)
-}
-
-func scanURL(s string, addr *url.URL) (*url.URL, error) {
-   ref, err := strconv.Unquote(s)
-   if err != nil {
-      return nil, err
-   }
-   return addr.Parse(ref)
-}
-
-type Scanner struct {
-   scanner.Scanner
-}
-
-func NewScanner(body io.Reader) *Scanner {
-   var scan Scanner
-   scan.Init(body)
-   return &scan
-}
-
-func (s *Scanner) splitLines() {
-   s.Whitespace |= 1 << '\n'
-   s.Whitespace |= 1 << '\r'
-   s.IsIdentRune = func(r rune, i int) bool {
-      if r == '\n' {
-         return false
-      }
-      if r == '\r' {
-         return false
-      }
-      return true
-   }
-}
-
-func (s *Scanner) splitWords() {
-   s.Whitespace = 1 << ' '
-   s.IsIdentRune = func(r rune, i int) bool {
-      if r == '-' {
-         return true
-      }
-      if r == '.' {
-         return true
-      }
-      if unicode.IsDigit(r) {
-         return true
-      }
-      if unicode.IsLetter(r) {
-         return true
-      }
-      return false
    }
 }
