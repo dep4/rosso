@@ -9,6 +9,7 @@ import (
    "os"
    "path/filepath"
    "strconv"
+   "strings"
    "time"
 )
 
@@ -135,38 +136,55 @@ func (l LogLevel) Dump(req *http.Request) error {
 
 type Progress struct {
    io.Writer
-   length int
-   lengthTotal int64
-   time time.Time
-   timeTotal time.Time
+   chunk struct {
+      read int64
+      total int64
+   }
+   length struct {
+      read int64
+      write int
+   }
+   time struct {
+      start time.Time
+      lap time.Time
+   }
 }
 
-func NewProgress(src io.Writer, length int64) *Progress {
+func NewProgress(src io.Writer, chunks int) *Progress {
    var pro Progress
    pro.Writer = src
-   pro.lengthTotal = length
-   pro.time = time.Now()
-   pro.timeTotal = time.Now()
+   pro.chunk.total = int64(chunks)
+   pro.time.start = time.Now()
+   pro.time.lap = time.Now()
    return &pro
 }
 
-func (p *Progress) Write(buf []byte) (int, error) {
-   since := time.Since(p.time)
-   if since >= time.Second/2 {
-      p.progress()
-      p.time = p.time.Add(since)
-   }
-   write, err := p.Writer.Write(buf)
-   p.length += write
-   return write, err
+func (p *Progress) Copy(res *http.Response) (int64, error) {
+   p.chunk.read += 1
+   p.length.read += res.ContentLength
+   return io.Copy(p, res.Body)
 }
 
-func (p Progress) progress() {
-   rate := float64(p.length) / time.Since(p.timeTotal).Seconds()
-   os.Stderr.WriteString(Percent(p.length, p.lengthTotal))
-   os.Stderr.WriteString("\t")
-   os.Stderr.WriteString(LabelSize(p.length))
-   os.Stderr.WriteString("\t")
-   os.Stderr.WriteString(LabelRate(rate))
-   os.Stderr.WriteString("\n")
+func (p Progress) String() string {
+   length := p.chunk.total * p.length.read / p.chunk.read
+   rate := float64(p.length.write) / time.Since(p.time.start).Seconds()
+   var buf strings.Builder
+   buf.WriteString(Percent(p.length.write, length))
+   buf.WriteByte('\t')
+   buf.WriteString(LabelSize(p.length.write))
+   buf.WriteByte('\t')
+   buf.WriteString(LabelRate(rate))
+   return buf.String()
+}
+
+func (p *Progress) Write(buf []byte) (int, error) {
+   since := time.Since(p.time.lap)
+   if since >= time.Second/2 {
+      os.Stderr.WriteString(p.String())
+      os.Stderr.WriteString("\n")
+      p.time.lap = p.time.lap.Add(since)
+   }
+   write, err := p.Writer.Write(buf)
+   p.length.write += write
+   return write, err
 }
