@@ -9,6 +9,7 @@ import (
    "os"
    "path/filepath"
    "strconv"
+   "strings"
    "time"
 )
 
@@ -95,10 +96,6 @@ func Percent[T, U Number](value T, total U) string {
    return strconv.FormatFloat(ratio, 'f', 1, 64) + "%"
 }
 
-type Number interface {
-   float64 | int | int64 | ~uint64
-}
-
 type LogLevel int
 
 func (l LogLevel) Dump(req *http.Request) error {
@@ -133,40 +130,53 @@ func (l LogLevel) Dump(req *http.Request) error {
    return nil
 }
 
-type Progress struct {
-   io.Writer
-   length int
-   lengthTotal int64
-   time time.Time
-   timeTotal time.Time
+type Number interface {
+   float64 | int | int64 | ~uint64
 }
 
-func NewProgress(src io.Writer, length int64) *Progress {
+type Progress struct {
+   chunks int64
+   io.Writer
+   lapTime time.Time
+   length int
+   readChunks int64
+   readLength int64
+   time time.Time
+}
+
+func NewProgress[T Number](dst io.Writer, chunks T) *Progress {
    var pro Progress
-   pro.Writer = src
-   pro.lengthTotal = length
+   pro.Writer = dst
+   pro.chunks = int64(chunks)
    pro.time = time.Now()
-   pro.timeTotal = time.Now()
+   pro.lapTime = time.Now()
    return &pro
 }
 
+func (p *Progress) AddChunk(length int64) {
+   p.readChunks += 1
+   p.readLength += length
+}
+
+func (p Progress) String() string {
+   rate := float64(p.length) / time.Since(p.time).Seconds()
+   var buf strings.Builder
+   buf.WriteString(Percent(p.length, p.chunks*p.readLength/p.readChunks))
+   buf.WriteByte('\t')
+   buf.WriteString(LabelSize(p.length))
+   buf.WriteByte('\t')
+   buf.WriteString(LabelRate(rate))
+   return buf.String()
+}
+
 func (p *Progress) Write(buf []byte) (int, error) {
-   since := time.Since(p.time)
+   since := time.Since(p.lapTime)
    if since >= time.Second/2 {
-      p.progress()
-      p.time = p.time.Add(since)
+      os.Stderr.WriteString(p.String())
+      os.Stderr.WriteString("\n")
+      p.lapTime = p.lapTime.Add(since)
    }
    write, err := p.Writer.Write(buf)
    p.length += write
    return write, err
-}
-
-func (p Progress) progress() {
-   rate := float64(p.length) / time.Since(p.timeTotal).Seconds()
-   os.Stderr.WriteString(Percent(p.length, p.lengthTotal))
-   os.Stderr.WriteString("\t")
-   os.Stderr.WriteString(LabelSize(p.length))
-   os.Stderr.WriteString("\t")
-   os.Stderr.WriteString(LabelRate(rate))
-   os.Stderr.WriteString("\n")
 }
