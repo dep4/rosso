@@ -1,13 +1,13 @@
 package format
 
 import (
-   "bytes"
    "encoding/json"
-   "net/http"
-   "net/http/httputil"
+   "io"
    "os"
    "path/filepath"
    "strconv"
+   "strings"
+   "time"
 )
 
 func Create[T any](value T, elem ...string) error {
@@ -93,40 +93,58 @@ func Percent[T, U Number](value T, total U) string {
    return strconv.FormatFloat(ratio, 'f', 1, 64) + "%"
 }
 
-type LogLevel int
-
-func (l LogLevel) Dump(req *http.Request) error {
-   quote := func(b []byte) []byte {
-      if IsBinary(b) {
-         b = strconv.AppendQuote(nil, string(b))
-      }
-      if !bytes.HasSuffix(b, []byte{'\n'}) {
-         b = append(b, '\n')
-      }
-      return b
-   }
-   switch l {
-   case 0:
-      os.Stderr.WriteString(req.Method)
-      os.Stderr.WriteString(" ")
-      os.Stderr.WriteString(req.URL.String())
-      os.Stderr.WriteString("\n")
-   case 1:
-      buf, err := httputil.DumpRequest(req, true)
-      if err != nil {
-         return err
-      }
-      os.Stderr.Write(quote(buf))
-   case 2:
-      buf, err := httputil.DumpRequestOut(req, true)
-      if err != nil {
-         return err
-      }
-      os.Stderr.Write(quote(buf))
-   }
-   return nil
-}
-
 type Number interface {
    float64 | int | int64 | ~uint64
+}
+
+type Progress struct {
+   io.Writer
+   bytes int64
+   bytesRead int64
+   bytesWritten int
+   chunks int
+   chunksRead int64
+   time time.Time
+   timeLap time.Time
+}
+
+func ProgressBytes(dst io.Writer, bytes int64) *Progress {
+   return &Progress{Writer: dst, bytes: bytes}
+}
+
+func ProgressChunks(dst io.Writer, chunks int) *Progress {
+   return &Progress{Writer: dst, chunks: chunks}
+}
+
+func (p *Progress) AddChunk(bytes int64) {
+   p.bytesRead += bytes
+   p.chunksRead += 1
+   p.bytes = int64(p.chunks) * p.bytesRead / p.chunksRead
+}
+
+func (p Progress) String() string {
+   rate := float64(p.bytesWritten) / time.Since(p.time).Seconds()
+   var buf strings.Builder
+   buf.WriteString(Percent(p.bytesWritten, p.bytes))
+   buf.WriteByte('\t')
+   buf.WriteString(LabelSize(p.bytesWritten))
+   buf.WriteByte('\t')
+   buf.WriteString(LabelRate(rate))
+   return buf.String()
+}
+
+func (p *Progress) Write(buf []byte) (int, error) {
+   if p.time.IsZero() {
+      p.time = time.Now()
+      p.timeLap = time.Now()
+   }
+   since := time.Since(p.timeLap)
+   if since >= time.Second/2 {
+      os.Stderr.WriteString(p.String())
+      os.Stderr.WriteString("\n")
+      p.timeLap = p.timeLap.Add(since)
+   }
+   write, err := p.Writer.Write(buf)
+   p.bytesWritten += write
+   return write, err
 }

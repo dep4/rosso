@@ -4,6 +4,7 @@ import (
    "fmt"
    "io"
    "net/http"
+   "os"
    "testing"
 )
 
@@ -12,8 +13,12 @@ type token struct {
    Token string
 }
 
-func TestDecode(t *testing.T) {
-   tok, err := Open[token]("ignore.json")
+func TestOpen(t *testing.T) {
+   cache, err := os.UserCacheDir()
+   if err != nil {
+      t.Fatal(err)
+   }
+   tok, err := Open[token](cache, "googleplay/token.json")
    if err != nil {
       t.Fatal(err)
    }
