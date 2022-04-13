@@ -36,8 +36,7 @@ func TestProgress(t *testing.T) {
       t.Fatal(err)
    }
    defer res.Body.Close()
-   pro := NewProgress(io.Discard, 1)
-   pro.AddChunk(res.ContentLength)
+   pro := ProgressBytes(io.Discard, res.ContentLength)
    if _, err := io.Copy(pro, res.Body); err != nil {
       t.Fatal(err)
    }

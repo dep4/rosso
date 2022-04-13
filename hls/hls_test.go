@@ -59,7 +59,7 @@ func TestSegment(t *testing.T) {
       t.Fatal(err)
    }
    defer file.Close()
-   pro := format.NewProgress(file, len(seg.Info))
+   pro := format.ProgressChunks(file, len(seg.Info))
    for _, info := range seg.Info {
       res, err := http.Get(info.URI.String())
       if err != nil {
