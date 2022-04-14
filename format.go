@@ -1,8 +1,11 @@
 package format
 
 import (
+   "bytes"
    "encoding/json"
    "io"
+   "net/http"
+   "net/http/httputil"
    "os"
    "path/filepath"
    "strconv"
@@ -91,6 +94,31 @@ func Percent[T, U Number](value T, total U) string {
       ratio = 100 * float64(value) / float64(total)
    }
    return strconv.FormatFloat(ratio, 'f', 1, 64) + "%"
+}
+
+type LogLevel int
+
+func (l LogLevel) Dump(req *http.Request) error {
+   switch l {
+   case 0:
+      os.Stderr.WriteString(req.Method)
+      os.Stderr.WriteString(" ")
+      os.Stderr.WriteString(req.URL.String())
+      os.Stderr.WriteString("\n")
+   case 1:
+      buf, err := httputil.DumpRequest(req, true)
+      if err != nil {
+         return err
+      }
+      if IsBinary(buf) {
+         buf = strconv.AppendQuote(nil, string(buf))
+      }
+      if !bytes.HasSuffix(buf, []byte{'\n'}) {
+         buf = append(buf, '\n')
+      }
+      os.Stderr.Write(buf)
+   }
+   return nil
 }
 
 type Number interface {
