@@ -10,7 +10,7 @@ import (
    "strings"
 )
 
-func ReadRequest(src io.Reader, https bool) (*http.Request, error) {
+func ReadRequest(src io.Reader) (*http.Request, error) {
    var req http.Request
    text := textproto.NewReader(bufio.NewReader(src))
    // .Method
@@ -29,18 +29,14 @@ func ReadRequest(src io.Reader, https bool) (*http.Request, error) {
       return nil, err
    }
    req.URL = addr
-   // .URL.Scheme
-   if https {
-      req.URL.Scheme = "https"
-   } else {
-      req.URL.Scheme = "http"
-   }
    // .URL.Host
    head, err := text.ReadMIMEHeader()
    if err != nil {
       return nil, err
    }
-   req.URL.Host = head.Get("Host")
+   if req.URL.Host == "" {
+      req.URL.Host = head.Get("Host")
+   }
    // .Header
    req.Header = http.Header(head)
    // .ContentLength

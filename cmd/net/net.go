@@ -8,14 +8,11 @@ import (
    "strconv"
 )
 
-func roundTrip(req *http.Request, redirect bool) (*http.Response, error) {
-   if redirect {
-      return new(http.Client).Do(req)
+func write(req *http.Request, file *os.File) error {
+   res, err := new(http.Transport).RoundTrip(req)
+   if err != nil {
+      return err
    }
-   return new(http.Transport).RoundTrip(req)
-}
-
-func write(res *http.Response, file *os.File) error {
    if file == os.Stdout {
       buf, err := httputil.DumpResponse(res, true)
       if err != nil {
@@ -37,5 +34,5 @@ func write(res *http.Response, file *os.File) error {
          return err
       }
    }
-   return nil
+   return res.Body.Close()
 }

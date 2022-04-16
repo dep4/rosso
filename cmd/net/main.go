@@ -16,40 +16,36 @@ func main() {
    // o
    var output string
    flag.StringVar(&output, "o", "", "output file")
-   // r
-   var redirect bool
-   flag.BoolVar(&redirect, "r", false, "redirect")
    // s
-   var https bool
-   flag.BoolVar(&https, "s", false, "HTTPS")
+   var scheme string
+   flag.StringVar(&scheme, "s", "http", "scheme")
    flag.Parse()
    if name != "" {
-      src, err := os.Open(name)
-      if err != nil {
-         panic(err)
-      }
-      defer src.Close()
-      req, err := net.ReadRequest(src, https)
-      if err != nil {
-         panic(err)
-      }
       dst, err := os.Create(output)
       if err != nil {
          dst = os.Stdout
       }
       defer dst.Close()
+      src, err := os.Open(name)
+      if err != nil {
+         panic(err)
+      }
+      defer src.Close()
+      req, err := net.ReadRequest(src)
+      if err != nil {
+         panic(err)
+      }
+      if req.URL.Scheme == "" {
+         req.URL.Scheme = scheme
+      }
       if golang {
          err := net.WriteRequest(req, dst)
          if err != nil {
             panic(err)
          }
       } else {
-         res, err := roundTrip(req, redirect)
+         err := write(req, dst)
          if err != nil {
-            panic(err)
-         }
-         defer res.Body.Close()
-         if err := write(res, dst); err != nil {
             panic(err)
          }
       }
