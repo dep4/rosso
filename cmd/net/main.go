@@ -17,8 +17,8 @@ func main() {
    var output string
    flag.StringVar(&output, "o", "", "output file")
    // s
-   var scheme string
-   flag.StringVar(&scheme, "s", "http", "scheme")
+   var https bool
+   flag.BoolVar(&https, "s", false, "HTTPS")
    flag.Parse()
    if name != "" {
       dst, err := os.Create(output)
@@ -36,7 +36,11 @@ func main() {
          panic(err)
       }
       if req.URL.Scheme == "" {
-         req.URL.Scheme = scheme
+         if https {
+            req.URL.Scheme = "https"
+         } else {
+            req.URL.Scheme = "http"
+         }
       }
       if golang {
          err := net.WriteRequest(req, dst)
