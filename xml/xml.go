@@ -4,35 +4,39 @@ import (
    "bytes"
    "encoding/xml"
    "io"
-   "strconv"
 )
 
-func Decode(src io.Reader, sep []byte, val any) error {
-   buf, err := io.ReadAll(src)
-   if err != nil {
-      return err
-   }
-   return Unmarshal(buf, sep, val)
+type Scanner struct {
+   Split []byte
+   buf []byte
 }
 
-func Unmarshal(buf, sep []byte, val any) error {
-   _, after, found := bytes.Cut(buf, sep)
-   if !found {
-      return notFound(sep)
+func NewScanner(src io.Reader) (*Scanner, error) {
+   buf, err := io.ReadAll(src)
+   if err != nil {
+      return nil, err
    }
-   dec := xml.NewDecoder(bytes.NewReader(after))
+   return &Scanner{buf: buf}, nil
+}
+
+func (s Scanner) Bytes() []byte {
+   return append(s.Split, s.buf...)
+}
+
+func (s Scanner) Decode(val any) error {
+   buf := s.Bytes()
+   dec := xml.NewDecoder(bytes.NewReader(buf))
    for {
       _, err := dec.Token()
       if err != nil {
          high := dec.InputOffset()
-         return xml.Unmarshal(after[:high], val)
+         return xml.Unmarshal(buf[:high], val)
       }
    }
 }
 
-type notFound []byte
-
-func (n notFound) Error() string {
-   str := string(n)
-   return strconv.Quote(str) + " is not found"
+func (s *Scanner) Scan() bool {
+   var found bool
+   _, s.buf, found = bytes.Cut(s.buf, s.Split)
+   return found
 }
