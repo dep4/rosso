@@ -3,27 +3,40 @@ package json
 import (
    "bytes"
    "encoding/json"
-   "strconv"
+   "io"
 )
 
-func Unmarshal(buf, sep []byte, val any) error {
-   _, after, found := bytes.Cut(buf, sep)
-   if !found {
-      return notFound(sep)
+type Scanner struct {
+   Split []byte
+   buf []byte
+}
+
+func NewScanner(src io.Reader) (*Scanner, error) {
+   buf, err := io.ReadAll(src)
+   if err != nil {
+      return nil, err
    }
-   dec := json.NewDecoder(bytes.NewReader(after))
+   return &Scanner{buf: buf}, nil
+}
+
+func (s Scanner) Bytes() []byte {
+   return append(s.Split, s.buf...)
+}
+
+func (s Scanner) Decode(val any) error {
+   buf := s.Bytes()
+   dec := json.NewDecoder(bytes.NewReader(buf))
    for {
       _, err := dec.Token()
       if err != nil {
          high := dec.InputOffset()
-         return json.Unmarshal(after[:high], val)
+         return json.Unmarshal(buf[:high], val)
       }
    }
 }
 
-type notFound []byte
-
-func (n notFound) Error() string {
-   str := string(n)
-   return strconv.Quote(str) + " is not found"
+func (s *Scanner) Scan() bool {
+   var found bool
+   _, s.buf, found = bytes.Cut(s.buf, s.Split)
+   return found
 }
