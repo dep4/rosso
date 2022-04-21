@@ -3,17 +3,8 @@ package json
 import (
    "bytes"
    "encoding/json"
-   "io"
    "strconv"
 )
-
-func Decode(src io.Reader, sep []byte, val any) error {
-   buf, err := io.ReadAll(src)
-   if err != nil {
-      return err
-   }
-   return Unmarshal(buf, sep, val)
-}
 
 func Unmarshal(buf, sep []byte, val any) error {
    _, after, found := bytes.Cut(buf, sep)
