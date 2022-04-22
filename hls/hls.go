@@ -15,17 +15,17 @@ import (
    "unicode"
 )
 
+func scanHex(s string) ([]byte, error) {
+   s = strings.TrimPrefix(s, "0x")
+   return hex.DecodeString(s)
+}
+
 func scanDuration(s string) (time.Duration, error) {
    sec, err := strconv.ParseFloat(s, 64)
    if err != nil {
       return 0, err
    }
    return time.Duration(sec * 1000) * time.Millisecond, nil
-}
-
-func scanHex(s string) ([]byte, error) {
-   s = strings.TrimPrefix(s, "0x")
-   return hex.DecodeString(s)
 }
 
 func scanURL(s string, addr *url.URL) (*url.URL, error) {
