@@ -16,8 +16,8 @@ import (
 )
 
 func scanHex(s string) ([]byte, error) {
-   s = strings.TrimPrefix(s, "0x")
-   return hex.DecodeString(s)
+   up := strings.ToUpper(s)
+   return hex.DecodeString(strings.TrimPrefix(up, "0X"))
 }
 
 func scanDuration(s string) (time.Duration, error) {
