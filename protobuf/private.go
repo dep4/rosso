@@ -41,11 +41,6 @@ func (m Message) appendField(in []byte, num Number) []byte {
    return protowire.AppendBytes(in, m.Marshal())
 }
 
-func (s String) appendField(in []byte, num Number) []byte {
-   in = protowire.AppendTag(in, num, protowire.BytesType)
-   return protowire.AppendString(in, string(s))
-}
-
 func (v Varint) appendField(in []byte, num Number) []byte {
    in = protowire.AppendTag(in, num, protowire.VarintType)
    return protowire.AppendVarint(in, uint64(v))
@@ -58,4 +53,14 @@ func (t tokens[T]) appendField(in []byte, num Number) []byte {
       in = tok.appendField(in, num)
    }
    return in
+}
+
+func (s String) appendField(in []byte, num Number) []byte {
+   in = protowire.AppendTag(in, num, protowire.BytesType)
+   return protowire.AppendString(in, string(s))
+}
+
+func (b Bytes) appendField(in []byte, num Number) []byte {
+   in = protowire.AppendTag(in, num, protowire.BytesType)
+   return protowire.AppendBytes(in, b)
 }

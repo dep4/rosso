@@ -6,12 +6,6 @@ import (
    "io"
 )
 
-type Fixed32 uint32
-
-type Fixed64 uint64
-
-type Message map[Number]Token
-
 func Decode(in io.Reader) (Message, error) {
    buf, err := io.ReadAll(in)
    if err != nil {
@@ -43,7 +37,11 @@ func Unmarshal(in []byte) (Message, error) {
          if len(val) >= 1 {
             embed, err := Unmarshal(val)
             if err != nil {
-               add(mes, num, String(val))
+               if format.IsBinary(val) {
+                  add(mes, num, Bytes(val))
+               } else {
+                  add(mes, num, String(val))
+               }
             } else if format.IsBinary(val) {
                add(mes, num, embed)
             } else {
@@ -130,12 +128,20 @@ func (m Message) Marshal() []byte {
    return buf
 }
 
-type Number = protowire.Number
+type Fixed32 uint32
 
-type String string
+type Fixed64 uint64
+
+type Message map[Number]Token
+
+type Number = protowire.Number
 
 type Token interface {
    appendField([]byte, Number) []byte
 }
 
 type Varint uint64
+
+type String string
+
+type Bytes []byte
