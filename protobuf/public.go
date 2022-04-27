@@ -6,6 +6,14 @@ import (
    "io"
 )
 
+type Bytes []byte
+
+type Fixed32 uint32
+
+type Fixed64 uint64
+
+type Message map[Number]Token
+
 func Decode(in io.Reader) (Message, error) {
    buf, err := io.ReadAll(in)
    if err != nil {
@@ -128,12 +136,6 @@ func (m Message) Marshal() []byte {
    return buf
 }
 
-type Fixed32 uint32
-
-type Fixed64 uint64
-
-type Message map[Number]Token
-
 type Number = protowire.Number
 
 type Token interface {
@@ -143,5 +145,3 @@ type Token interface {
 type Varint uint64
 
 type String string
-
-type Bytes []byte

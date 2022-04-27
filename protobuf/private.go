@@ -26,6 +26,11 @@ func get[T Token](mes Message, num Number) (T, error) {
    return b, err
 }
 
+func (b Bytes) appendField(in []byte, num Number) []byte {
+   in = protowire.AppendTag(in, num, protowire.BytesType)
+   return protowire.AppendBytes(in, b)
+}
+
 func (f Fixed32) appendField(in []byte, num Number) []byte {
    in = protowire.AppendTag(in, num, protowire.Fixed32Type)
    return protowire.AppendFixed32(in, uint32(f))
@@ -58,9 +63,4 @@ func (t tokens[T]) appendField(in []byte, num Number) []byte {
 func (s String) appendField(in []byte, num Number) []byte {
    in = protowire.AppendTag(in, num, protowire.BytesType)
    return protowire.AppendString(in, string(s))
-}
-
-func (b Bytes) appendField(in []byte, num Number) []byte {
-   in = protowire.AppendTag(in, num, protowire.BytesType)
-   return protowire.AppendBytes(in, b)
 }
