@@ -6,43 +6,17 @@ import (
    "strconv"
 )
 
-type AdaptationSet struct {
-   Role struct {
-      Value string `xml:"value,attr"`
+func AdaptationSets(src io.Reader) ([]AdaptationSet, error) {
+   var mpd struct {
+      Period struct {
+         AdaptationSet []AdaptationSet
+      }
    }
-   Representation []Representation
-}
-
-type Media struct {
-   Period struct {
-      AdaptationSet []AdaptationSet
-   }
-}
-
-func NewMedia(src io.Reader) (*Media, error) {
-   med := new(Media)
-   err := xml.NewDecoder(src).Decode(med)
+   err := xml.NewDecoder(src).Decode(&mpd)
    if err != nil {
       return nil, err
    }
-   return med, nil
-}
-
-func (m Media) Main() []AdaptationSet {
-   var adas []AdaptationSet
-   for _, ada := range m.Period.AdaptationSet {
-      if ada.Role.Value == "main" {
-         adas = append(adas, ada)
-      }
-   }
-   return adas
-}
-
-type Representation struct {
-   ID string `xml:"id,attr"`
-   Width int64 `xml:"width,attr"`
-   Height int64 `xml:"height,attr"`
-   Bandwidth int64 `xml:"bandwidth,attr"`
+   return mpd.Period.AdaptationSet, nil
 }
 
 func (r Representation) String() string {
@@ -58,4 +32,25 @@ func (r Representation) String() string {
    buf = append(buf, " Bandwidth:"...)
    buf = strconv.AppendInt(buf, r.Bandwidth, 10)
    return string(buf)
+}
+
+type Representation struct {
+   ID string `xml:"id,attr"`
+   Width int64 `xml:"width,attr"`
+   Height int64 `xml:"height,attr"`
+   Bandwidth int64 `xml:"bandwidth,attr"`
+}
+
+type AdaptationSet struct {
+   Role struct {
+      Value string `xml:"value,attr"`
+   }
+   SegmentTemplate struct {
+      Media string `xml:"media,attr"`
+   }
+   Representation []Representation
+}
+
+func (a AdaptationSet) Main() bool {
+   return a.Role.Value == "main"
 }

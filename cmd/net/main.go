@@ -16,6 +16,9 @@ func main() {
    // o
    var output string
    flag.StringVar(&output, "o", "", "output file")
+   // r
+   var redirect bool
+   flag.BoolVar(&redirect, "r", false, "redirect")
    // s
    var https bool
    flag.BoolVar(&https, "s", false, "HTTPS")
@@ -48,7 +51,7 @@ func main() {
             panic(err)
          }
       } else {
-         err := write(req, dst)
+         err := write(req, redirect, dst)
          if err != nil {
             panic(err)
          }

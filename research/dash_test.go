@@ -12,13 +12,16 @@ func TestDASH(t *testing.T) {
       t.Fatal(err)
    }
    defer file.Close()
-   media, err := NewMedia(file)
+   sets, err := AdaptationSets(file)
    if err != nil {
       t.Fatal(err)
    }
-   for _, ada := range media.Main() {
-      for _, rep := range ada.Representation {
-         fmt.Printf("%+v\n", rep)
+   for _, set := range sets {
+      if set.Main() {
+         fmt.Println(set.SegmentTemplate.Media)
+         for _, rep := range set.Representation {
+            fmt.Printf("%+v\n", rep)
+         }
       }
    }
 }

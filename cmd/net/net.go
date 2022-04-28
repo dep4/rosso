@@ -8,8 +8,15 @@ import (
    "strconv"
 )
 
-func write(req *http.Request, file *os.File) error {
-   res, err := new(http.Transport).RoundTrip(req)
+func roundTrip(req *http.Request, redirect bool) (*http.Response, error) {
+   if redirect {
+      return new(http.Client).Do(req)
+   }
+   return new(http.Transport).RoundTrip(req)
+}
+
+func write(req *http.Request, redirect bool, file *os.File) error {
+   res, err := roundTrip(req, redirect)
    if err != nil {
       return err
    }
