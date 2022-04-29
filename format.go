@@ -4,6 +4,7 @@ import (
    "bytes"
    "encoding/json"
    "io"
+   "mime"
    "net/http"
    "net/http/httputil"
    "os"
@@ -88,14 +89,6 @@ func LabelSize[T Number](value T) string {
    return Label(value, " B", " kB", " MB", " GB", " TB")
 }
 
-func Percent[T, U Number](value T, total U) string {
-   var ratio float64
-   if total != 0 {
-      ratio = 100 * float64(value) / float64(total)
-   }
-   return strconv.FormatFloat(ratio, 'f', 1, 64) + "%"
-}
-
 type LogLevel int
 
 func (l LogLevel) Dump(req *http.Request) error {
@@ -125,17 +118,6 @@ type Number interface {
    float64 | int | int64 | ~uint64
 }
 
-type Progress struct {
-   io.Writer
-   bytes int64
-   bytesRead int64
-   bytesWritten int
-   chunks int
-   chunksRead int64
-   time time.Time
-   timeLap time.Time
-}
-
 func ProgressBytes(dst io.Writer, bytes int64) *Progress {
    return &Progress{Writer: dst, bytes: bytes}
 }
@@ -148,17 +130,6 @@ func (p *Progress) AddChunk(bytes int64) {
    p.bytesRead += bytes
    p.chunksRead += 1
    p.bytes = int64(p.chunks) * p.bytesRead / p.chunksRead
-}
-
-func (p Progress) String() string {
-   rate := float64(p.bytesWritten) / time.Since(p.time).Seconds()
-   var buf strings.Builder
-   buf.WriteString(Percent(p.bytesWritten, p.bytes))
-   buf.WriteByte('\t')
-   buf.WriteString(LabelSize(p.bytesWritten))
-   buf.WriteByte('\t')
-   buf.WriteString(LabelRate(rate))
-   return buf.String()
 }
 
 func (p *Progress) Write(buf []byte) (int, error) {
@@ -175,4 +146,60 @@ func (p *Progress) Write(buf []byte) (int, error) {
    write, err := p.Writer.Write(buf)
    p.bytesWritten += write
    return write, err
+}
+
+func ExtensionByType(typ string) (string, error) {
+   media, _, err := mime.ParseMediaType(typ)
+   if err != nil {
+      return "", err
+   }
+   switch media {
+   case "audio/webm":
+      return ".weba", nil
+   case "video/webm":
+      return ".webm", nil
+   case "audio/mp4":
+      return ".m4a", nil
+   case "video/mp4":
+      return ".m4v", nil
+   }
+   return "", notFound{typ}
+}
+
+type notFound struct {
+   value string
+}
+
+func (n notFound) Error() string {
+   return strconv.Quote(n.value) + " is not found"
+}
+
+type Progress struct {
+   io.Writer
+   bytes int64
+   bytesRead int64
+   bytesWritten int
+   chunks int
+   chunksRead int64
+   time time.Time
+   timeLap time.Time
+}
+
+func (p Progress) String() string {
+   percent := func(value int, total int64) string {
+      var ratio float64
+      if total != 0 {
+         ratio = 100 * float64(value) / float64(total)
+      }
+      return strconv.FormatFloat(ratio, 'f', 1, 64) + "%"
+   }
+   ratio := percent(p.bytesWritten, p.bytes)
+   rate := float64(p.bytesWritten) / time.Since(p.time).Seconds()
+   var buf strings.Builder
+   buf.WriteString(ratio)
+   buf.WriteByte('\t')
+   buf.WriteString(LabelSize(p.bytesWritten))
+   buf.WriteByte('\t')
+   buf.WriteString(LabelRate(rate))
+   return buf.String()
 }

@@ -31,10 +31,6 @@ func TestLabel(t *testing.T) {
    fmt.Println(LabelRate(9_999))
 }
 
-func TestPercent(t *testing.T) {
-   fmt.Println(Percent(2, 3))
-}
-
 func TestProgress(t *testing.T) {
    res, err := http.Get("https://speedtest.lax.hivelocity.net/100mb.file")
    if err != nil {
