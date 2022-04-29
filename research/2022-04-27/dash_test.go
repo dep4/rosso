@@ -18,7 +18,7 @@ func TestDASH(t *testing.T) {
    }
    for _, set := range sets {
       if set.Main() {
-         fmt.Println(set.SegmentTemplate.Media)
+         fmt.Println(set.Timeline())
          for _, rep := range set.Representation {
             fmt.Printf("%+v\n", rep)
          }
