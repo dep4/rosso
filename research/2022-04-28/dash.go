@@ -3,29 +3,46 @@ package dash
 import (
    "encoding/xml"
    "io"
+   "net/url"
    "strconv"
+   "strings"
 )
 
-// func (a AdaptationSet) Timeline(rep Representation) []string {
-func (a AdaptationSet) Timeline() []string {
+func Adaptations(addr *url.URL, body io.Reader) ([]Adaptation, error) {
+   var mpd struct {
+      Period struct {
+         AdaptationSet []Adaptation
+      }
+   }
+   err := xml.NewDecoder(body).Decode(&mpd)
+   if err != nil {
+      return nil, err
+   }
+   return mpd.Period.AdaptationSet, nil
+}
+
+func (a Adaptation) Timeline(rep Representation) []string {
    var (
+      meds []string
       t int
-      ts []string
    )
    for _, s := range a.SegmentTemplate.SegmentTimeline.S {
       if s.R == 0 {
          s.R = 1
       }
       for s.R >= 1 {
-         ts = append(ts, strconv.Itoa(t))
+         med := a.SegmentTemplate.Media
+         med = strings.Replace(med, "$RepresentationID$", rep.ID, 1)
+         med = strings.Replace(med, "$Time$", strconv.Itoa(t), 1)
+         meds = append(meds, med)
          t += s.D
          s.R--
       }
    }
-   return ts
+   return meds
 }
 
-type AdaptationSet struct {
+type Adaptation struct {
    SegmentTemplate struct {
       Media string `xml:"media,attr"`
       SegmentTimeline struct {
@@ -48,19 +65,6 @@ type Representation struct {
    Bandwidth int64 `xml:"bandwidth,attr"`
 }
 
-func AdaptationSets(src io.Reader) ([]AdaptationSet, error) {
-   var mpd struct {
-      Period struct {
-         AdaptationSet []AdaptationSet
-      }
-   }
-   err := xml.NewDecoder(src).Decode(&mpd)
-   if err != nil {
-      return nil, err
-   }
-   return mpd.Period.AdaptationSet, nil
-}
-
 func (r Representation) String() string {
    var buf []byte
    buf = append(buf, "ID:"...)
@@ -74,8 +78,4 @@ func (r Representation) String() string {
    buf = append(buf, " Bandwidth:"...)
    buf = strconv.AppendInt(buf, r.Bandwidth, 10)
    return string(buf)
-}
-
-func (a AdaptationSet) Main() bool {
-   return a.Role.Value == "main"
 }
