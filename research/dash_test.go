@@ -25,5 +25,13 @@ func TestDASH(t *testing.T) {
    if err != nil {
       t.Fatal(err)
    }
-   fmt.Println(adas)
+   for _, ada := range adas {
+      for _, rep := range ada.Representation {
+         if rep.ID == "audio=128000" {
+            for _, line := range ada.Timeline(rep) {
+               fmt.Println(line)
+            }
+         }
+      }
+   }
 }
