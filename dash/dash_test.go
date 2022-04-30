@@ -12,7 +12,7 @@ const stream = "https://ak-jos-c4assets-com.akamaized.net" +
    "/CH4_44_7_900_18926001001003_001_J01.ism/stream.mpd"
 
 func TestDASH(t *testing.T) {
-   addr, err := url.Parse(stream)
+   base, err := url.Parse(stream)
    if err != nil {
       t.Fatal(err)
    }
@@ -26,16 +26,17 @@ func TestDASH(t *testing.T) {
       t.Fatal(err)
    }
    for _, ada := range adas {
-      fmt.Println(ada.MimeType)
       for _, rep := range ada.Representation {
          if rep.ID == "video=501712" {
-            addrs, err := ada.SegmentTemplate.URLs(addr, rep)
+            temp := ada.SegmentTemplate.Replace(rep)
+            addrs, err := temp.URLs(base)
             if err != nil {
                t.Fatal(err)
             }
             for _, addr := range addrs {
                fmt.Println(addr)
             }
+            fmt.Println(temp.Initialization)
          }
       }
    }
