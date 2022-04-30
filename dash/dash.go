@@ -8,64 +8,49 @@ import (
    "strings"
 )
 
-type Segment struct {
-   Initialization string `xml:"initialization,attr"`
-   Media string `xml:"media,attr"`
-   SegmentTimeline struct {
-      S []struct {
-         D int `xml:"d,attr"`
-         R int `xml:"r,attr"`
-      }
-   }
-}
-
-func replace(s string, r Representation, t int) string {
-   s = strings.Replace(s, "$RepresentationID$", r.ID, 1)
-   s = strings.Replace(s, "$Time$", strconv.Itoa(t), 1)
-   return s
-}
-
-func (s Segment) URLs(u *url.URL, r Representation) ([]*url.URL, error) {
-   addr, err := u.Parse(replace(s.Initialization, r, 0))
-   if err != nil {
-      return nil, err
-   }
-   addrs := []*url.URL{addr}
-   var start int
-   for _, seg := range s.SegmentTimeline.S {
-      for seg.R >= 0 {
-         addr, err := u.Parse(replace(s.Media, r, start))
-         if err != nil {
-            return nil, err
-         }
-         addrs = append(addrs, addr)
-         start += seg.D
-         seg.R--
-      }
-   }
-   return addrs, nil
-}
-
-type Adaptation struct {
+type AdaptationSet struct {
+   ContentType string `xml:"contentType,attr"`
    MimeType string `xml:"mimeType,attr"`
    Representation []Representation
    Role struct {
       Value string `xml:"value,attr"`
    }
-   SegmentTemplate Segment
+   SegmentTemplate Template
 }
 
-func Adaptations(body io.Reader) ([]Adaptation, error) {
+type Period struct {
+   AdaptationSet []AdaptationSet
+}
+
+func NewPeriod(body io.Reader) (*Period, error) {
    var media struct {
-      Period struct {
-         AdaptationSet []Adaptation
-      }
+      Period Period
    }
    err := xml.NewDecoder(body).Decode(&media)
    if err != nil {
       return nil, err
    }
-   return media.Period.AdaptationSet, nil
+   return &media.Period, nil
+}
+
+func (p Period) Audio(video *AdaptationSet) *AdaptationSet {
+   for _, ada := range p.AdaptationSet {
+      if ada.ContentType == "audio" {
+         if ada.Role.Value == video.Role.Value {
+            return &ada
+         }
+      }
+   }
+   return nil
+}
+
+func (p Period) Video() *AdaptationSet {
+   for _, ada := range p.AdaptationSet {
+      if ada.ContentType == "video" {
+         return &ada
+      }
+   }
+   return nil
 }
 
 type Representation struct {
@@ -88,4 +73,53 @@ func (r Representation) String() string {
    buf = append(buf, " Bandwidth:"...)
    buf = strconv.AppendInt(buf, r.Bandwidth, 10)
    return string(buf)
+}
+
+func (r Representation) replace(in string) string {
+   return strings.Replace(in, "$RepresentationID$", r.ID, 1)
+}
+
+type Segment struct {
+   D int `xml:"d,attr"`
+   R int `xml:"r,attr"`
+   T int `xml:"t,attr"`
+}
+
+func (s Segment) replace(in string) string {
+   return strings.Replace(in, "$Time$", strconv.Itoa(s.T), 1)
+}
+
+type Template struct {
+   Initialization string `xml:"initialization,attr"`
+   Media string `xml:"media,attr"`
+   SegmentTimeline struct {
+      S []Segment
+   }
+}
+
+func (t Template) Replace(rep Representation) Template {
+   t.Initialization = rep.replace(t.Initialization)
+   t.Media = rep.replace(t.Media)
+   return t
+}
+
+func (t Template) URLs(base *url.URL) ([]*url.URL, error) {
+   var start int
+   addr, err := base.Parse(t.Initialization)
+   if err != nil {
+      return nil, err
+   }
+   addrs := []*url.URL{addr}
+   for _, seg := range t.SegmentTimeline.S {
+      for seg.T = start; seg.R >= 0; seg.R-- {
+         addr, err := base.Parse(seg.replace(t.Media))
+         if err != nil {
+            return nil, err
+         }
+         addrs = append(addrs, addr)
+         start += seg.D
+         seg.T += seg.D
+      }
+   }
+   return addrs, nil
 }
