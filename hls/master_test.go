@@ -25,7 +25,11 @@ func TestMaster(t *testing.T) {
    if err != nil {
       t.Fatal(err)
    }
-   for _, stream := range master.Stream {
-      fmt.Println(stream)
+   for i, video := range master.Stream {
+      if i == 0 {
+         audio := master.Audio(video)
+         fmt.Printf("%+v\n", audio)
+      }
+      fmt.Println(video)
    }
 }

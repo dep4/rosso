@@ -11,7 +11,7 @@ type Master struct {
    Media []Media
 }
 
-func (m Master) GetMedia(str Stream) *Media {
+func (m Master) Audio(str Stream) *Media {
    for _, med := range m.Media {
       if med.GroupID == str.Audio {
          return &med
