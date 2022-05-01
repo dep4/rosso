@@ -91,6 +91,15 @@ func LabelSize[T Number](value T) string {
 type LogLevel int
 
 func (l LogLevel) Dump(req *http.Request) error {
+   quote := func(b []byte) []byte {
+      if IsBinary(b) {
+         b = strconv.AppendQuote(nil, string(b))
+      }
+      if !bytes.HasSuffix(b, []byte{'\n'}) {
+         b = append(b, '\n')
+      }
+      return b
+   }
    switch l {
    case 0:
       os.Stderr.WriteString(req.Method)
@@ -102,13 +111,13 @@ func (l LogLevel) Dump(req *http.Request) error {
       if err != nil {
          return err
       }
-      if IsBinary(buf) {
-         buf = strconv.AppendQuote(nil, string(buf))
+      os.Stderr.Write(quote(buf))
+   case 2:
+      buf, err := httputil.DumpRequestOut(req, true)
+      if err != nil {
+         return err
       }
-      if !bytes.HasSuffix(buf, []byte{'\n'}) {
-         buf = append(buf, '\n')
-      }
-      os.Stderr.Write(buf)
+      os.Stderr.Write(quote(buf))
    }
    return nil
 }

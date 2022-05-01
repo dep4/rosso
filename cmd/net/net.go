@@ -20,6 +20,7 @@ func write(req *http.Request, redirect bool, file *os.File) error {
    if err != nil {
       return err
    }
+   defer res.Body.Close()
    if file == os.Stdout {
       buf, err := httputil.DumpResponse(res, true)
       if err != nil {
@@ -41,5 +42,5 @@ func write(req *http.Request, redirect bool, file *os.File) error {
          return err
       }
    }
-   return res.Body.Close()
+   return nil
 }
