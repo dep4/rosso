@@ -1,4 +1,4 @@
-# video/MP2T
+# video/mp2t
 
 ## FFmpeg
 
@@ -10,6 +10,13 @@
 ~~~
 
 https://github.com/FFmpeg/FFmpeg/blob/master/libavformat/mpegtsenc.c
+
+~~~
+.name           = "mpegts",
+.long_name      = NULL_IF_CONFIG_SMALL("MPEG-TS (MPEG-2 Transport Stream)"),
+~~~
+
+https://github.com/FFmpeg/FFmpeg/blob/master/libavformat/mpegts.c
 
 ## Mozilla
 
