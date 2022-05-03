@@ -11,6 +11,11 @@ import (
    "time"
 )
 
+const (
+   AAC = ".aac"
+   TS = ".ts"
+)
+
 type Bandwidth struct {
    *Master
    Target int

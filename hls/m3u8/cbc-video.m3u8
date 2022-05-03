@@ -24,6 +24,4 @@ Fragments(video=360360000,format=m3u8-aapl)
 Fragments(video=420420000,format=m3u8-aapl)
 #EXTINF:6.006000,no-desc
 Fragments(video=480480000,format=m3u8-aapl)
-#EXTINF:6.006000,no-desc
-Fragments(video=540540000,format=m3u8-aapl)
 #EXT-X-ENDLIST
