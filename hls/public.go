@@ -27,111 +27,6 @@ func (b Bandwidth) Less(i, j int) bool {
    return distance(i) < distance(j)
 }
 
-type Information struct {
-   IV []byte
-   // If we embed this, it will hijack String method
-   Duration time.Duration
-   URI *url.URL
-}
-
-type Media struct {
-   GroupID string
-   URI *url.URL
-}
-
-type Scanner struct {
-   scanner.Scanner
-}
-
-func NewScanner(body io.Reader) *Scanner {
-   var scan Scanner
-   scan.Init(body)
-   return &scan
-}
-
-func (s *Scanner) Segment(addr *url.URL) (*Segment, error) {
-   var (
-      info Information
-      seg Segment
-   )
-   for {
-      s.splitWords()
-      if s.Scan() == scanner.EOF {
-         break
-      }
-      var err error
-      switch s.TokenText() {
-      case "EXT-X-KEY":
-         for s.Scan() != '\n' {
-            switch s.TokenText() {
-            case "IV":
-               s.Scan()
-               s.Scan()
-               info.IV, err = scanHex(s.TokenText())
-            case "URI":
-               s.Scan()
-               s.Scan()
-               seg.Key, err = scanURL(s.TokenText(), addr)
-            }
-            if err != nil {
-               return nil, err
-            }
-         }
-      case "EXTINF":
-         s.Scan()
-         s.Scan()
-         info.Duration, err = scanDuration(s.TokenText())
-         if err != nil {
-            return nil, err
-         }
-         s.splitLines()
-         s.Scan()
-         s.Scan()
-         info.URI, err = addr.Parse(s.TokenText())
-         if err != nil {
-            return nil, err
-         }
-         seg.Info = append(seg.Info, info)
-         info = Information{}
-      }
-   }
-   return &seg, nil
-}
-
-type Segment struct {
-   Key *url.URL
-   Info []Information
-}
-
-func (s Segment) Length(str Stream) int64 {
-   var dur time.Duration
-   for _, info := range s.Info {
-      dur += info.Duration
-   }
-   length := float64(str.Bandwidth) / 8 * dur.Seconds()
-   return int64(length)
-}
-
-type Stream struct {
-   Resolution string
-   Bandwidth int // handle duplicate resolution
-   Codecs string // handle missing resolution
-   Audio string // link to Media
-   URI *url.URL
-}
-
-func (s Stream) Format(f fmt.State, verb rune) {
-   if s.Resolution != "" {
-      fmt.Fprint(f, "Resolution:", s.Resolution, " ")
-   }
-   fmt.Fprint(f, "Bandwidth:", s.Bandwidth)
-   fmt.Fprint(f, " Codecs:", s.Codecs)
-   if verb == 'a' {
-      fmt.Fprint(f, " Audio:", s.Audio)
-      fmt.Fprint(f, " URI:", s.URI)
-   }
-}
-
 type Cipher struct {
    cipher.Block
    key []byte
@@ -167,6 +62,13 @@ func (c Cipher) Copy(w io.Writer, r io.Reader, iv []byte) (int, error) {
    return w.Write(buf)
 }
 
+type Information struct {
+   IV []byte
+   // If we embed this, it will hijack String method
+   Duration time.Duration
+   URI *url.URL
+}
+
 type Master struct {
    Stream []Stream
    Media []Media
@@ -187,6 +89,21 @@ func (m Master) Len() int {
 
 func (m Master) Swap(i, j int) {
    m.Stream[i], m.Stream[j] = m.Stream[j], m.Stream[i]
+}
+
+type Media struct {
+   GroupID string
+   URI *url.URL
+}
+
+type Scanner struct {
+   scanner.Scanner
+}
+
+func NewScanner(body io.Reader) *Scanner {
+   var scan Scanner
+   scan.Init(body)
+   return &scan
 }
 
 func (s *Scanner) Master(addr *url.URL) (*Master, error) {
@@ -251,4 +168,78 @@ func (s *Scanner) Master(addr *url.URL) (*Master, error) {
       }
    }
    return &mas, nil
+}
+
+func (s *Scanner) Segment(addr *url.URL) (*Segment, error) {
+   var (
+      info Information
+      seg Segment
+   )
+   for {
+      s.splitWords()
+      if s.Scan() == scanner.EOF {
+         break
+      }
+      var err error
+      switch s.TokenText() {
+      case "EXT-X-KEY":
+         for s.Scan() != '\n' {
+            switch s.TokenText() {
+            case "IV":
+               s.Scan()
+               s.Scan()
+               info.IV, err = scanHex(s.TokenText())
+            case "URI":
+               s.Scan()
+               s.Scan()
+               seg.Key, err = scanURL(s.TokenText(), addr)
+            }
+            if err != nil {
+               return nil, err
+            }
+         }
+      case "EXTINF":
+         s.Scan()
+         s.Scan()
+         info.Duration, err = scanDuration(s.TokenText())
+         if err != nil {
+            return nil, err
+         }
+         s.splitLines()
+         s.Scan()
+         s.Scan()
+         info.URI, err = addr.Parse(s.TokenText())
+         if err != nil {
+            return nil, err
+         }
+         seg.Info = append(seg.Info, info)
+         info = Information{}
+      }
+   }
+   return &seg, nil
+}
+
+type Segment struct {
+   Key *url.URL
+   Info []Information
+}
+
+type Stream struct {
+   Resolution string
+   Bandwidth int // handle duplicate resolution
+   Codecs string // handle missing resolution
+   Audio string // link to Media
+   URI *url.URL
+}
+
+func (s Stream) Format(f fmt.State, verb rune) {
+   if s.Resolution != "" {
+      fmt.Fprint(f, "Resolution:", s.Resolution, " ")
+   }
+   fmt.Fprint(f, "Bandwidth:", s.Bandwidth)
+   fmt.Fprint(f, " Codecs:", s.Codecs)
+   if verb == 'a' {
+      fmt.Fprint(f, " Audio:", s.Audio)
+      fmt.Fprint(f, " URI:", s.URI)
+   }
 }
