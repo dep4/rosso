@@ -3,38 +3,13 @@ package hls
 import (
    "crypto/aes"
    "crypto/cipher"
-   "encoding/hex"
    "fmt"
    "io"
    "net/url"
-   "path"
    "strconv"
-   "strings"
    "text/scanner"
    "time"
-   "unicode"
 )
-
-func scanHex(s string) ([]byte, error) {
-   up := strings.ToUpper(s)
-   return hex.DecodeString(strings.TrimPrefix(up, "0X"))
-}
-
-func scanDuration(s string) (time.Duration, error) {
-   sec, err := strconv.ParseFloat(s, 64)
-   if err != nil {
-      return 0, err
-   }
-   return time.Duration(sec * 1000) * time.Millisecond, nil
-}
-
-func scanURL(s string, addr *url.URL) (*url.URL, error) {
-   ref, err := strconv.Unquote(s)
-   if err != nil {
-      return nil, err
-   }
-   return addr.Parse(ref)
-}
 
 type Bandwidth struct {
    *Master
@@ -123,52 +98,9 @@ func (s *Scanner) Segment(addr *url.URL) (*Segment, error) {
    return &seg, nil
 }
 
-func (s *Scanner) splitLines() {
-   s.IsIdentRune = func(r rune, i int) bool {
-      if r == '\n' {
-         return false
-      }
-      if r == '\r' {
-         return false
-      }
-      return true
-   }
-   s.Whitespace |= 1 << '\n'
-   s.Whitespace |= 1 << '\r'
-}
-
-func (s *Scanner) splitWords() {
-   s.IsIdentRune = func(r rune, i int) bool {
-      if r == '-' {
-         return true
-      }
-      if r == '.' {
-         return true
-      }
-      if unicode.IsDigit(r) {
-         return true
-      }
-      if unicode.IsLetter(r) {
-         return true
-      }
-      return false
-   }
-   s.Whitespace = 1 << ' '
-}
-
 type Segment struct {
    Key *url.URL
    Info []Information
-}
-
-func (s Segment) Ext() string {
-   for _, info := range s.Info {
-      ext := path.Ext(info.URI.Path)
-      if ext != "" {
-         return ext
-      }
-   }
-   return ""
 }
 
 func (s Segment) Length(str Stream) int64 {
@@ -233,4 +165,90 @@ func (c Cipher) Copy(w io.Writer, r io.Reader, iv []byte) (int, error) {
       }
    }
    return w.Write(buf)
+}
+
+type Master struct {
+   Stream []Stream
+   Media []Media
+}
+
+func (m Master) Audio(str Stream) *Media {
+   for _, med := range m.Media {
+      if med.GroupID == str.Audio {
+         return &med
+      }
+   }
+   return nil
+}
+
+func (m Master) Len() int {
+   return len(m.Stream)
+}
+
+func (m Master) Swap(i, j int) {
+   m.Stream[i], m.Stream[j] = m.Stream[j], m.Stream[i]
+}
+
+func (s *Scanner) Master(addr *url.URL) (*Master, error) {
+   var mas Master
+   for {
+      s.splitWords()
+      if s.Scan() == scanner.EOF {
+         break
+      }
+      var err error
+      switch s.TokenText() {
+      case "EXT-X-MEDIA":
+         var med Media
+         for s.Scan() != '\n' {
+            switch s.TokenText() {
+            case "GROUP-ID":
+               s.Scan()
+               s.Scan()
+               med.GroupID, err = strconv.Unquote(s.TokenText())
+            case "URI":
+               s.Scan()
+               s.Scan()
+               med.URI, err = scanURL(s.TokenText(), addr)
+            }
+            if err != nil {
+               return nil, err
+            }
+         }
+         mas.Media = append(mas.Media, med)
+      case "EXT-X-STREAM-INF":
+         var str Stream
+         for s.Scan() != '\n' {
+            switch s.TokenText() {
+            case "AUDIO":
+               s.Scan()
+               s.Scan()
+               str.Audio, err = strconv.Unquote(s.TokenText())
+            case "BANDWIDTH":
+               s.Scan()
+               s.Scan()
+               str.Bandwidth, err = strconv.Atoi(s.TokenText())
+            case "CODECS":
+               s.Scan()
+               s.Scan()
+               str.Codecs, err = strconv.Unquote(s.TokenText())
+            case "RESOLUTION":
+               s.Scan()
+               s.Scan()
+               str.Resolution = s.TokenText()
+            }
+            if err != nil {
+               return nil, err
+            }
+         }
+         s.splitLines()
+         s.Scan()
+         str.URI, err = addr.Parse(s.TokenText())
+         if err != nil {
+            return nil, err
+         }
+         mas.Stream = append(mas.Stream, str)
+      }
+   }
+   return &mas, nil
 }
