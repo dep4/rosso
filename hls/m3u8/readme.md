@@ -29,6 +29,74 @@ Both:
 < Content-Length: 1309056
 ~~~
 
+## CBC
+
+Video:
+
+~~~
+> GET /0f73fb9d-87f0-4577-81d1-e6e970b89a69/CBC_DOWNTON_ABBEY_S01E05.ism/QualityLevels(2500080)/Fragments(video=0,format=m3u8-aapl) HTTP/1.1
+> Host: cbcrcott-gem.akamaized.net
+> User-Agent: curl/7.78.0
+> Accept: */*
+
+< HTTP/1.1 200 OK
+< Pragma: IISMS/6.0,IIS Media Services Premium by Microsoft
+< Content-Type: video/mp2t
+< ETag: "0x8D8CA2267051B64"
+< Server: Microsoft-IIS/10.0 IISMS/6.0
+< x-ms-streaming-duration: video=6006
+< X-Content-Type-Options: nosniff
+< Content-Length: 1946560
+< Cache-Control: private, max-age=17731814
+< Expires: Wed, 23 Nov 2022 07:03:01 GMT
+< Date: Mon, 02 May 2022 01:32:47 GMT
+< Connection: keep-alive
+< Akamai-Mon-Iucid-Del: 550858
+< Alt-Svc: h3-Q050=":443"; ma=93600,quic=":443"; ma=93600; v="46,43"
+< Set-Cookie: akaalb_LB-SrcAv-Toutv=~op=SRC_RcAvToutv_lb:Standard-East|~rv=90~m=Standard-East:0|~os=549dc91727a25e1d5313306552a5fc3a~id=fa12fbb303d1e2fea10ef6e432f9e74e; path=/; HttpOnly; Secure; SameSite=None
+< Access-Control-Max-Age: 86400
+< Access-Control-Allow-Credentials: true
+< Access-Control-Expose-Headers: Server,range,hdntl,hdnts,Akamai-Mon-Iucid-Ing,Akamai-Mon-Iucid-Del,Akamai-Request-BC
+< Access-Control-Allow-Headers: origin,range,hdntl,hdnts
+< Access-Control-Allow-Methods: GET,POST,OPTIONS
+< Access-Control-Allow-Origin: *
+~~~
+
+Audio:
+
+~~~
+> GET /0f73fb9d-87f0-4577-81d1-e6e970b89a69/CBC_DOWNTON_ABBEY_S01E05.ism/QualityLevels(192000)/Fragments(audio_eng_aacl=0,format=m3u8-aapl) HTTP/1.1
+> Host: cbcrcott-gem.akamaized.net
+> User-Agent: curl/7.78.0
+> Accept: */*
+
+< HTTP/1.1 200 OK
+< Pragma: IISMS/6.0,IIS Media Services Premium by Microsoft
+< Content-Type: video/mp2t
+< ETag: "0x8D8CA233CC10B47"
+< Server: Microsoft-IIS/10.0 IISMS/6.0
+< x-ms-streaming-duration: audio=6037
+< X-Content-Type-Options: nosniff
+< Content-Length: 153792
+< X-EdgeConnect-MidMile-RTT: 1
+< X-EdgeConnect-Origin-MEX-Latency: 311
+< X-EdgeConnect-MidMile-RTT: 21
+< X-EdgeConnect-Origin-MEX-Latency: 311
+< Cache-Control: private, max-age=17728367
+< Expires: Wed, 23 Nov 2022 06:06:38 GMT
+< Date: Mon, 02 May 2022 01:33:51 GMT
+< Connection: keep-alive
+< Akamai-Mon-Iucid-Del: 550858
+< Alt-Svc: h3-Q050=":443"; ma=93600,quic=":443"; ma=93600; v="46,43"
+< Set-Cookie: akaalb_LB-SrcAv-Toutv=~op=SRC_RcAvToutv_lb:Standard-East|~rv=35~m=Standard-East:0|~os=549dc91727a25e1d5313306552a5fc3a~id=de444bf7c9f74037fc47085286267fbb; path=/; HttpOnly; Secure; SameSite=None
+< Access-Control-Max-Age: 86400
+< Access-Control-Allow-Credentials: true
+< Access-Control-Expose-Headers: Server,range,hdntl,hdnts,Akamai-Mon-Iucid-Ing,Akamai-Mon-Iucid-Del,Akamai-Request-BC
+< Access-Control-Allow-Headers: origin,range,hdntl,hdnts
+< Access-Control-Allow-Methods: GET,POST,OPTIONS
+< Access-Control-Allow-Origin: *
+~~~
+
 ## NBC
 
 Both:
@@ -153,72 +221,4 @@ Audio:
 < X-Amz-Cf-Pop: DFW56-P5
 < X-Amz-Cf-Id: rluS_tiQkLQAj7SBgqZ_DnzhCPzIFW4s1vWwHMO0jQPkDpI4E5GCyA==
 < Age: 5792227
-~~~
-
-## CBC
-
-Video:
-
-~~~
-> GET /0f73fb9d-87f0-4577-81d1-e6e970b89a69/CBC_DOWNTON_ABBEY_S01E05.ism/QualityLevels(2500080)/Fragments(video=0,format=m3u8-aapl) HTTP/1.1
-> Host: cbcrcott-gem.akamaized.net
-> User-Agent: curl/7.78.0
-> Accept: */*
-
-< HTTP/1.1 200 OK
-< Pragma: IISMS/6.0,IIS Media Services Premium by Microsoft
-< Content-Type: video/mp2t
-< ETag: "0x8D8CA2267051B64"
-< Server: Microsoft-IIS/10.0 IISMS/6.0
-< x-ms-streaming-duration: video=6006
-< X-Content-Type-Options: nosniff
-< Content-Length: 1946560
-< Cache-Control: private, max-age=17731814
-< Expires: Wed, 23 Nov 2022 07:03:01 GMT
-< Date: Mon, 02 May 2022 01:32:47 GMT
-< Connection: keep-alive
-< Akamai-Mon-Iucid-Del: 550858
-< Alt-Svc: h3-Q050=":443"; ma=93600,quic=":443"; ma=93600; v="46,43"
-< Set-Cookie: akaalb_LB-SrcAv-Toutv=~op=SRC_RcAvToutv_lb:Standard-East|~rv=90~m=Standard-East:0|~os=549dc91727a25e1d5313306552a5fc3a~id=fa12fbb303d1e2fea10ef6e432f9e74e; path=/; HttpOnly; Secure; SameSite=None
-< Access-Control-Max-Age: 86400
-< Access-Control-Allow-Credentials: true
-< Access-Control-Expose-Headers: Server,range,hdntl,hdnts,Akamai-Mon-Iucid-Ing,Akamai-Mon-Iucid-Del,Akamai-Request-BC
-< Access-Control-Allow-Headers: origin,range,hdntl,hdnts
-< Access-Control-Allow-Methods: GET,POST,OPTIONS
-< Access-Control-Allow-Origin: *
-~~~
-
-Audio:
-
-~~~
-> GET /0f73fb9d-87f0-4577-81d1-e6e970b89a69/CBC_DOWNTON_ABBEY_S01E05.ism/QualityLevels(192000)/Fragments(audio_eng_aacl=0,format=m3u8-aapl) HTTP/1.1
-> Host: cbcrcott-gem.akamaized.net
-> User-Agent: curl/7.78.0
-> Accept: */*
-
-< HTTP/1.1 200 OK
-< Pragma: IISMS/6.0,IIS Media Services Premium by Microsoft
-< Content-Type: video/mp2t
-< ETag: "0x8D8CA233CC10B47"
-< Server: Microsoft-IIS/10.0 IISMS/6.0
-< x-ms-streaming-duration: audio=6037
-< X-Content-Type-Options: nosniff
-< Content-Length: 153792
-< X-EdgeConnect-MidMile-RTT: 1
-< X-EdgeConnect-Origin-MEX-Latency: 311
-< X-EdgeConnect-MidMile-RTT: 21
-< X-EdgeConnect-Origin-MEX-Latency: 311
-< Cache-Control: private, max-age=17728367
-< Expires: Wed, 23 Nov 2022 06:06:38 GMT
-< Date: Mon, 02 May 2022 01:33:51 GMT
-< Connection: keep-alive
-< Akamai-Mon-Iucid-Del: 550858
-< Alt-Svc: h3-Q050=":443"; ma=93600,quic=":443"; ma=93600; v="46,43"
-< Set-Cookie: akaalb_LB-SrcAv-Toutv=~op=SRC_RcAvToutv_lb:Standard-East|~rv=35~m=Standard-East:0|~os=549dc91727a25e1d5313306552a5fc3a~id=de444bf7c9f74037fc47085286267fbb; path=/; HttpOnly; Secure; SameSite=None
-< Access-Control-Max-Age: 86400
-< Access-Control-Allow-Credentials: true
-< Access-Control-Expose-Headers: Server,range,hdntl,hdnts,Akamai-Mon-Iucid-Ing,Akamai-Mon-Iucid-Del,Akamai-Request-BC
-< Access-Control-Allow-Headers: origin,range,hdntl,hdnts
-< Access-Control-Allow-Methods: GET,POST,OPTIONS
-< Access-Control-Allow-Origin: *
 ~~~
