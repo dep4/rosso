@@ -5,35 +5,32 @@ import (
    "net/http"
    "net/url"
    "os"
-   "sort"
    "testing"
 )
 
-const cbcMaster =
-   "https://cbcrcott-gem.akamaized.net/0f73fb9d-87f0-4577-81d1-e6e970b89a69" +
-   "/CBC_DOWNTON_ABBEY_S01E05.ism/desktop_master.m3u8"
+const nature = "https://ga.video.cdn.pbs.org/videos/nature" +
+   "/77d6ad42-30d7-41bb-86c5-3a9fcd87c7bf/2000291170/hd-16x9-mezzanine-1080p" +
+   "/naat4011-hls-16x9-1080p_097.m3u8"
 
 func TestMaster(t *testing.T) {
-   file, err := os.Open("m3u8/cbc-master.m3u8")
+   fmt.Println("GET", nature)
+   res, err := http.Get(nature)
    if err != nil {
       t.Fatal(err)
    }
-   defer file.Close()
-   addr, err := url.Parse(cbcMaster)
+   defer res.Body.Close()
+   master, err := NewScanner(res.Body).Master(res.Request.URL)
    if err != nil {
       t.Fatal(err)
    }
-   master, err := NewScanner(file).Master(addr)
-   if err != nil {
-      t.Fatal(err)
+   for _, stream := range master.Streams {
+      fmt.Println(stream)
    }
-   for i, video := range master.Stream {
-      if i == 0 {
-         audio := master.Audio(video)
-         fmt.Printf("%+v\n", audio)
-      }
-      fmt.Println(video)
+   for _, media := range master.Media {
+      fmt.Println(media)
    }
+   fmt.Println(master.Stream(7996499))
+   fmt.Println(master.Audio("English"))
 }
 
 func TestSegment(t *testing.T) {
@@ -90,18 +87,4 @@ func newSegment() (*Segment, error) {
       return nil, err
    }
    return NewScanner(file).Segment(addr)
-}
-
-func TestBandwidth(t *testing.T) {
-   master := &Master{Stream: []Stream{
-      {Bandwidth: 480},
-      {Bandwidth: 144},
-      {Bandwidth: 1080},
-      {Bandwidth: 720},
-      {Bandwidth: 2160},
-   }}
-   sort.Sort(Bandwidth{master, 720})
-   for _, str := range master.Stream {
-      fmt.Println(str)
-   }
 }
