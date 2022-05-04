@@ -79,15 +79,6 @@ type Master struct {
    Media []Media
 }
 
-func (m Master) Audio(str Stream) *Media {
-   for _, med := range m.Media {
-      if med.GroupID == str.Audio {
-         return &med
-      }
-   }
-   return nil
-}
-
 func (m Master) Len() int {
    return len(m.Stream)
 }
@@ -97,8 +88,19 @@ func (m Master) Swap(i, j int) {
 }
 
 type Media struct {
-   GroupID string
+   Default string
+   Name string
+   Type string
    URI *url.URL
+}
+
+func (m Media) Format(f fmt.State, verb rune) {
+   fmt.Fprint(f, "Type:", m.Type)
+   fmt.Fprint(f, " Name:", m.Name)
+   fmt.Fprint(f, " Default:", m.Default)
+   if verb == 'a' {
+      fmt.Fprint(f, " URI:", m.URI)
+   }
 }
 
 type Scanner struct {
@@ -124,14 +126,22 @@ func (s *Scanner) Master(addr *url.URL) (*Master, error) {
          var med Media
          for s.Scan() != '\n' {
             switch s.TokenText() {
-            case "GROUP-ID":
+            case "DEFAULT":
                s.Scan()
                s.Scan()
-               med.GroupID, err = strconv.Unquote(s.TokenText())
+               med.Default = s.TokenText()
+            case "TYPE":
+               s.Scan()
+               s.Scan()
+               med.Type = s.TokenText()
             case "URI":
                s.Scan()
                s.Scan()
                med.URI, err = scanURL(s.TokenText(), addr)
+            case "NAME":
+               s.Scan()
+               s.Scan()
+               med.Name, err = strconv.Unquote(s.TokenText())
             }
             if err != nil {
                return nil, err
@@ -142,18 +152,14 @@ func (s *Scanner) Master(addr *url.URL) (*Master, error) {
          var str Stream
          for s.Scan() != '\n' {
             switch s.TokenText() {
-            case "AUDIO":
-               s.Scan()
-               s.Scan()
-               str.Audio, err = strconv.Unquote(s.TokenText())
-            case "BANDWIDTH":
-               s.Scan()
-               s.Scan()
-               str.Bandwidth, err = strconv.Atoi(s.TokenText())
             case "CODECS":
                s.Scan()
                s.Scan()
                str.Codecs, err = strconv.Unquote(s.TokenText())
+            case "BANDWIDTH":
+               s.Scan()
+               s.Scan()
+               str.Bandwidth, err = strconv.Atoi(s.TokenText())
             case "RESOLUTION":
                s.Scan()
                s.Scan()
@@ -233,7 +239,6 @@ type Stream struct {
    Resolution string
    Bandwidth int // handle duplicate resolution
    Codecs string // handle missing resolution
-   Audio string // link to Media
    URI *url.URL
 }
 
@@ -244,7 +249,6 @@ func (s Stream) Format(f fmt.State, verb rune) {
    fmt.Fprint(f, "Bandwidth:", s.Bandwidth)
    fmt.Fprint(f, " Codecs:", s.Codecs)
    if verb == 'a' {
-      fmt.Fprint(f, " Audio:", s.Audio)
       fmt.Fprint(f, " URI:", s.URI)
    }
 }
