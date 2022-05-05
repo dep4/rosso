@@ -242,7 +242,9 @@ func (s Stream) Format(f fmt.State, verb rune) {
       fmt.Fprint(f, "Resolution:", s.Resolution, " ")
    }
    fmt.Fprint(f, "Bandwidth:", s.Bandwidth)
-   fmt.Fprint(f, " Codecs:", s.Codecs)
+   if s.Codecs != "" {
+      fmt.Fprint(f, " Codecs:", s.Codecs)
+   }
    if verb == 'a' {
       fmt.Fprint(f, " URI:", s.URI)
    }
