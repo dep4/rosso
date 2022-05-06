@@ -7,7 +7,15 @@ import (
    "testing"
 )
 
-func TestRepresent(t *testing.T) {
+const roku = "https://vod.delivery.roku.com" +
+   "/41e834bbaecb4d27890094e3d00e8cfb/aaf72928242741a6ab8d0dfefbd662ca" +
+   "/87fe48887c78431d823a845b377a0c0f/index.mpd"
+
+func TestRoku(t *testing.T) {
+   base, err := url.Parse(roku)
+   if err != nil {
+      t.Fatal(err)
+   }
    body, err := os.Open("roku.mpd")
    if err != nil {
       t.Fatal(err)
@@ -17,18 +25,23 @@ func TestRepresent(t *testing.T) {
    if err != nil {
       t.Fatal(err)
    }
-   video := period.Video(2035878)
-   fmt.Printf("%a\n", video)
-   audio := period.Audio(128000)
-   fmt.Printf("%a\n", audio)
+   video := period.Video(0)
+   addrs, err := video.SegmentTemplate.URL(video, base)
+   if err != nil {
+      t.Fatal(err)
+   }
+   for _, addr := range addrs {
+      fmt.Println(addr)
+   }
+   fmt.Println(video.SegmentTemplate.Base(video))
 }
 
-const stream = "https://ak-jos-c4assets-com.akamaized.net" +
+const channel4 = "https://ak-jos-c4assets-com.akamaized.net" +
    "/CH4_44_7_900_18926001001003_001" +
    "/CH4_44_7_900_18926001001003_001_J01.ism/stream.mpd"
 
-func TestTemplate(t *testing.T) {
-   base, err := url.Parse(stream)
+func TestChannel4(t *testing.T) {
+   base, err := url.Parse(channel4)
    if err != nil {
       t.Fatal(err)
    }
@@ -37,22 +50,17 @@ func TestTemplate(t *testing.T) {
       t.Fatal(err)
    }
    defer body.Close()
-   per, err := NewPeriod(body)
+   period, err := NewPeriod(body)
    if err != nil {
       t.Fatal(err)
    }
-   for _, ada := range per.AdaptationSet {
-      for _, rep := range ada.Representation {
-         if rep.ID == "video=501712" {
-            addrs, err := ada.SegmentTemplate.URL(rep, base)
-            if err != nil {
-               t.Fatal(err)
-            }
-            for _, addr := range addrs {
-               fmt.Println(addr)
-            }
-            fmt.Println(ada.SegmentTemplate.Base(rep))
-         }
-      }
+   video := period.Video(0)
+   addrs, err := ada.SegmentTemplate.URL(rep, base)
+   if err != nil {
+      t.Fatal(err)
    }
+   for _, addr := range addrs {
+      fmt.Println(addr)
+   }
+   fmt.Println(ada.SegmentTemplate.Base(rep))
 }
