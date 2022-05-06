@@ -8,7 +8,6 @@ import (
    "net/url"
    "strconv"
    "text/scanner"
-   "time"
 )
 
 const (
@@ -53,8 +52,6 @@ func (c Cipher) Copy(w io.Writer, r io.Reader, iv []byte) (int, error) {
 
 type Information struct {
    IV []byte
-   // If we embed this, it will hijack String method
-   Duration time.Duration
    URI *url.URL
 }
 
@@ -205,12 +202,6 @@ func (s *Scanner) Segment(addr *url.URL) (*Segment, error) {
             }
          }
       case "EXTINF":
-         s.Scan()
-         s.Scan()
-         info.Duration, err = scanDuration(s.TokenText())
-         if err != nil {
-            return nil, err
-         }
          s.splitLines()
          s.Scan()
          s.Scan()

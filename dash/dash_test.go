@@ -7,8 +7,8 @@ import (
    "testing"
 )
 
-func TestRepresentation(t *testing.T) {
-   body, err := os.Open("18926-001.mpd")
+func TestRepresent(t *testing.T) {
+   body, err := os.Open("roku.mpd")
    if err != nil {
       t.Fatal(err)
    }
@@ -17,11 +17,10 @@ func TestRepresentation(t *testing.T) {
    if err != nil {
       t.Fatal(err)
    }
-   video := period.Video()
-   for _, rep := range video.Representation {
-      fmt.Println(rep)
-   }
-   fmt.Printf("%+v\n", period.Audio(video))
+   video := period.Video(2035878)
+   fmt.Printf("%a\n", video)
+   audio := period.Audio(128000)
+   fmt.Printf("%a\n", audio)
 }
 
 const stream = "https://ak-jos-c4assets-com.akamaized.net" +
@@ -45,15 +44,14 @@ func TestTemplate(t *testing.T) {
    for _, ada := range per.AdaptationSet {
       for _, rep := range ada.Representation {
          if rep.ID == "video=501712" {
-            temp := ada.SegmentTemplate.Replace(rep)
-            addrs, err := temp.URLs(base)
+            addrs, err := ada.SegmentTemplate.URL(rep, base)
             if err != nil {
                t.Fatal(err)
             }
             for _, addr := range addrs {
                fmt.Println(addr)
             }
-            fmt.Println(temp.Initialization)
+            fmt.Println(ada.SegmentTemplate.Base(rep))
          }
       }
    }

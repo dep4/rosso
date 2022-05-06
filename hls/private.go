@@ -5,17 +5,8 @@ import (
    "net/url"
    "strconv"
    "strings"
-   "time"
    "unicode"
 )
-
-func scanDuration(s string) (time.Duration, error) {
-   sec, err := strconv.ParseFloat(s, 64)
-   if err != nil {
-      return 0, err
-   }
-   return time.Duration(sec * 1000) * time.Millisecond, nil
-}
 
 func scanHex(s string) ([]byte, error) {
    up := strings.ToUpper(s)
