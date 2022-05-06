@@ -77,7 +77,7 @@ const cbcSegment =
    "/Manifest(video,format=m3u8-aapl,filter=desktop)"
 
 func newSegment() (*Segment, error) {
-   file, err := os.Open("m3u8/cbc-segment.m3u8")
+   file, err := os.Open("m3u8/cbc-video.m3u8")
    if err != nil {
       return nil, err
    }

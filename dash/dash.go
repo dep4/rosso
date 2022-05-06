@@ -2,49 +2,22 @@ package dash
 
 import (
    "encoding/xml"
+   "fmt"
    "io"
    "net/url"
-   "strconv"
    "strings"
 )
 
-type AdaptationSet struct {
-   ContentType string `xml:"contentType,attr"`
-   MimeType string `xml:"mimeType,attr"`
-   Representation []Representation
-   Role struct {
-      Value string `xml:"value,attr"`
-   }
-   SegmentTemplate Template
-}
-
-func (a AdaptationSet) Len() int {
-   return len(a.Representation)
-}
-
-func (a AdaptationSet) Swap(i, j int) {
-   rep := a.Representation
-   rep[i], rep[j] = rep[j], rep[i]
-}
-
-type Bandwidth struct {
-   *AdaptationSet
-   Target int64
-}
-
-func (b Bandwidth) Less(i, j int) bool {
-   distance := func(k int) int64 {
-      diff := b.Representation[k].Bandwidth - b.Target
-      if diff >= 0 {
-         return diff
-      }
-      return -diff
-   }
-   return distance(i) < distance(j)
-}
-
 type Period struct {
-   AdaptationSet []AdaptationSet
+   AdaptationSet []struct {
+      ContentType string `xml:"contentType,attr"`
+      MimeType string `xml:"mimeType,attr"`
+      Representation []Represent
+      Role struct {
+         Value string `xml:"value,attr"`
+      }
+      SegmentTemplate Template
+   }
 }
 
 func NewPeriod(body io.Reader) (*Period, error) {
@@ -58,49 +31,65 @@ func NewPeriod(body io.Reader) (*Period, error) {
    return &media.Period, nil
 }
 
-func (p Period) Audio(video *AdaptationSet) *AdaptationSet {
-   for _, ada := range p.AdaptationSet {
-      if ada.ContentType == "audio" {
-         if ada.Role.Value == video.Role.Value {
-            return &ada
+func (p Period) Audio(bandwidth int) *Represent {
+   return p.represent(bandwidth, "audio/mp4")
+}
+
+func (p Period) Video(bandwidth int) *Represent {
+   return p.represent(bandwidth, "video/mp4")
+}
+
+func (p Period) represent(bandwidth int, typ string) *Represent {
+   distance := func(r *Represent) int {
+      if r.Bandwidth > bandwidth {
+         return r.Bandwidth - bandwidth
+      }
+      return bandwidth - r.Bandwidth
+   }
+   var dst *Represent
+   for i, ada := range p.AdaptationSet {
+      if ada.MimeType == typ {
+         for j, src := range ada.Representation {
+            if j == 0 || distance(&src) < distance(dst) {
+               dst = &p.AdaptationSet[i].Representation[j]
+            }
          }
       }
    }
-   return nil
+   return dst
 }
 
-func (p Period) Video() *AdaptationSet {
-   for _, ada := range p.AdaptationSet {
-      if ada.ContentType == "video" {
-         return &ada
+type Represent struct {
+   ID string `xml:"id,attr"`
+   Width int `xml:"width,attr"`
+   Height int `xml:"height,attr"`
+   Bandwidth int `xml:"bandwidth,attr"`
+   Codecs string `xml:"codecs,attr"`
+   ContentProtection []struct {
+      SchemeIdUri string `xml:"schemeIdUri,attr"`
+      PSSH string `xml:"pssh"`
+   }
+}
+
+func (r Represent) Format(f fmt.State, verb rune) {
+   fmt.Fprint(f, "ID:", r.ID)
+   if r.Width >= 1 {
+      fmt.Fprint(f, " Width:", r.Width)
+      fmt.Fprint(f, " Height:", r.Height)
+   }
+   fmt.Fprint(f, " Bandwidth:", r.Bandwidth)
+   fmt.Fprint(f, " Codec:", r.Codecs)
+   if verb == 'a' {
+      for _, con := range r.ContentProtection {
+         fmt.Fprint(f, "\nSchemeID:", con.SchemeIdUri)
+         if con.PSSH != "" {
+            fmt.Fprint(f, "\nPSSH:", con.PSSH)
+         }
       }
    }
-   return nil
 }
 
-type Representation struct {
-   ID string `xml:"id,attr"`
-   Width int64 `xml:"width,attr"`
-   Height int64 `xml:"height,attr"`
-   Bandwidth int64 `xml:"bandwidth,attr"`
-}
-
-func (r Representation) String() string {
-   var buf []byte
-   buf = append(buf, "ID:"...)
-   buf = append(buf, r.ID...)
-   if r.Width >= 1 {
-      buf = append(buf, " Width:"...)
-      buf = strconv.AppendInt(buf, r.Width, 10)
-      buf = append(buf, " Height:"...)
-      buf = strconv.AppendInt(buf, r.Height, 10)
-   }
-   buf = append(buf, " Bandwidth:"...)
-   buf = strconv.AppendInt(buf, r.Bandwidth, 10)
-   return string(buf)
-}
-
-func (r Representation) replace(in string) string {
+func (r Represent) replace(in string) string {
    return strings.Replace(in, "$RepresentationID$", r.ID, 1)
 }
 
@@ -111,7 +100,7 @@ type Segment struct {
 }
 
 func (s Segment) replace(in string) string {
-   return strings.Replace(in, "$Time$", strconv.Itoa(s.T), 1)
+   return strings.Replace(in, "$Time$", fmt.Sprint(s.T), 1)
 }
 
 type Template struct {
@@ -122,15 +111,13 @@ type Template struct {
    }
 }
 
-func (t Template) Replace(rep Representation) Template {
-   t.Initialization = rep.replace(t.Initialization)
-   t.Media = rep.replace(t.Media)
-   return t
+func (t Template) Base(rep Represent) string {
+   return rep.replace(t.Initialization)
 }
 
-func (t Template) URLs(base *url.URL) ([]*url.URL, error) {
+func (t Template) URL(rep Represent, base *url.URL) ([]*url.URL, error) {
    var start int
-   addr, err := base.Parse(t.Initialization)
+   addr, err := base.Parse(rep.replace(t.Initialization))
    if err != nil {
       return nil, err
    }
