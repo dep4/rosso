@@ -2,65 +2,37 @@ package dash
 
 import (
    "fmt"
-   "net/url"
-   "os"
+   "net/http"
    "testing"
 )
 
-const roku = "https://vod.delivery.roku.com" +
-   "/41e834bbaecb4d27890094e3d00e8cfb/aaf72928242741a6ab8d0dfefbd662ca" +
-   "/87fe48887c78431d823a845b377a0c0f/index.mpd"
-
-func TestRoku(t *testing.T) {
-   base, err := url.Parse(roku)
-   if err != nil {
-      t.Fatal(err)
-   }
-   body, err := os.Open("roku.mpd")
-   if err != nil {
-      t.Fatal(err)
-   }
-   defer body.Close()
-   period, err := NewPeriod(body)
-   if err != nil {
-      t.Fatal(err)
-   }
-   video := period.Video(0)
-   addrs, err := video.SegmentTemplate.URL(video, base)
-   if err != nil {
-      t.Fatal(err)
-   }
-   for _, addr := range addrs {
-      fmt.Println(addr)
-   }
-   fmt.Println(video.SegmentTemplate.Base(video))
+var tests = map[string]string{
+   //"channel4": "https://ak-jos-c4assets-com.akamaized.net/CH4_44_7_900_18926001001003_001/CH4_44_7_900_18926001001003_001_J01.ism/stream.mpd",
+   "roku": "https://vod.delivery.roku.com/41e834bbaecb4d27890094e3d00e8cfb/aaf72928242741a6ab8d0dfefbd662ca/87fe48887c78431d823a845b377a0c0f/index.mpd",
 }
 
-const channel4 = "https://ak-jos-c4assets-com.akamaized.net" +
-   "/CH4_44_7_900_18926001001003_001" +
-   "/CH4_44_7_900_18926001001003_001_J01.ism/stream.mpd"
-
-func TestChannel4(t *testing.T) {
-   base, err := url.Parse(channel4)
-   if err != nil {
-      t.Fatal(err)
+func TestDASH(t *testing.T) {
+   for _, test := range tests {
+      fmt.Println("GET", test)
+      res, err := http.Get(test)
+      if err != nil {
+         t.Fatal(err)
+      }
+      period, err := NewPeriod(res.Body)
+      if err != nil {
+         t.Fatal(err)
+      }
+      video := period.Video(0)
+      addrs, err := video.URL(res.Request.URL)
+      if err != nil {
+         t.Fatal(err)
+      }
+      for _, addr := range addrs {
+         fmt.Println(addr)
+      }
+      fmt.Println(video.Base())
+      if err := res.Body.Close(); err != nil {
+         t.Fatal(err)
+      }
    }
-   body, err := os.Open("18926-001.mpd")
-   if err != nil {
-      t.Fatal(err)
-   }
-   defer body.Close()
-   period, err := NewPeriod(body)
-   if err != nil {
-      t.Fatal(err)
-   }
-   video := period.Video(0)
-   addrs, err := ada.SegmentTemplate.URL(rep, base)
-   if err != nil {
-      t.Fatal(err)
-   }
-   for _, addr := range addrs {
-      fmt.Println(addr)
-   }
-   fmt.Println(ada.SegmentTemplate.Base(rep))
 }

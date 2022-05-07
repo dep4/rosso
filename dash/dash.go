@@ -27,37 +27,37 @@ func (p Period) Video(bandwidth int) *Represent {
    return p.represent(bandwidth, "video/mp4")
 }
 
-func (r Represent) replace(in string) string {
-   return strings.Replace(in, "$RepresentationID$", r.ID, 1)
-}
-
-func (s Segment) replace(in string) string {
-   return strings.Replace(in, "$Time$", fmt.Sprint(s.T), 1)
-}
-
-type Period struct {
-   AdaptationSet []struct {
-      MimeType string `xml:"mimeType,attr"`
-      Representation []Represent
-      SegmentTemplate *Template
+func (r Represent) Format(f fmt.State, verb rune) {
+   fmt.Fprint(f, "ID:", r.ID)
+   if r.Width >= 1 {
+      fmt.Fprint(f, " Width:", r.Width)
+      fmt.Fprint(f, " Height:", r.Height)
    }
+   fmt.Fprint(f, " Bandwidth:", r.Bandwidth)
+   fmt.Fprint(f, " Codec:", r.Codecs)
 }
 
-func (r Represent) Base() string {
-   return r.replace(r.SegmentTemplate.Initialization)
-}
-
-type Represent struct {
-   ID string `xml:"id,attr"`
-   Width int `xml:"width,attr"`
-   Height int `xml:"height,attr"`
-   Bandwidth int `xml:"bandwidth,attr"`
-   Codecs string `xml:"codecs,attr"`
-   SegmentTemplate *Template
-   ContentProtection []struct {
-      SchemeID string `xml:"schemeIdUri,attr"`
-      PSSH string `xml:"pssh"`
+func (p Period) represent(bandwidth int, typ string) *Represent {
+   distance := func(r *Represent) int {
+      if r.Bandwidth > bandwidth {
+         return r.Bandwidth - bandwidth
+      }
+      return bandwidth - r.Bandwidth
    }
+   var dst *Represent
+   for i, ada := range p.AdaptationSet {
+      if ada.MimeType == typ {
+         for j, src := range ada.Representation {
+            if j == 0 || distance(&src) < distance(dst) {
+               dst = &p.AdaptationSet[i].Representation[j]
+               if dst.SegmentTemplate == nil {
+                  dst.SegmentTemplate = ada.SegmentTemplate
+               }
+            }
+         }
+      }
+   }
+   return dst
 }
 
 type Template struct {
@@ -74,54 +74,50 @@ type Segment struct {
    T int `xml:"t,attr"`
 }
 
-func (r Represent) Format(f fmt.State, verb rune) {
-   fmt.Fprint(f, "ID:", r.ID)
-   if r.Width >= 1 {
-      fmt.Fprint(f, " Width:", r.Width)
-      fmt.Fprint(f, " Height:", r.Height)
-   }
-   fmt.Fprint(f, " Bandwidth:", r.Bandwidth)
-   fmt.Fprint(f, " Codec:", r.Codecs)
-   if verb == 'a' {
-      for _, con := range r.ContentProtection {
-         fmt.Fprint(f, "\nSchemeID:", con.SchemeID)
-         if con.PSSH != "" {
-            fmt.Fprint(f, "\nPSSH:", con.PSSH)
-         }
-      }
+type Period struct {
+   AdaptationSet []struct {
+      MimeType string `xml:"mimeType,attr"`
+      Representation []Represent
+      SegmentTemplate *Template
    }
 }
 
-func (p Period) represent(bandwidth int, typ string) *Represent {
-   distance := func(r *Represent) int {
-      if r.Bandwidth > bandwidth {
-         return r.Bandwidth - bandwidth
-      }
-      return bandwidth - r.Bandwidth
-   }
-   var dst *Represent
-   for i, ada := range p.AdaptationSet {
-      if ada.MimeType == typ {
-         for j, src := range ada.Representation {
-            if j == 0 || distance(&src) < distance(dst) {
-               dst = &p.AdaptationSet[i].Representation[j]
-            }
-         }
-      }
-   }
-   return dst
+type Represent struct {
+   ID string `xml:"id,attr"`
+   Width int `xml:"width,attr"`
+   Height int `xml:"height,attr"`
+   Bandwidth int `xml:"bandwidth,attr"`
+   Codecs string `xml:"codecs,attr"`
+   SegmentTemplate *Template
 }
 
-func (t Template) URL(rep *Represent, base *url.URL) ([]*url.URL, error) {
-   var start int
-   addr, err := base.Parse(rep.replace(t.Initialization))
+func (r Represent) replace(in string) string {
+   return strings.Replace(in, "$RepresentationID$", r.ID, 1)
+}
+
+func (s Segment) replace(in string) string {
+   return strings.Replace(in, "$Time$", fmt.Sprint(s.T), 1)
+}
+
+func (r Represent) Base() string {
+   return r.replace(r.SegmentTemplate.Initialization)
+}
+
+func (r Represent) URL(base *url.URL) ([]*url.URL, error) {
+   parse := func(addr string) (*url.URL, error) {
+      ref := r.replace(addr)
+      return base.Parse(ref)
+   }
+   addr, err := parse(r.SegmentTemplate.Initialization)
    if err != nil {
       return nil, err
    }
    addrs := []*url.URL{addr}
-   for _, seg := range t.SegmentTimeline.S {
+   var start int
+   for _, seg := range r.SegmentTemplate.SegmentTimeline.S {
       for seg.T = start; seg.R >= 0; seg.R-- {
-         addr, err := base.Parse(seg.replace(t.Media))
+         ref := seg.replace(r.SegmentTemplate.Media)
+         addr, err := parse(ref)
          if err != nil {
             return nil, err
          }

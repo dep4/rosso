@@ -2,6 +2,7 @@ package main
 
 import (
    "encoding/base64"
+   "fmt"
 )
 
 var pssh = []byte{
@@ -14,5 +15,6 @@ var pssh = []byte{
 }
 
 func main() {
-   base64.StdEncoding.EncodeToString(pssh)
+   fmt.Println(base64.StdEncoding.EncodeToString(pssh))
+   // AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAA==
 }
