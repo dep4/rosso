@@ -78,7 +78,7 @@ func (m Master) Stream(bandwidth int) *Stream {
    }
    var dst *Stream
    for i, src := range m.Streams {
-      if i == 0 || distance(&src) < distance(dst) {
+      if dst == nil || distance(&src) < distance(dst) {
          dst = &m.Streams[i]
       }
    }

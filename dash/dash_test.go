@@ -22,17 +22,17 @@ func TestDASH(t *testing.T) {
       if err != nil {
          t.Fatal(err)
       }
+      if err := res.Body.Close(); err != nil {
+         t.Fatal(err)
+      }
       video := period.Video(0)
-      addrs, err := video.URL(res.Request.URL)
+      addrs, err := video.Time(res.Request.URL)
       if err != nil {
          t.Fatal(err)
       }
       for _, addr := range addrs {
          fmt.Println(addr)
       }
-      fmt.Println(video.Base())
-      if err := res.Body.Close(); err != nil {
-         t.Fatal(err)
-      }
+      fmt.Printf("%+v\n", video.SegmentTemplate)
    }
 }

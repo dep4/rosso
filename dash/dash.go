@@ -48,7 +48,7 @@ func (p Period) represent(bandwidth int, typ string) *Represent {
    for i, ada := range p.AdaptationSet {
       if ada.MimeType == typ {
          for j, src := range ada.Representation {
-            if j == 0 || distance(&src) < distance(dst) {
+            if dst == nil || distance(&src) < distance(dst) {
                dst = &p.AdaptationSet[i].Representation[j]
                if dst.SegmentTemplate == nil {
                   dst.SegmentTemplate = ada.SegmentTemplate
@@ -58,14 +58,6 @@ func (p Period) represent(bandwidth int, typ string) *Represent {
       }
    }
    return dst
-}
-
-type Template struct {
-   Initialization string `xml:"initialization,attr"`
-   Media string `xml:"media,attr"`
-   SegmentTimeline struct {
-      S []Segment
-   }
 }
 
 type Segment struct {
@@ -95,15 +87,7 @@ func (r Represent) replace(in string) string {
    return strings.Replace(in, "$RepresentationID$", r.ID, 1)
 }
 
-func (s Segment) replace(in string) string {
-   return strings.Replace(in, "$Time$", fmt.Sprint(s.T), 1)
-}
-
-func (r Represent) Base() string {
-   return r.replace(r.SegmentTemplate.Initialization)
-}
-
-func (r Represent) URL(base *url.URL) ([]*url.URL, error) {
+func (r Represent) Time(base *url.URL) ([]*url.URL, error) {
    parse := func(addr string) (*url.URL, error) {
       ref := r.replace(addr)
       return base.Parse(ref)
@@ -113,6 +97,46 @@ func (r Represent) URL(base *url.URL) ([]*url.URL, error) {
       return nil, err
    }
    addrs := []*url.URL{addr}
+   var start int
+   for _, seg := range r.SegmentTemplate.SegmentTimeline.S {
+      for seg.T = start; seg.R >= 0; seg.R-- {
+         ref := seg.replace(r.SegmentTemplate.Media)
+         addr, err := parse(ref)
+         if err != nil {
+            return nil, err
+         }
+         addrs = append(addrs, addr)
+         start += seg.D
+         seg.T += seg.D
+      }
+   }
+   return addrs, nil
+}
+
+func (s Segment) replace(in string) string {
+   return strings.Replace(in, "$Time$", fmt.Sprint(s.T), 1)
+}
+
+type Template struct {
+   Initialization string `xml:"initialization,attr"`
+   Media string `xml:"media,attr"`
+   SegmentTimeline struct {
+      S []Segment
+   }
+   StartNumber int `xml:"startNumber,attr"`
+}
+
+func (r Represent) Number(base *url.URL) ([]*url.URL, error) {
+   parse := func(addr string) (*url.URL, error) {
+      ref := r.replace(addr)
+      return base.Parse(ref)
+   }
+   addr, err := parse(r.SegmentTemplate.Initialization)
+   if err != nil {
+      return nil, err
+   }
+   addrs := []*url.URL{addr}
+   // FIXME
    var start int
    for _, seg := range r.SegmentTemplate.SegmentTimeline.S {
       for seg.T = start; seg.R >= 0; seg.R-- {
