@@ -2,62 +2,140 @@ package dash
 
 import (
    "encoding/xml"
-   "fmt"
    "io"
    "net/url"
+   "strconv"
    "strings"
 )
 
-func NewPeriod(body io.Reader) (*Period, error) {
+const (
+   Audio = "audio/mp4"
+   Video = "video/mp4"
+)
+
+type Adaptation struct {
+   MimeType string `xml:"mimeType,attr"`
+   Representation []Represent
+   SegmentTemplate *Template
+}
+
+type AdaptationSet []Adaptation
+
+func NewAdaptationSet(body io.Reader) (AdaptationSet, error) {
    var media struct {
-      Period Period
+      Period struct {
+         AdaptationSet AdaptationSet
+      }
    }
    err := xml.NewDecoder(body).Decode(&media)
    if err != nil {
       return nil, err
    }
-   return &media.Period, nil
+   return media.Period.AdaptationSet, nil
 }
 
-func (p Period) Audio(bandwidth int) *Represent {
-   return p.represent(bandwidth, "audio/mp4")
-}
-
-func (p Period) Video(bandwidth int) *Represent {
-   return p.represent(bandwidth, "video/mp4")
-}
-
-func (r Represent) Format(f fmt.State, verb rune) {
-   fmt.Fprint(f, "ID:", r.ID)
-   if r.Width >= 1 {
-      fmt.Fprint(f, " Width:", r.Width)
-      fmt.Fprint(f, " Height:", r.Height)
+func (a AdaptationSet) MimeType(typ string) AdaptationSet {
+   var adas AdaptationSet
+   for _, ada := range a {
+      if ada.MimeType == typ {
+         adas = append(adas, ada)
+      }
    }
-   fmt.Fprint(f, " Bandwidth:", r.Bandwidth)
-   fmt.Fprint(f, " Codec:", r.Codecs)
+   return adas
 }
 
-func (p Period) represent(bandwidth int, typ string) *Represent {
-   distance := func(r *Represent) int {
+func (a AdaptationSet) Represent(bandwidth int64) *Represent {
+   distance := func(r *Represent) int64 {
       if r.Bandwidth > bandwidth {
          return r.Bandwidth - bandwidth
       }
       return bandwidth - r.Bandwidth
    }
    var dst *Represent
-   for i, ada := range p.AdaptationSet {
-      if ada.MimeType == typ {
-         for j, src := range ada.Representation {
-            if dst == nil || distance(&src) < distance(dst) {
-               dst = &p.AdaptationSet[i].Representation[j]
-               if dst.SegmentTemplate == nil {
-                  dst.SegmentTemplate = ada.SegmentTemplate
-               }
+   for i, ada := range a {
+      for j, src := range ada.Representation {
+         if dst == nil || distance(&src) < distance(dst) {
+            dst = &a[i].Representation[j]
+            if dst.SegmentTemplate == nil {
+               dst.SegmentTemplate = ada.SegmentTemplate
             }
          }
       }
    }
    return dst
+}
+
+type Represent struct {
+   ID string `xml:"id,attr"`
+   Width int64 `xml:"width,attr"`
+   Height int64 `xml:"height,attr"`
+   Bandwidth int64 `xml:"bandwidth,attr"`
+   Codecs string `xml:"codecs,attr"`
+   SegmentTemplate *Template
+}
+
+func (r Represent) String() string {
+   var buf []byte
+   buf = append(buf, "ID:"...)
+   buf = append(buf, r.ID...)
+   if r.Width >= 1 {
+      buf = append(buf, " Width:"...)
+      buf = strconv.AppendInt(buf, r.Width, 10)
+      buf = append(buf, " Height:"...)
+      buf = strconv.AppendInt(buf, r.Height, 10)
+   }
+   buf = append(buf, " Bandwidth:"...)
+   buf = strconv.AppendInt(buf, r.Bandwidth, 10)
+   buf = append(buf, " Codec:"...)
+   buf = append(buf, r.Codecs...)
+   return string(buf)
+}
+
+func (r Represent) URL(base *url.URL) ([]*url.URL, error) {
+   parse := func(addr string) (*url.URL, error) {
+      ref := r.id(addr)
+      return base.Parse(ref)
+   }
+   addr, err := parse(r.SegmentTemplate.Initialization)
+   if err != nil {
+      return nil, err
+   }
+   addrs := []*url.URL{addr}
+   start, number := r.number()
+   for _, seg := range r.SegmentTemplate.SegmentTimeline.S {
+      for seg.T = start; seg.R >= 0; seg.R-- {
+         ref := r.SegmentTemplate.Media
+         if number {
+            ref = seg.number(ref)
+         } else {
+            ref = seg.time(ref)
+         }
+         addr, err := parse(ref)
+         if err != nil {
+            return nil, err
+         }
+         addrs = append(addrs, addr)
+         if number {
+            seg.T++
+            start++
+         } else {
+            seg.T += seg.D
+            start += seg.D
+         }
+      }
+   }
+   return addrs, nil
+}
+
+func (r Represent) id(in string) string {
+   return strings.Replace(in, "$RepresentationID$", r.ID, 1)
+}
+
+func (r Represent) number() (int, bool) {
+   if r.SegmentTemplate.StartNumber != nil {
+      return *r.SegmentTemplate.StartNumber, true
+   }
+   return 0, false
 }
 
 type Segment struct {
@@ -66,55 +144,12 @@ type Segment struct {
    T int `xml:"t,attr"`
 }
 
-type Period struct {
-   AdaptationSet []struct {
-      MimeType string `xml:"mimeType,attr"`
-      Representation []Represent
-      SegmentTemplate *Template
-   }
+func (s Segment) number(in string) string {
+   return strings.Replace(in, "$Number$", strconv.Itoa(s.T), 1)
 }
 
-type Represent struct {
-   ID string `xml:"id,attr"`
-   Width int `xml:"width,attr"`
-   Height int `xml:"height,attr"`
-   Bandwidth int `xml:"bandwidth,attr"`
-   Codecs string `xml:"codecs,attr"`
-   SegmentTemplate *Template
-}
-
-func (r Represent) replace(in string) string {
-   return strings.Replace(in, "$RepresentationID$", r.ID, 1)
-}
-
-func (r Represent) Time(base *url.URL) ([]*url.URL, error) {
-   parse := func(addr string) (*url.URL, error) {
-      ref := r.replace(addr)
-      return base.Parse(ref)
-   }
-   addr, err := parse(r.SegmentTemplate.Initialization)
-   if err != nil {
-      return nil, err
-   }
-   addrs := []*url.URL{addr}
-   var start int
-   for _, seg := range r.SegmentTemplate.SegmentTimeline.S {
-      for seg.T = start; seg.R >= 0; seg.R-- {
-         ref := seg.replace(r.SegmentTemplate.Media)
-         addr, err := parse(ref)
-         if err != nil {
-            return nil, err
-         }
-         addrs = append(addrs, addr)
-         start += seg.D
-         seg.T += seg.D
-      }
-   }
-   return addrs, nil
-}
-
-func (s Segment) replace(in string) string {
-   return strings.Replace(in, "$Time$", fmt.Sprint(s.T), 1)
+func (s Segment) time(in string) string {
+   return strings.Replace(in, "$Time$", strconv.Itoa(s.T), 1)
 }
 
 type Template struct {
@@ -123,32 +158,5 @@ type Template struct {
    SegmentTimeline struct {
       S []Segment
    }
-   StartNumber int `xml:"startNumber,attr"`
-}
-
-func (r Represent) Number(base *url.URL) ([]*url.URL, error) {
-   parse := func(addr string) (*url.URL, error) {
-      ref := r.replace(addr)
-      return base.Parse(ref)
-   }
-   addr, err := parse(r.SegmentTemplate.Initialization)
-   if err != nil {
-      return nil, err
-   }
-   addrs := []*url.URL{addr}
-   // FIXME
-   var start int
-   for _, seg := range r.SegmentTemplate.SegmentTimeline.S {
-      for seg.T = start; seg.R >= 0; seg.R-- {
-         ref := seg.replace(r.SegmentTemplate.Media)
-         addr, err := parse(ref)
-         if err != nil {
-            return nil, err
-         }
-         addrs = append(addrs, addr)
-         start += seg.D
-         seg.T += seg.D
-      }
-   }
-   return addrs, nil
+   StartNumber *int `xml:"startNumber,attr"`
 }

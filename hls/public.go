@@ -69,8 +69,8 @@ func (m Master) Audio(name string) *Media {
    return nil
 }
 
-func (m Master) Stream(bandwidth int) *Stream {
-   distance := func(s *Stream) int {
+func (m Master) Stream(bandwidth int64) *Stream {
+   distance := func(s *Stream) int64 {
       if s.Bandwidth > bandwidth {
          return s.Bandwidth - bandwidth
       }
@@ -151,7 +151,7 @@ func (s *Scanner) Master(addr *url.URL) (*Master, error) {
             case "BANDWIDTH":
                s.Scan()
                s.Scan()
-               str.Bandwidth, err = strconv.Atoi(s.TokenText())
+               str.Bandwidth, err = strconv.ParseInt(s.TokenText(), 10, 64)
             case "RESOLUTION":
                s.Scan()
                s.Scan()
@@ -223,7 +223,7 @@ type Segment struct {
 
 type Stream struct {
    Resolution string
-   Bandwidth int // handle duplicate resolution
+   Bandwidth int64 // handle duplicate resolution
    Codecs string // handle missing resolution
    URI *url.URL
 }
