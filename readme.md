@@ -19,12 +19,15 @@
 
 Data parsers and formatters
 
-Path     | Synopsis
----------|------------------------
-crypto   | JA3 and TLS fingerprint
-hls      | HLS parser
-net      | HTTP parser
-protobuf | Protocol Buffers
+## Topics
+
+- HLS
+- HTTP
+- JA3
+- JSON
+- ProtoBuf
+- TLS
+- XML
 
 ## Repo
 
