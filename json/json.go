@@ -19,12 +19,8 @@ func NewScanner(src io.Reader) (*Scanner, error) {
    return &Scanner{buf: buf}, nil
 }
 
-func (s Scanner) Bytes() []byte {
-   return append(s.Split, s.buf...)
-}
-
 func (s Scanner) Decode(val any) error {
-   buf := s.Bytes()
+   buf := append(s.Split, s.buf...)
    dec := json.NewDecoder(bytes.NewReader(buf))
    for {
       _, err := dec.Token()
