@@ -6,6 +6,8 @@ import (
    "io"
 )
 
+var NewDecoder = json.NewDecoder
+
 type Scanner struct {
    Split []byte
    buf []byte
@@ -21,7 +23,7 @@ func NewScanner(src io.Reader) (*Scanner, error) {
 
 func (s Scanner) Decode(val any) error {
    buf := append(s.Split, s.buf...)
-   dec := json.NewDecoder(bytes.NewReader(buf))
+   dec := NewDecoder(bytes.NewReader(buf))
    for {
       _, err := dec.Token()
       if err != nil {
