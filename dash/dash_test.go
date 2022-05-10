@@ -9,7 +9,7 @@ import (
 
 type test struct {
    name string
-   addr string
+   base string
 }
 
 var channel4 = test{
@@ -22,8 +22,8 @@ var roku = test{
    "https://vod.delivery.roku.com/41e834bbaecb4d27890094e3d00e8cfb/aaf72928242741a6ab8d0dfefbd662ca/87fe48887c78431d823a845b377a0c0f/index.mpd",
 }
 
-func TestDASH(t *testing.T) {
-   addr, err := url.Parse(roku.addr)
+func TestMedia(t *testing.T) {
+   base, err := url.Parse(roku.base)
    if err != nil {
       t.Fatal(err)
    }
@@ -37,11 +37,16 @@ func TestDASH(t *testing.T) {
       t.Fatal(err)
    }
    video := adas.MimeType(Video).Represent(0)
-   addrs, err := video.URL(addr)
+   init, err := video.Initialization(base)
    if err != nil {
       t.Fatal(err)
    }
-   for _, addr := range addrs {
+   fmt.Println(init)
+   media, err := video.Media(base)
+   if err != nil {
+      t.Fatal(err)
+   }
+   for _, addr := range media {
       fmt.Println(addr)
    }
    for _, ada := range adas.MimeType(Video) {

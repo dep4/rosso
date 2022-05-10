@@ -74,6 +74,39 @@ type Represent struct {
    SegmentTemplate *Template
 }
 
+func (r Represent) Initialization(base *url.URL) (*url.URL, error) {
+   ref := r.id(r.SegmentTemplate.Initialization)
+   return base.Parse(ref)
+}
+
+func (r Represent) Media(base *url.URL) ([]*url.URL, error) {
+   var addrs []*url.URL
+   start, number := r.number()
+   for _, seg := range r.SegmentTemplate.SegmentTimeline.S {
+      for seg.T = start; seg.R >= 0; seg.R-- {
+         ref := r.id(r.SegmentTemplate.Media)
+         if number {
+            ref = seg.number(ref)
+         } else {
+            ref = seg.time(ref)
+         }
+         addr, err := base.Parse(ref)
+         if err != nil {
+            return nil, err
+         }
+         addrs = append(addrs, addr)
+         if number {
+            seg.T++
+            start++
+         } else {
+            seg.T += seg.D
+            start += seg.D
+         }
+      }
+   }
+   return addrs, nil
+}
+
 func (r Represent) String() string {
    var buf []byte
    buf = append(buf, "ID:"...)
@@ -89,42 +122,6 @@ func (r Represent) String() string {
    buf = append(buf, " Codec:"...)
    buf = append(buf, r.Codecs...)
    return string(buf)
-}
-
-func (r Represent) URL(base *url.URL) ([]*url.URL, error) {
-   parse := func(addr string) (*url.URL, error) {
-      ref := r.id(addr)
-      return base.Parse(ref)
-   }
-   addr, err := parse(r.SegmentTemplate.Initialization)
-   if err != nil {
-      return nil, err
-   }
-   addrs := []*url.URL{addr}
-   start, number := r.number()
-   for _, seg := range r.SegmentTemplate.SegmentTimeline.S {
-      for seg.T = start; seg.R >= 0; seg.R-- {
-         ref := r.SegmentTemplate.Media
-         if number {
-            ref = seg.number(ref)
-         } else {
-            ref = seg.time(ref)
-         }
-         addr, err := parse(ref)
-         if err != nil {
-            return nil, err
-         }
-         addrs = append(addrs, addr)
-         if number {
-            seg.T++
-            start++
-         } else {
-            seg.T += seg.D
-            start += seg.D
-         }
-      }
-   }
-   return addrs, nil
 }
 
 func (r Represent) id(in string) string {
