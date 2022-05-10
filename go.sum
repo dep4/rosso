@@ -1,3 +1,7 @@
+github.com/edgeware/mp4ff v0.27.0 h1:Lv773H6c4pUt3Zj9z44TOICv6fjd6gKzi1sVl8GbcYE=
+github.com/edgeware/mp4ff v0.27.0/go.mod h1:6VHE5CTkpDseIg775+rh8BfnTvqjMnVbz5EDU4QwSdc=
+github.com/go-test/deep v1.0.6 h1:UHSEyLZUwX9Qoi99vVwvewiMC8mM2bf7XEM2nqvzEn8=
+github.com/go-test/deep v1.0.6/go.mod h1:QV8Hv/iy04NyLBxAdO9njL0iVPN1S4d/A3NVv1V36o8=
 github.com/golang/protobuf v1.5.0/go.mod h1:FsONVRAS9T7sI+LIUmWTfcYkHO4aIWwzhcaSAoJOfIk=
 github.com/google/go-cmp v0.5.5/go.mod h1:v8dTdLbMG2kIc/vJvl+f65V22dbkXbowE6jgT/gNBxE=
 github.com/refraction-networking/utls v1.1.0 h1:dKXJwSqni/t5csYJ+aQcEgqB7AMWYi6EUc9u3bEmjX0=

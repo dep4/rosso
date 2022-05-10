@@ -8,7 +8,7 @@ import (
 
 const hexKey = "13d7c7cf295444944b627ef0ad2c1b3c"
 
-func TestDASH(t *testing.T) {
+func TestDecrypt(t *testing.T) {
    src, err := os.Open("ignore/enc.mp4")
    if err != nil {
       t.Fatal(err)
@@ -23,7 +23,7 @@ func TestDASH(t *testing.T) {
    if err != nil {
       t.Fatal(err)
    }
-   if err := decryptMP4withCenc(src, key, dst); err != nil {
+   if err := Decrypt(dst, src, key); err != nil {
       t.Fatal(err)
    }
 }
