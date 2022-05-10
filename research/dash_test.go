@@ -1,6 +1,7 @@
 package dash
 
 import (
+   "encoding/hex"
    "os"
    "testing"
 )
@@ -18,7 +19,11 @@ func TestDASH(t *testing.T) {
       t.Fatal(err)
    }
    defer dst.Close()
-   if err := start(src, dst, hexKey); err != nil {
+   key, err := hex.DecodeString(hexKey)
+   if err != nil {
+      t.Fatal(err)
+   }
+   if err := decryptMP4withCenc(src, key, dst); err != nil {
       t.Fatal(err)
    }
 }
