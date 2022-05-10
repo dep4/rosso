@@ -1,7 +1,6 @@
 package dash
 
 import (
-   "bytes"
    "fmt"
    "github.com/edgeware/mp4ff/mp4"
    "io"
@@ -12,44 +11,29 @@ func decryptMP4withCenc(r io.Reader, key []byte, w io.Writer) error {
    if err != nil {
       return err
    }
-   if !inMp4.IsFragmented() {
-      return fmt.Errorf("file not fragmented. Not supported")
-   }
-   tracks := make([]trackInfo, 0, len(inMp4.Init.Moov.Traks))
-   moov := inMp4.Init.Moov
-   for _, trak := range moov.Traks {
-      trackID := trak.Tkhd.TrackID
-      stsd := trak.Mdia.Minf.Stbl.Stsd
-      var encv *mp4.VisualSampleEntryBox
-      var enca *mp4.AudioSampleEntryBox
-      for _, child := range stsd.Children {
+   var tracks []trackInfo
+   for _, trak := range inMp4.Init.Moov.Traks {
+      for _, child := range trak.Mdia.Minf.Stbl.Stsd.Children {
+         var box interface {
+            RemoveEncryption() (*mp4.SinfBox, error)
+         }
          switch child.Type() {
          case "encv":
-            encv = child.(*mp4.VisualSampleEntryBox)
-            sinf, err := encv.RemoveEncryption()
-            if err != nil {
-               return err
-            }
-            tracks = append(tracks, trackInfo{
-               trackID: trackID,
-               sinf:    sinf,
-            })
+            box = child.(*mp4.VisualSampleEntryBox)
          case "enca":
-            enca = child.(*mp4.AudioSampleEntryBox)
-            sinf, err := enca.RemoveEncryption()
-            if err != nil {
-               return err
-            }
-            tracks = append(tracks, trackInfo{
-               trackID: trackID,
-               sinf:    sinf,
-            })
-         default:
-            continue
+            box = child.(*mp4.AudioSampleEntryBox)
          }
+         sinf, err := box.RemoveEncryption()
+         if err != nil {
+            return err
+         }
+         tracks = append(tracks, trackInfo{
+            sinf:    sinf,
+            trackID: trak.Tkhd.TrackID,
+         })
       }
    }
-   for _, trex := range moov.Mvex.Trexs {
+   for _, trex := range inMp4.Init.Moov.Mvex.Trexs {
       for i := range tracks {
          if tracks[i].trackID == trex.TrackID {
             tracks[i].trex = trex
@@ -57,51 +41,43 @@ func decryptMP4withCenc(r io.Reader, key []byte, w io.Writer) error {
          }
       }
    }
-   psshs := moov.RemovePsshs()
-   for _, pssh := range psshs {
-      psshInfo := bytes.Buffer{}
-      err = pssh.Info(&psshInfo, "", "", "  ")
+   if err := inMp4.Init.Encode(w); err != nil {
+      return err
+   }
+   return decryptAndWriteSegments(inMp4.Segments, tracks, key, w)
+}
+
+func decryptSamplesInPlace(samples []mp4.FullSample, key []byte, senc *mp4.SencBox) error {
+   for i, sam := range samples {
+      var (
+         iv []byte
+         subSamplePatterns []mp4.SubSamplePattern
+      )
+      if len(senc.IVs[i]) == 8 {
+         iv = append(iv, senc.IVs[i]...)
+         iv = append(iv, 0, 0, 0, 0, 0, 0, 0, 0)
+      } else {
+         iv = senc.IVs[i]
+      }
+      if len(senc.SubSamples) != 0 {
+         subSamplePatterns = senc.SubSamples[i]
+      }
+      dec, err := mp4.DecryptSampleCenc(sam.Data, key, iv, subSamplePatterns)
       if err != nil {
          return err
       }
-   }
-   err = inMp4.Init.Encode(w)
-   if err != nil {
-      return err
-   }
-   err = decryptAndWriteSegments(inMp4.Segments, tracks, key, w)
-   if err != nil {
-      return err
+      copy(samples[i].Data, dec)
    }
    return nil
 }
 
-////////////////////////////////////////////////////////////////////////////////
-
-type trackInfo struct {
-   trackID uint32
-   sinf    *mp4.SinfBox
-   trex    *mp4.TrexBox
-}
-
-func findTrackInfo(tracks []trackInfo, trackID uint32) trackInfo {
-   for _, ti := range tracks {
-      if ti.trackID == trackID {
-         return ti
-      }
-   }
-   return trackInfo{}
-}
-
 func decryptAndWriteSegments(segs []*mp4.MediaSegment, tracks []trackInfo, key []byte, ofh io.Writer) error {
-   var outNr uint32 = 1
    for _, seg := range segs {
       for _, frag := range seg.Fragments {
          err := decryptFragment(frag, tracks, key)
          if err != nil {
             return err
          }
-         outNr++
       }
       if seg.Sidx != nil {
          seg.Sidx = nil // drop sidx inside segment, since not modified properly
@@ -114,18 +90,28 @@ func decryptAndWriteSegments(segs []*mp4.MediaSegment, tracks []trackInfo, key [
    return nil
 }
 
+type trackInfo struct {
+   trackID uint32
+   sinf    *mp4.SinfBox
+   trex    *mp4.TrexBox
+}
+
 func decryptFragment(frag *mp4.Fragment, tracks []trackInfo, key []byte) error {
-   moof := frag.Moof
-   var nrBytesRemoved uint64 = 0
-   for _, traf := range moof.Trafs {
+   var nrBytesRemoved uint64
+   for _, traf := range frag.Moof.Trafs {
       hasSenc, isParsed := traf.ContainsSencBox()
       if !hasSenc {
          return fmt.Errorf("no senc box in traf")
       }
-      ti := findTrackInfo(tracks, traf.Tfhd.TrackID)
+      var ti trackInfo
+      for _, track := range tracks {
+         if track.trackID == traf.Tfhd.TrackID {
+            ti = track
+         }
+      }
       if !isParsed {
          defaultIVSize := ti.sinf.Schi.Tenc.DefaultPerSampleIVSize
-         err := traf.ParseReadSenc(defaultIVSize, moof.StartPos)
+         err := traf.ParseReadSenc(defaultIVSize, frag.Moof.StartPos)
          if err != nil {
             return fmt.Errorf("parseReadSenc: %w", err)
          }
@@ -134,41 +120,10 @@ func decryptFragment(frag *mp4.Fragment, tracks []trackInfo, key []byte) error {
       if err != nil {
          return err
       }
-      err = decryptSamplesInPlace(samples, key, traf.Senc)
-      if err != nil {
+      if err := decryptSamplesInPlace(samples, key, traf.Senc); err != nil {
          return err
       }
       nrBytesRemoved += traf.RemoveEncryptionBoxes()
-   }
-   for _, traf := range moof.Trafs {
-      for _, trun := range traf.Truns {
-         trun.DataOffset -= int32(nrBytesRemoved)
-      }
-   }
-   _ = moof.RemovePsshs()
-   return nil
-}
-
-func decryptSamplesInPlace(samples []mp4.FullSample, key []byte, senc *mp4.SencBox) error {
-   for i := range samples {
-      encSample := samples[i].Data
-      var iv []byte
-      if len(senc.IVs[i]) == 8 {
-         iv = make([]byte, 0, 16)
-         iv = append(iv, senc.IVs[i]...)
-         iv = append(iv, 0, 0, 0, 0, 0, 0, 0, 0)
-      } else {
-         iv = senc.IVs[i]
-      }
-      var subSamplePatterns []mp4.SubSamplePattern
-      if len(senc.SubSamples) != 0 {
-         subSamplePatterns = senc.SubSamples[i]
-      }
-      decryptedSample, err := mp4.DecryptSampleCenc(encSample, key, iv, subSamplePatterns)
-      if err != nil {
-         return err
-      }
-      _ = copy(samples[i].Data, decryptedSample)
    }
    return nil
 }
