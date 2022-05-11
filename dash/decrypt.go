@@ -34,6 +34,8 @@ func Decrypt(w io.Writer, r io.Reader, key []byte) error {
             }
             traf.RemoveEncryptionBoxes()
          }
+         // fast start
+         frag.Moof.RemovePsshs()
       }
       err := seg.Encode(w)
       if err != nil {
