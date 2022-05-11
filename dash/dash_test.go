@@ -17,6 +17,11 @@ var channel4 = testType{
    "https://ak-jos-c4assets-com.akamaized.net/CH4_44_7_900_18926001001003_001/CH4_44_7_900_18926001001003_001_J01.ism/stream.mpd",
 }
 
+var roku = testType{
+   "roku.mpd",
+   "https://vod.delivery.roku.com/41e834bbaecb4d27890094e3d00e8cfb/aaf72928242741a6ab8d0dfefbd662ca/87fe48887c78431d823a845b377a0c0f/index.mpd",
+}
+
 func TestChannel4(t *testing.T) {
    err := newMedia(channel4)
    if err != nil {
