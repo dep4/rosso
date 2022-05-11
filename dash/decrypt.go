@@ -17,14 +17,20 @@ func Decrypt(w io.Writer, r io.Reader, key []byte) error {
             if err != nil {
                return err
             }
-            for i, samp := range samples {
-               sub := traf.Senc.SubSamples[i]
-               iv := append(traf.Senc.IVs[i], 0, 0, 0, 0, 0, 0, 0, 0)
-               dec, err := mp4.DecryptSampleCenc(samp.Data, key, iv, sub)
+            for i, sample := range samples {
+               var iv []byte
+               // this needs its own line so that the bytes are copied
+               iv = append(iv, traf.Senc.IVs[i]...)
+               iv = append(iv, 0, 0, 0, 0, 0, 0, 0, 0)
+               var sub []mp4.SubSamplePattern
+               if len(traf.Senc.SubSamples) > i {
+                  sub = traf.Senc.SubSamples[i]
+               }
+               dec, err := mp4.DecryptSampleCenc(sample.Data, key, iv, sub)
                if err != nil {
                   return err
                }
-               copy(samp.Data, dec)
+               copy(sample.Data, dec)
             }
             traf.RemoveEncryptionBoxes()
          }
