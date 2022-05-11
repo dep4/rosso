@@ -23,16 +23,20 @@ func TestRoku(t *testing.T) {
    if err != nil {
       t.Fatal(err)
    }
-   init, err := os.Open("ignore/index_audio_2_0_init.mp4")
+   init, err := os.Open("ignore/init.mp4")
    if err != nil {
       t.Fatal(err)
    }
    defer init.Close()
+   dst.ReadFrom(init)
    key, err := hex.DecodeString(hexKey)
    if err != nil {
       t.Fatal(err)
    }
-   if err := write(dst, key, "ignore/index_audio_2_0_1.mp4"); err != nil {
+   if err := write(dst, key, "ignore/1.mp4"); err != nil {
+      t.Fatal(err)
+   }
+   if err := write(dst, key, "ignore/2.mp4"); err != nil {
       t.Fatal(err)
    }
 }
