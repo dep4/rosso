@@ -18,9 +18,9 @@ func Decrypt(w io.Writer, r io.Reader, key []byte) error {
                return err
             }
             for i, samp := range samples {
-               subSample := traf.Senc.SubSamples[i]
+               sub := traf.Senc.SubSamples[i]
                iv := append(traf.Senc.IVs[i], 0, 0, 0, 0, 0, 0, 0, 0)
-               dec, err := mp4.DecryptSampleCenc(samp.Data, key, iv, subSample)
+               dec, err := mp4.DecryptSampleCenc(samp.Data, key, iv, sub)
                if err != nil {
                   return err
                }

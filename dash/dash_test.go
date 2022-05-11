@@ -7,44 +7,53 @@ import (
    "testing"
 )
 
-type test struct {
+type testType struct {
    name string
    base string
 }
 
-var channel4 = test{
+var channel4 = testType{
    "channel4.mpd",
    "https://ak-jos-c4assets-com.akamaized.net/CH4_44_7_900_18926001001003_001/CH4_44_7_900_18926001001003_001_J01.ism/stream.mpd",
 }
 
-var roku = test{
-   "roku.mpd",
-   "https://vod.delivery.roku.com/41e834bbaecb4d27890094e3d00e8cfb/aaf72928242741a6ab8d0dfefbd662ca/87fe48887c78431d823a845b377a0c0f/index.mpd",
-}
-
-func TestMedia(t *testing.T) {
-   base, err := url.Parse(roku.base)
+func TestChannel4(t *testing.T) {
+   err := newMedia(channel4)
    if err != nil {
       t.Fatal(err)
    }
-   file, err := os.Open(roku.name)
+}
+
+func TestRoku(t *testing.T) {
+   err := newMedia(roku)
    if err != nil {
       t.Fatal(err)
+   }
+}
+
+func newMedia(test testType) error {
+   base, err := url.Parse(test.base)
+   if err != nil {
+      return err
+   }
+   file, err := os.Open(test.name)
+   if err != nil {
+      return err
    }
    defer file.Close()
    adas, err := NewAdaptationSet(file)
    if err != nil {
-      t.Fatal(err)
+      return err
    }
    video := adas.MimeType(Video).Represent(0)
    init, err := video.Initialization(base)
    if err != nil {
-      t.Fatal(err)
+      return err
    }
    fmt.Println(init)
    media, err := video.Media(base)
    if err != nil {
-      t.Fatal(err)
+      return err
    }
    for _, addr := range media {
       fmt.Println(addr)
@@ -59,4 +68,6 @@ func TestMedia(t *testing.T) {
          fmt.Println(rep)
       }
    }
+   return nil
 }
+

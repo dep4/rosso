@@ -87,21 +87,18 @@ func (r Represent) Media(base *url.URL) ([]*url.URL, error) {
          ref := r.id(r.SegmentTemplate.Media)
          if number {
             ref = seg.number(ref)
+            seg.T++
+            start++
          } else {
             ref = seg.time(ref)
+            seg.T += seg.D
+            start += seg.D
          }
          addr, err := base.Parse(ref)
          if err != nil {
             return nil, err
          }
          addrs = append(addrs, addr)
-         if number {
-            seg.T++
-            start++
-         } else {
-            seg.T += seg.D
-            start += seg.D
-         }
       }
    }
    return addrs, nil
