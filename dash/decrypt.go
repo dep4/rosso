@@ -37,6 +37,8 @@ func Decrypt(w io.Writer, r io.Reader, key []byte) error {
          // fast start
          frag.Moof.RemovePsshs()
       }
+      // fix jerk between fragments
+      seg.Sidx = nil
       err := seg.Encode(w)
       if err != nil {
          return err
