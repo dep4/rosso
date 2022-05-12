@@ -21,12 +21,12 @@ Data parsers and formatters
 
 ## Topics
 
-- HLS
-- HTTP
 - JA3
+- DASH
+- HLS
 - JSON
+- HTTP
 - ProtoBuf
-- TLS
 - XML
 
 ## Repo

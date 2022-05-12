@@ -32,6 +32,7 @@ func Decrypt(w io.Writer, r io.Reader, key []byte) error {
                }
                copy(sample.Data, dec)
             }
+            // required for playback
             traf.RemoveEncryptionBoxes()
          }
          // fast start
