@@ -11,7 +11,28 @@ import (
    "strconv"
    "strings"
    "time"
+   "unicode/utf8"
 )
+
+// mimesniff.spec.whatwg.org#binary-data-byte
+func IsBinary(buf []byte) bool {
+   for _, b := range buf {
+      if b <= 0x08 {
+         return true
+      }
+      if b == 0x0B {
+         return true
+      }
+      if b >= 0x0E && b <= 0x1A {
+         return true
+      }
+      if b >= 0x1C && b <= 0x1F {
+         return true
+      }
+   }
+   // []byte{0xE0, '<'}
+   return !utf8.Valid(buf)
+}
 
 func Create[T any](value T, elem ...string) error {
    name := filepath.Join(elem...)
@@ -42,20 +63,6 @@ func Open[T any](elem ...string) (*T, error) {
       return nil, err
    }
    return value, nil
-}
-
-// mimesniff.spec.whatwg.org#binary-data-byte
-func IsBinary(buf []byte) bool {
-   for _, b := range buf {
-      switch {
-      case b <= 0x08,
-      b == 0x0B,
-      0x0E <= b && b <= 0x1A,
-      0x1C <= b && b <= 0x1F:
-         return true
-      }
-   }
-   return false
 }
 
 func Label[T Number](value T, unit ...string) string {

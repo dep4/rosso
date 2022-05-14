@@ -6,22 +6,6 @@ import (
    "io"
 )
 
-type Bytes []byte
-
-type Fixed32 uint32
-
-type Fixed64 uint64
-
-type Message map[Number]Token
-
-func Decode(in io.Reader) (Message, error) {
-   buf, err := io.ReadAll(in)
-   if err != nil {
-      return nil, err
-   }
-   return Unmarshal(buf)
-}
-
 func Unmarshal(in []byte) (Message, error) {
    mes := make(Message)
    for len(in) >= 1 {
@@ -84,6 +68,22 @@ func Unmarshal(in []byte) (Message, error) {
       in = in[fLen:]
    }
    return mes, nil
+}
+
+type Bytes []byte
+
+type Fixed32 uint32
+
+type Fixed64 uint64
+
+type Message map[Number]Token
+
+func Decode(in io.Reader) (Message, error) {
+   buf, err := io.ReadAll(in)
+   if err != nil {
+      return nil, err
+   }
+   return Unmarshal(buf)
 }
 
 func (m Message) Add(num Number, val Message) {
