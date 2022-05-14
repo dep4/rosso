@@ -8,12 +8,24 @@ import (
    "testing"
 )
 
-type token struct {
-   Services string
-   Token string
+func TestBinary(t *testing.T) {
+   tests := [][]byte{
+      []byte("hello world 😀"),
+      []byte("\xe0<\x00"),
+      []byte{0, 1},
+      []byte{0xE0, '<'},
+   }
+   for _, test := range tests {
+      binary := IsBinary(test)
+      fmt.Println(binary)
+   }
 }
 
 func TestOpen(t *testing.T) {
+   type token struct {
+      Services string
+      Token string
+   }
    cache, err := os.UserCacheDir()
    if err != nil {
       t.Fatal(err)

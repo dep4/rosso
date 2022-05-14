@@ -1,9 +1,11 @@
 package protobuf
 
 import (
+   "fmt"
    "github.com/89z/format"
    "google.golang.org/protobuf/encoding/protowire"
    "io"
+   "strings"
 )
 
 type Bytes []byte
@@ -13,14 +15,6 @@ type Fixed32 uint32
 type Fixed64 uint64
 
 type Message map[Number]Token
-
-func Decode(in io.Reader) (Message, error) {
-   buf, err := io.ReadAll(in)
-   if err != nil {
-      return nil, err
-   }
-   return Unmarshal(buf)
-}
 
 func Unmarshal(in []byte) (Message, error) {
    mes := make(Message)
@@ -86,6 +80,14 @@ func Unmarshal(in []byte) (Message, error) {
    return mes, nil
 }
 
+func Decode(in io.Reader) (Message, error) {
+   buf, err := io.ReadAll(in)
+   if err != nil {
+      return nil, err
+   }
+   return Unmarshal(buf)
+}
+
 func (m Message) Add(num Number, val Message) {
    add(m, num, val)
 }
@@ -110,7 +112,7 @@ func (m Message) GetFixed64(num Number) (Fixed64, error) {
 
 func (m Message) GetMessages(num Number) []Message {
    switch value := m[num].(type) {
-   case tokens[Message]:
+   case Tokens[Message]:
       return value
    case Message:
       return []Message{value}
@@ -126,6 +128,34 @@ func (m Message) GetVarint(num Number) (Varint, error) {
    return get[Varint](m, num)
 }
 
+func (m Message) GoString() string {
+   buf := new(strings.Builder)
+   buf.WriteString("protobuf.Message{")
+   first := true
+   for num, tok := range m {
+      if first {
+         first = false
+      } else {
+         buf.WriteString(",\n")
+      }
+      fmt.Fprintf(buf, "%#v:", num)
+      switch tok.(type) {
+      case Fixed32:
+         fmt.Fprintf(buf, "protobuf.Fixed32(%v)", tok)
+      case Fixed64:
+         fmt.Fprintf(buf, "protobuf.Fixed64(%v)", tok)
+      case String:
+         fmt.Fprintf(buf, "protobuf.String(%q)", tok)
+      case Varint:
+         fmt.Fprintf(buf, "protobuf.Varint(%v)", tok)
+      default:
+         fmt.Fprintf(buf, "%#v", tok)
+      }
+   }
+   buf.WriteByte('}')
+   return buf.String()
+}
+
 func (m Message) Marshal() []byte {
    var buf []byte
    for num, tok := range m {
@@ -138,10 +168,12 @@ func (m Message) Marshal() []byte {
 
 type Number = protowire.Number
 
+type String string
+
 type Token interface {
    appendField([]byte, Number) []byte
 }
 
-type Varint uint64
+type Tokens[T Token] []T
 
-type String string
+type Varint uint64

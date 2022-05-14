@@ -10,8 +10,8 @@ func add[T Token](mes Message, num Number, val T) {
    case nil:
       mes[num] = val
    case T:
-      mes[num] = tokens[T]{value, val}
-   case tokens[T]:
+      mes[num] = Tokens[T]{value, val}
+   case Tokens[T]:
       mes[num] = append(value, val)
    }
 }
@@ -46,21 +46,19 @@ func (m Message) appendField(in []byte, num Number) []byte {
    return protowire.AppendBytes(in, m.Marshal())
 }
 
-func (v Varint) appendField(in []byte, num Number) []byte {
-   in = protowire.AppendTag(in, num, protowire.VarintType)
-   return protowire.AppendVarint(in, uint64(v))
+func (s String) appendField(in []byte, num Number) []byte {
+   in = protowire.AppendTag(in, num, protowire.BytesType)
+   return protowire.AppendString(in, string(s))
 }
 
-type tokens[T Token] []T
-
-func (t tokens[T]) appendField(in []byte, num Number) []byte {
+func (t Tokens[T]) appendField(in []byte, num Number) []byte {
    for _, tok := range t {
       in = tok.appendField(in, num)
    }
    return in
 }
 
-func (s String) appendField(in []byte, num Number) []byte {
-   in = protowire.AppendTag(in, num, protowire.BytesType)
-   return protowire.AppendString(in, string(s))
+func (v Varint) appendField(in []byte, num Number) []byte {
+   in = protowire.AppendTag(in, num, protowire.VarintType)
+   return protowire.AppendVarint(in, uint64(v))
 }
