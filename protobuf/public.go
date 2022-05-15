@@ -1,11 +1,9 @@
 package protobuf
 
 import (
-   "fmt"
    "github.com/89z/format"
    "google.golang.org/protobuf/encoding/protowire"
    "io"
-   "strings"
 )
 
 type Bytes []byte
@@ -36,22 +34,22 @@ func Unmarshal(in []byte) (Message, error) {
          if err != nil {
             return nil, err
          }
-         if len(val) >= 1 {
+         if len(val) == 0 {
+            add(mes, num, String(""))
+         } else {
             embed, err := Unmarshal(val)
             if err != nil {
-               if format.IsBinary(val) {
-                  add(mes, num, Bytes(val))
-               } else {
+               if format.IsString(val) {
                   add(mes, num, String(val))
+               } else {
+                  add(mes, num, Bytes(val))
                }
-            } else if format.IsBinary(val) {
-               add(mes, num, embed)
-            } else {
+            } else if format.IsString(val) {
                add(mes, num, String(val))
                add(mes, -num, embed)
+            } else {
+               add(mes, num, embed)
             }
-         } else {
-            add(mes, num, String(""))
          }
       case protowire.Fixed32Type:
          val, vLen := protowire.ConsumeFixed32(buf)
@@ -120,40 +118,8 @@ func (m Message) GetMessages(num Number) []Message {
    return nil
 }
 
-func (m Message) GetString(num Number) (String, error) {
-   return get[String](m, num)
-}
-
 func (m Message) GetVarint(num Number) (Varint, error) {
    return get[Varint](m, num)
-}
-
-func (m Message) GoString() string {
-   buf := new(strings.Builder)
-   buf.WriteString("protobuf.Message{")
-   first := true
-   for num, tok := range m {
-      if first {
-         first = false
-      } else {
-         buf.WriteString(",\n")
-      }
-      fmt.Fprintf(buf, "%#v:", num)
-      switch tok.(type) {
-      case Fixed32:
-         fmt.Fprintf(buf, "protobuf.Fixed32(%v)", tok)
-      case Fixed64:
-         fmt.Fprintf(buf, "protobuf.Fixed64(%v)", tok)
-      case String:
-         fmt.Fprintf(buf, "protobuf.String(%q)", tok)
-      case Varint:
-         fmt.Fprintf(buf, "protobuf.Varint(%v)", tok)
-      default:
-         fmt.Fprintf(buf, "%#v", tok)
-      }
-   }
-   buf.WriteByte('}')
-   return buf.String()
 }
 
 func (m Message) Marshal() []byte {
@@ -177,3 +143,11 @@ type Token interface {
 type Tokens[T Token] []T
 
 type Varint uint64
+
+func (m Message) GetString(num Number) (String, error) {
+   return get[String](m, num)
+}
+
+func (m Message) GetBytes(num Number) (Bytes, error) {
+   return get[Bytes](m, num)
+}

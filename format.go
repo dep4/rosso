@@ -15,23 +15,23 @@ import (
 )
 
 // mimesniff.spec.whatwg.org#binary-data-byte
-func IsBinary(buf []byte) bool {
+func IsString(buf []byte) bool {
    for _, b := range buf {
       if b <= 0x08 {
-         return true
+         return false
       }
       if b == 0x0B {
-         return true
+         return false
       }
       if b >= 0x0E && b <= 0x1A {
-         return true
+         return false
       }
       if b >= 0x1C && b <= 0x1F {
-         return true
+         return false
       }
    }
    // []byte{0xE0, '<'}
-   return !utf8.Valid(buf)
+   return utf8.Valid(buf)
 }
 
 func Create[T any](value T, elem ...string) error {
@@ -99,7 +99,7 @@ type LogLevel int
 
 func (l LogLevel) Dump(req *http.Request) error {
    quote := func(b []byte) []byte {
-      if IsBinary(b) {
+      if !IsString(b) {
          b = strconv.AppendQuote(nil, string(b))
       }
       if !bytes.HasSuffix(b, []byte{'\n'}) {
