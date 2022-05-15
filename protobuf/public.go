@@ -39,16 +39,16 @@ func Unmarshal(in []byte) (Message, error) {
          if len(val) >= 1 {
             embed, err := Unmarshal(val)
             if err != nil {
-               if format.IsBinary(val) {
-                  add(mes, num, Bytes(val))
-               } else {
+               if format.IsString(val) {
                   add(mes, num, String(val))
+               } else {
+                  add(mes, num, Bytes(val))
                }
-            } else if format.IsBinary(val) {
-               add(mes, num, embed)
-            } else {
+            } else if format.IsString(val) {
                add(mes, num, String(val))
                add(mes, -num, embed)
+            } else {
+               add(mes, num, embed)
             }
          } else {
             add(mes, num, String(""))

@@ -26,11 +26,11 @@ func write(req *http.Request, redirect bool, file *os.File) error {
       if err != nil {
          return err
       }
-      if format.IsBinary(buf) {
+      if format.IsString(buf) {
+         file.Write(buf)
+      } else {
          quote := strconv.Quote(string(buf))
          file.WriteString(quote)
-      } else {
-         file.Write(buf)
       }
    } else {
       buf, err := httputil.DumpResponse(res, false)

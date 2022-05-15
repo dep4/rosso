@@ -8,7 +8,7 @@ import (
    "testing"
 )
 
-func TestBinary(t *testing.T) {
+func TestString(t *testing.T) {
    tests := [][]byte{
       []byte("hello world 😀"),
       []byte("\xe0<\x00"),
@@ -16,8 +16,8 @@ func TestBinary(t *testing.T) {
       []byte{0xE0, '<'},
    }
    for _, test := range tests {
-      binary := IsBinary(test)
-      fmt.Println(binary)
+      ok := IsString(test)
+      fmt.Println(ok)
    }
 }
 
