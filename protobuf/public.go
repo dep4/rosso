@@ -4,7 +4,29 @@ import (
    "github.com/89z/format"
    "google.golang.org/protobuf/encoding/protowire"
    "io"
+   "sort"
 )
+
+func (m Message) Marshal() []byte {
+   var (
+      buf []byte
+      nums []Number
+   )
+   for num := range m {
+      nums = append(nums, num)
+   }
+   sort.Slice(nums, func(a, b int) bool {
+      return nums[a] < nums[b]
+   })
+   for _, num := range nums {
+      if num >= protowire.MinValidNumber {
+         buf = m[num].appendField(buf, num)
+      }
+   }
+   return buf
+}
+
+type Number = protowire.Number
 
 type Bytes []byte
 
@@ -121,18 +143,6 @@ func (m Message) GetMessages(num Number) []Message {
 func (m Message) GetVarint(num Number) (Varint, error) {
    return get[Varint](m, num)
 }
-
-func (m Message) Marshal() []byte {
-   var buf []byte
-   for num, tok := range m {
-      if num >= protowire.MinValidNumber {
-         buf = tok.appendField(buf, num)
-      }
-   }
-   return buf
-}
-
-type Number = protowire.Number
 
 type String string
 
