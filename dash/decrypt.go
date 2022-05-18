@@ -3,6 +3,8 @@ package dash
 import (
    "github.com/edgeware/mp4ff/mp4"
    "io"
+   "strconv"
+   "strings"
 )
 
 func Decrypt(w io.Writer, r io.Reader, key []byte) error {
@@ -46,4 +48,23 @@ func Decrypt(w io.Writer, r io.Reader, key []byte) error {
       }
    }
    return nil
+}
+
+func (r Represent) id(in string) string {
+   return strings.Replace(in, "$RepresentationID$", r.ID, 1)
+}
+
+func (r Represent) number() (int, bool) {
+   if r.SegmentTemplate.StartNumber != nil {
+      return *r.SegmentTemplate.StartNumber, true
+   }
+   return 0, false
+}
+
+func (s Segment) number(in string) string {
+   return strings.Replace(in, "$Number$", strconv.Itoa(s.T), 1)
+}
+
+func (s Segment) time(in string) string {
+   return strings.Replace(in, "$Time$", strconv.Itoa(s.T), 1)
 }

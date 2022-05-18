@@ -5,7 +5,6 @@ import (
    "io"
    "net/url"
    "strconv"
-   "strings"
 )
 
 const (
@@ -16,6 +15,7 @@ const (
 type Adaptation struct {
    MimeType string `xml:"mimeType,attr"`
    Representation []Represent
+   ContentProtection *Protection
    SegmentTemplate *Template
 }
 
@@ -56,6 +56,9 @@ func (a AdaptationSet) Represent(bandwidth int64) *Represent {
       for j, src := range ada.Representation {
          if dst == nil || distance(&src) < distance(dst) {
             dst = &a[i].Representation[j]
+            if dst.ContentProtection == nil {
+               dst.ContentProtection = ada.ContentProtection
+            }
             if dst.SegmentTemplate == nil {
                dst.SegmentTemplate = ada.SegmentTemplate
             }
@@ -65,12 +68,17 @@ func (a AdaptationSet) Represent(bandwidth int64) *Represent {
    return dst
 }
 
+type Protection struct {
+   Default_KID string `xml:"default_KID,attr"`
+}
+
 type Represent struct {
-   ID string `xml:"id,attr"`
+   ID string `xml:"id,attr"` // RepresentationID
    Width int64 `xml:"width,attr"`
    Height int64 `xml:"height,attr"`
-   Bandwidth int64 `xml:"bandwidth,attr"`
-   Codecs string `xml:"codecs,attr"`
+   Bandwidth int64 `xml:"bandwidth,attr"` // handle duplicate height
+   Codecs string `xml:"codecs,attr"` // handle missing height
+   ContentProtection *Protection
    SegmentTemplate *Template
 }
 
@@ -121,29 +129,10 @@ func (r Represent) String() string {
    return string(buf)
 }
 
-func (r Represent) id(in string) string {
-   return strings.Replace(in, "$RepresentationID$", r.ID, 1)
-}
-
-func (r Represent) number() (int, bool) {
-   if r.SegmentTemplate.StartNumber != nil {
-      return *r.SegmentTemplate.StartNumber, true
-   }
-   return 0, false
-}
-
 type Segment struct {
    D int `xml:"d,attr"`
    R int `xml:"r,attr"`
    T int `xml:"t,attr"`
-}
-
-func (s Segment) number(in string) string {
-   return strings.Replace(in, "$Number$", strconv.Itoa(s.T), 1)
-}
-
-func (s Segment) time(in string) string {
-   return strings.Replace(in, "$Time$", strconv.Itoa(s.T), 1)
 }
 
 type Template struct {

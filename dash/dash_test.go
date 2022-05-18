@@ -7,6 +7,30 @@ import (
    "testing"
 )
 
+func (t testType) represent() error {
+   file, err := os.Open(t.name)
+   if err != nil {
+      return err
+   }
+   defer file.Close()
+   adas, err := NewAdaptationSet(file)
+   if err != nil {
+      return err
+   }
+   iterate := func(s string) {
+      for _, ada := range adas.MimeType(s) {
+         fmt.Printf("%+v\n", ada.ContentProtection)
+         for _, rep := range ada.Representation {
+            fmt.Println(rep)
+            fmt.Printf("%+v\n", rep.ContentProtection)
+         }
+      }
+   }
+   iterate(Video)
+   iterate(Audio)
+   return nil
+}
+
 type testType struct {
    name string
    base string
@@ -22,26 +46,40 @@ var roku = testType{
    "https://vod.delivery.roku.com/41e834bbaecb4d27890094e3d00e8cfb/aaf72928242741a6ab8d0dfefbd662ca/87fe48887c78431d823a845b377a0c0f/index.mpd",
 }
 
-func TestChannel4(t *testing.T) {
-   err := newMedia(channel4)
+func TestChannel4Media(t *testing.T) {
+   err := channel4.media()
    if err != nil {
       t.Fatal(err)
    }
 }
 
-func TestRoku(t *testing.T) {
-   err := newMedia(roku)
+func TestChannel4Represent(t *testing.T) {
+   err := channel4.represent()
    if err != nil {
       t.Fatal(err)
    }
 }
 
-func newMedia(test testType) error {
-   base, err := url.Parse(test.base)
+func TestRokuMedia(t *testing.T) {
+   err := roku.media()
+   if err != nil {
+      t.Fatal(err)
+   }
+}
+
+func TestRokuRepresent(t *testing.T) {
+   err := roku.represent()
+   if err != nil {
+      t.Fatal(err)
+   }
+}
+
+func (t testType) media() error {
+   base, err := url.Parse(t.base)
    if err != nil {
       return err
    }
-   file, err := os.Open(test.name)
+   file, err := os.Open(t.name)
    if err != nil {
       return err
    }
@@ -63,16 +101,5 @@ func newMedia(test testType) error {
    for _, addr := range media {
       fmt.Println(addr)
    }
-   for _, ada := range adas.MimeType(Video) {
-      for _, rep := range ada.Representation {
-         fmt.Println(rep)
-      }
-   }
-   for _, ada := range adas.MimeType(Audio) {
-      for _, rep := range ada.Representation {
-         fmt.Println(rep)
-      }
-   }
    return nil
 }
-
