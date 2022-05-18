@@ -1,6 +1,7 @@
 package dash
 
 import (
+   "encoding/hex"
    "encoding/xml"
    "io"
    "net/url"
@@ -16,6 +17,7 @@ const (
 type Adaptation struct {
    MimeType string `xml:"mimeType,attr"`
    Representation []Represent
+   ContentProtection *Protection
    SegmentTemplate *Template
 }
 
@@ -35,13 +37,27 @@ func NewAdaptationSet(body io.Reader) (AdaptationSet, error) {
 }
 
 func (a AdaptationSet) MimeType(typ string) AdaptationSet {
-   var adas AdaptationSet
-   for _, ada := range a {
-      if ada.MimeType == typ {
-         adas = append(adas, ada)
+   var adapts AdaptationSet
+   for _, adapt := range a {
+      if adapt.MimeType == typ {
+         adapts = append(adapts, adapt)
       }
    }
-   return adas
+   return adapts
+}
+
+func (a AdaptationSet) Protection() *Protection {
+   for _, adapt := range a {
+      if adapt.ContentProtection != nil {
+         return adapt.ContentProtection
+      }
+      for _, rep := range adapt.Representation {
+         if rep.ContentProtection != nil {
+            return rep.ContentProtection
+         }
+      }
+   }
+   return nil
 }
 
 func (a AdaptationSet) Represent(bandwidth int64) *Represent {
@@ -52,12 +68,12 @@ func (a AdaptationSet) Represent(bandwidth int64) *Represent {
       return bandwidth - r.Bandwidth
    }
    var dst *Represent
-   for i, ada := range a {
-      for j, src := range ada.Representation {
+   for i, adapt := range a {
+      for j, src := range adapt.Representation {
          if dst == nil || distance(&src) < distance(dst) {
             dst = &a[i].Representation[j]
             if dst.SegmentTemplate == nil {
-               dst.SegmentTemplate = ada.SegmentTemplate
+               dst.SegmentTemplate = adapt.SegmentTemplate
             }
          }
       }
@@ -65,12 +81,22 @@ func (a AdaptationSet) Represent(bandwidth int64) *Represent {
    return dst
 }
 
+type Protection struct {
+   Default_KID string `xml:"default_KID,attr"`
+}
+
+func (p Protection) KID() ([]byte, error) {
+   kid := strings.ReplaceAll(p.Default_KID, "-", "")
+   return hex.DecodeString(kid)
+}
+
 type Represent struct {
-   ID string `xml:"id,attr"`
+   ID string `xml:"id,attr"` // RepresentationID
    Width int64 `xml:"width,attr"`
    Height int64 `xml:"height,attr"`
-   Bandwidth int64 `xml:"bandwidth,attr"`
-   Codecs string `xml:"codecs,attr"`
+   Bandwidth int64 `xml:"bandwidth,attr"` // handle duplicate height
+   Codecs string `xml:"codecs,attr"` // handle missing height
+   ContentProtection *Protection
    SegmentTemplate *Template
 }
 
@@ -121,29 +147,10 @@ func (r Represent) String() string {
    return string(buf)
 }
 
-func (r Represent) id(in string) string {
-   return strings.Replace(in, "$RepresentationID$", r.ID, 1)
-}
-
-func (r Represent) number() (int, bool) {
-   if r.SegmentTemplate.StartNumber != nil {
-      return *r.SegmentTemplate.StartNumber, true
-   }
-   return 0, false
-}
-
 type Segment struct {
    D int `xml:"d,attr"`
    R int `xml:"r,attr"`
    T int `xml:"t,attr"`
-}
-
-func (s Segment) number(in string) string {
-   return strings.Replace(in, "$Number$", strconv.Itoa(s.T), 1)
-}
-
-func (s Segment) time(in string) string {
-   return strings.Replace(in, "$Time$", strconv.Itoa(s.T), 1)
 }
 
 type Template struct {
