@@ -1,32 +1,13 @@
 package protobuf
 
 import (
+   "fmt"
    "github.com/89z/format"
    "google.golang.org/protobuf/encoding/protowire"
    "io"
    "sort"
+   "strings"
 )
-
-func (m Message) Marshal() []byte {
-   var (
-      buf []byte
-      nums []Number
-   )
-   for num := range m {
-      nums = append(nums, num)
-   }
-   sort.Slice(nums, func(a, b int) bool {
-      return nums[a] < nums[b]
-   })
-   for _, num := range nums {
-      if num >= protowire.MinValidNumber {
-         buf = m[num].appendField(buf, num)
-      }
-   }
-   return buf
-}
-
-type Number = protowire.Number
 
 type Bytes []byte
 
@@ -35,6 +16,14 @@ type Fixed32 uint32
 type Fixed64 uint64
 
 type Message map[Number]Token
+
+func Decode(in io.Reader) (Message, error) {
+   buf, err := io.ReadAll(in)
+   if err != nil {
+      return nil, err
+   }
+   return Unmarshal(buf)
+}
 
 func Unmarshal(in []byte) (Message, error) {
    mes := make(Message)
@@ -100,14 +89,6 @@ func Unmarshal(in []byte) (Message, error) {
    return mes, nil
 }
 
-func Decode(in io.Reader) (Message, error) {
-   buf, err := io.ReadAll(in)
-   if err != nil {
-      return nil, err
-   }
-   return Unmarshal(buf)
-}
-
 func (m Message) Add(num Number, val Message) {
    add(m, num, val)
 }
@@ -126,6 +107,10 @@ func (m Message) Get(num Number) Message {
    return nil
 }
 
+func (m Message) GetBytes(num Number) (Bytes, error) {
+   return get[Bytes](m, num)
+}
+
 func (m Message) GetFixed64(num Number) (Fixed64, error) {
    return get[Fixed64](m, num)
 }
@@ -140,9 +125,57 @@ func (m Message) GetMessages(num Number) []Message {
    return nil
 }
 
+func (m Message) GetString(num Number) (String, error) {
+   return get[String](m, num)
+}
+
 func (m Message) GetVarint(num Number) (Varint, error) {
    return get[Varint](m, num)
 }
+
+func (m Message) GoString() string {
+   buf := new(strings.Builder)
+   buf.WriteString("protobuf.Message{\n")
+   for num, tok := range m {
+      fmt.Fprint(buf, num, ":")
+      switch tok.(type) {
+      case Fixed32:
+         fmt.Fprintf(buf, "protobuf.Fixed32(%v)", tok)
+      case Fixed64:
+         fmt.Fprintf(buf, "protobuf.Fixed64(%v)", tok)
+      case String:
+         fmt.Fprintf(buf, "protobuf.String(%q)", tok)
+      case Varint:
+         fmt.Fprintf(buf, "protobuf.Varint(%v)", tok)
+      default:
+         fmt.Fprintf(buf, "%#v", tok)
+      }
+      buf.WriteString(",\n")
+   }
+   buf.WriteByte('}')
+   return buf.String()
+}
+
+func (m Message) Marshal() []byte {
+   var (
+      buf []byte
+      nums []Number
+   )
+   for num := range m {
+      nums = append(nums, num)
+   }
+   sort.Slice(nums, func(a, b int) bool {
+      return nums[a] < nums[b]
+   })
+   for _, num := range nums {
+      if num >= protowire.MinValidNumber {
+         buf = m[num].appendField(buf, num)
+      }
+   }
+   return buf
+}
+
+type Number = protowire.Number
 
 type String string
 
@@ -153,11 +186,3 @@ type Token interface {
 type Tokens[T Token] []T
 
 type Varint uint64
-
-func (m Message) GetString(num Number) (String, error) {
-   return get[String](m, num)
-}
-
-func (m Message) GetBytes(num Number) (Bytes, error) {
-   return get[Bytes](m, num)
-}

@@ -7,23 +7,20 @@ import (
    "testing"
 )
 
-func TestJSON(t *testing.T) {
-   buf := []byte(`{"month": 12, "day": 31}`)
-   { // pass
-      var date struct { Month int }
-      err := json.Unmarshal(buf, &date)
-      fmt.Printf("%+v %v\n", date, err)
+func TestGoString(t *testing.T) {
+   cache, err := os.UserCacheDir()
+   if err != nil {
+      t.Fatal(err)
    }
-   { // fail key
-      var date struct { Year int }
-      err := json.Unmarshal(buf, &date)
-      fmt.Printf("%+v %v\n", date, err)
+   clientID, err := os.ReadFile(cache + "/mech/device_client_id_blob")
+   if err != nil {
+      t.Fatal(err)
    }
-   { // fail type
-      var date struct { Month string }
-      err := json.Unmarshal(buf, &date)
-      fmt.Printf("%+v %v\n", date, err)
+   mes, err := Unmarshal(clientID)
+   if err != nil {
+      t.Fatal(err)
    }
+   fmt.Println(mes.GoString())
 }
 
 func TestCheckin(t *testing.T) {
