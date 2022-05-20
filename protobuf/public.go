@@ -25,70 +25,6 @@ func Decode(in io.Reader) (Message, error) {
    return Unmarshal(buf)
 }
 
-func Unmarshal(in []byte) (Message, error) {
-   mes := make(Message)
-   for len(in) >= 1 {
-      num, typ, fLen := protowire.ConsumeField(in)
-      err := protowire.ParseError(fLen)
-      if err != nil {
-         return nil, err
-      }
-      _, _, tLen := protowire.ConsumeTag(in[:fLen])
-      if err := protowire.ParseError(tLen); err != nil {
-         return nil, err
-      }
-      buf := in[tLen:fLen]
-      switch typ {
-      case protowire.BytesType:
-         val, vLen := protowire.ConsumeBytes(buf)
-         err := protowire.ParseError(vLen)
-         if err != nil {
-            return nil, err
-         }
-         if len(val) == 0 {
-            add(mes, num, String(""))
-         } else {
-            embed, err := Unmarshal(val)
-            if err != nil {
-               if format.IsString(val) {
-                  add(mes, num, String(val))
-               } else {
-                  add(mes, num, Bytes(val))
-               }
-            } else if format.IsString(val) {
-               add(mes, num, String(val))
-               add(mes, -num, embed)
-            } else {
-               add(mes, num, embed)
-            }
-         }
-      case protowire.Fixed32Type:
-         val, vLen := protowire.ConsumeFixed32(buf)
-         err := protowire.ParseError(vLen)
-         if err != nil {
-            return nil, err
-         }
-         add(mes, num, Fixed32(val))
-      case protowire.Fixed64Type:
-         val, vLen := protowire.ConsumeFixed64(buf)
-         err := protowire.ParseError(vLen)
-         if err != nil {
-            return nil, err
-         }
-         add(mes, num, Fixed64(val))
-      case protowire.VarintType:
-         val, vLen := protowire.ConsumeVarint(buf)
-         err := protowire.ParseError(vLen)
-         if err != nil {
-            return nil, err
-         }
-         add(mes, num, Varint(val))
-      }
-      in = in[fLen:]
-   }
-   return mes, nil
-}
-
 func (m Message) Add(num Number, val Message) {
    add(m, num, val)
 }
@@ -186,3 +122,67 @@ type Token interface {
 type Tokens[T Token] []T
 
 type Varint uint64
+
+func Unmarshal(b []byte) (Message, error) {
+   mes := make(Message)
+   for len(b) >= 1 {
+      num, typ, n := protowire.ConsumeTag(b)
+      err := protowire.ParseError(n)
+      if err != nil {
+         return nil, err
+      }
+      b = b[n:]
+      m := protowire.ConsumeFieldValue(num, typ, b)
+      if err := protowire.ParseError(m); err != nil {
+         return nil, err
+      }
+      switch typ {
+      case protowire.BytesType:
+         val, vLen := protowire.ConsumeBytes(b)
+         err := protowire.ParseError(vLen)
+         if err != nil {
+            return nil, err
+         }
+         if len(val) == 0 {
+            add(mes, num, String(""))
+         } else {
+            embed, err := Unmarshal(val)
+            if err != nil {
+               if format.IsString(val) {
+                  add(mes, num, String(val))
+               } else {
+                  add(mes, num, Bytes(val))
+               }
+            } else if format.IsString(val) {
+               add(mes, num, String(val))
+               add(mes, -num, embed)
+            } else {
+               add(mes, num, embed)
+            }
+         }
+      case protowire.Fixed32Type:
+         val, vLen := protowire.ConsumeFixed32(b)
+         err := protowire.ParseError(vLen)
+         if err != nil {
+            return nil, err
+         }
+         add(mes, num, Fixed32(val))
+      case protowire.Fixed64Type:
+         val, vLen := protowire.ConsumeFixed64(b)
+         err := protowire.ParseError(vLen)
+         if err != nil {
+            return nil, err
+         }
+         add(mes, num, Fixed64(val))
+      case protowire.VarintType:
+         val, vLen := protowire.ConsumeVarint(b)
+         err := protowire.ParseError(vLen)
+         if err != nil {
+            return nil, err
+         }
+         add(mes, num, Varint(val))
+      }
+      b = b[m:]
+   }
+   return mes, nil
+}
