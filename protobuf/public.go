@@ -1,12 +1,10 @@
 package protobuf
 
 import (
-   "fmt"
    "github.com/89z/format"
    "google.golang.org/protobuf/encoding/protowire"
    "io"
    "sort"
-   "strings"
 )
 
 type Bytes []byte
@@ -17,12 +15,71 @@ type Fixed64 uint64
 
 type Message map[Number]Token
 
-func Decode(in io.Reader) (Message, error) {
-   buf, err := io.ReadAll(in)
+func Decode(src io.Reader) (Message, error) {
+   buf, err := io.ReadAll(src)
    if err != nil {
       return nil, err
    }
    return Unmarshal(buf)
+}
+
+func Unmarshal(buf []byte) (Message, error) {
+   if len(buf) == 0 {
+      return nil, io.ErrUnexpectedEOF
+   }
+   mes := make(Message)
+   for len(buf) >= 1 {
+      num, typ, tLen := protowire.ConsumeTag(buf)
+      err := protowire.ParseError(tLen)
+      if err != nil {
+         return nil, err
+      }
+      buf = buf[tLen:]
+      var vLen int
+      switch typ {
+      case protowire.BytesType:
+         var val []byte
+         val, vLen = protowire.ConsumeBytes(buf)
+         embed, err := Unmarshal(val)
+         if err != nil {
+            if format.IsString(val) {
+               add(mes, num, String(val))
+            } else {
+               add(mes, num, Bytes(val))
+            }
+         } else if format.IsString(val) {
+            add(mes, num, String(val))
+            add(mes, -num, embed)
+         } else {
+            add(mes, num, embed)
+         }
+      case protowire.Fixed32Type:
+         var val uint32
+         val, vLen = protowire.ConsumeFixed32(buf)
+         add(mes, num, Fixed32(val))
+      case protowire.Fixed64Type:
+         var val uint64
+         val, vLen = protowire.ConsumeFixed64(buf)
+         add(mes, num, Fixed64(val))
+      case protowire.StartGroupType:
+         var val []byte
+         val, vLen = protowire.ConsumeGroup(num, buf)
+         embed, err := Unmarshal(val)
+         if err != nil {
+            return nil, err
+         }
+         add(mes, num, embed)
+      case protowire.VarintType:
+         var val uint64
+         val, vLen = protowire.ConsumeVarint(buf)
+         add(mes, num, Varint(val))
+      }
+      if err := protowire.ParseError(vLen); err != nil {
+         return nil, err
+      }
+      buf = buf[vLen:]
+   }
+   return mes, nil
 }
 
 func (m Message) Add(num Number, val Message) {
@@ -69,29 +126,6 @@ func (m Message) GetVarint(num Number) (Varint, error) {
    return get[Varint](m, num)
 }
 
-func (m Message) GoString() string {
-   buf := new(strings.Builder)
-   buf.WriteString("protobuf.Message{\n")
-   for num, tok := range m {
-      fmt.Fprint(buf, num, ":")
-      switch tok.(type) {
-      case Fixed32:
-         fmt.Fprintf(buf, "protobuf.Fixed32(%v)", tok)
-      case Fixed64:
-         fmt.Fprintf(buf, "protobuf.Fixed64(%v)", tok)
-      case String:
-         fmt.Fprintf(buf, "protobuf.String(%q)", tok)
-      case Varint:
-         fmt.Fprintf(buf, "protobuf.Varint(%v)", tok)
-      default:
-         fmt.Fprintf(buf, "%#v", tok)
-      }
-      buf.WriteString(",\n")
-   }
-   buf.WriteByte('}')
-   return buf.String()
-}
-
 func (m Message) Marshal() []byte {
    var (
       buf []byte
@@ -122,67 +156,3 @@ type Token interface {
 type Tokens[T Token] []T
 
 type Varint uint64
-
-func Unmarshal(b []byte) (Message, error) {
-   mes := make(Message)
-   for len(b) >= 1 {
-      num, typ, n := protowire.ConsumeTag(b)
-      err := protowire.ParseError(n)
-      if err != nil {
-         return nil, err
-      }
-      b = b[n:]
-      m := protowire.ConsumeFieldValue(num, typ, b)
-      if err := protowire.ParseError(m); err != nil {
-         return nil, err
-      }
-      switch typ {
-      case protowire.BytesType:
-         val, vLen := protowire.ConsumeBytes(b)
-         err := protowire.ParseError(vLen)
-         if err != nil {
-            return nil, err
-         }
-         if len(val) == 0 {
-            add(mes, num, String(""))
-         } else {
-            embed, err := Unmarshal(val)
-            if err != nil {
-               if format.IsString(val) {
-                  add(mes, num, String(val))
-               } else {
-                  add(mes, num, Bytes(val))
-               }
-            } else if format.IsString(val) {
-               add(mes, num, String(val))
-               add(mes, -num, embed)
-            } else {
-               add(mes, num, embed)
-            }
-         }
-      case protowire.Fixed32Type:
-         val, vLen := protowire.ConsumeFixed32(b)
-         err := protowire.ParseError(vLen)
-         if err != nil {
-            return nil, err
-         }
-         add(mes, num, Fixed32(val))
-      case protowire.Fixed64Type:
-         val, vLen := protowire.ConsumeFixed64(b)
-         err := protowire.ParseError(vLen)
-         if err != nil {
-            return nil, err
-         }
-         add(mes, num, Fixed64(val))
-      case protowire.VarintType:
-         val, vLen := protowire.ConsumeVarint(b)
-         err := protowire.ParseError(vLen)
-         if err != nil {
-            return nil, err
-         }
-         add(mes, num, Varint(val))
-      }
-      b = b[m:]
-   }
-   return mes, nil
-}

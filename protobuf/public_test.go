@@ -1,19 +1,13 @@
 package protobuf
 
 import (
-   "fmt"
    "os"
    "testing"
 )
 
-var tests = []string{
-   "checkin.txt",
-   "details.txt",
-}
-
 func TestCheckin(t *testing.T) {
    for _, test := range tests {
-      buf, err := os.ReadFile(test)
+      buf, err := os.ReadFile(test.name)
       if err != nil {
          t.Fatal(err)
       }
@@ -21,6 +15,19 @@ func TestCheckin(t *testing.T) {
       if err != nil {
          t.Fatal(err)
       }
-      fmt.Println(len(mes.Marshal()))
+      size := len(mes.Marshal())
+      if size != test.size {
+         t.Fatal(size)
+      }
    }
+}
+
+type testType struct {
+   name string
+   size int
+}
+
+var tests = []testType {
+   {"checkin.txt", 374},
+   {"details.txt", 10095},
 }
