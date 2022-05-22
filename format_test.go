@@ -26,7 +26,7 @@ func TestOpen(t *testing.T) {
       Services string
       Token string
    }
-   cache, err := os.UserCacheDir()
+   cache, err := os.UserHomeDir()
    if err != nil {
       t.Fatal(err)
    }
