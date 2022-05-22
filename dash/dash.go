@@ -14,73 +14,6 @@ const (
    Video = "video/mp4"
 )
 
-type Adaptation struct {
-   MimeType string `xml:"mimeType,attr"`
-   Representation []Represent
-   ContentProtection *Protection
-   SegmentTemplate *Template
-}
-
-type AdaptationSet []Adaptation
-
-func NewAdaptationSet(body io.Reader) (AdaptationSet, error) {
-   var media struct {
-      Period struct {
-         AdaptationSet AdaptationSet
-      }
-   }
-   err := xml.NewDecoder(body).Decode(&media)
-   if err != nil {
-      return nil, err
-   }
-   return media.Period.AdaptationSet, nil
-}
-
-func (a AdaptationSet) MimeType(typ string) AdaptationSet {
-   var adapts AdaptationSet
-   for _, adapt := range a {
-      if adapt.MimeType == typ {
-         adapts = append(adapts, adapt)
-      }
-   }
-   return adapts
-}
-
-func (a AdaptationSet) Protection() *Protection {
-   for _, adapt := range a {
-      if adapt.ContentProtection != nil {
-         return adapt.ContentProtection
-      }
-      for _, rep := range adapt.Representation {
-         if rep.ContentProtection != nil {
-            return rep.ContentProtection
-         }
-      }
-   }
-   return nil
-}
-
-func (a AdaptationSet) Represent(bandwidth int64) *Represent {
-   distance := func(r *Represent) int64 {
-      if r.Bandwidth > bandwidth {
-         return r.Bandwidth - bandwidth
-      }
-      return bandwidth - r.Bandwidth
-   }
-   var dst *Represent
-   for i, adapt := range a {
-      for j, src := range adapt.Representation {
-         if dst == nil || distance(&src) < distance(dst) {
-            dst = &a[i].Representation[j]
-            if dst.SegmentTemplate == nil {
-               dst.SegmentTemplate = adapt.SegmentTemplate
-            }
-         }
-      }
-   }
-   return dst
-}
-
 type Protection struct {
    Default_KID string `xml:"default_KID,attr"`
 }
@@ -88,46 +21,6 @@ type Protection struct {
 func (p Protection) KID() ([]byte, error) {
    kid := strings.ReplaceAll(p.Default_KID, "-", "")
    return hex.DecodeString(kid)
-}
-
-type Represent struct {
-   ID string `xml:"id,attr"` // RepresentationID
-   Width int64 `xml:"width,attr"`
-   Height int64 `xml:"height,attr"`
-   Bandwidth int64 `xml:"bandwidth,attr"` // handle duplicate height
-   Codecs string `xml:"codecs,attr"` // handle missing height
-   ContentProtection *Protection
-   SegmentTemplate *Template
-}
-
-func (r Represent) Initialization(base *url.URL) (*url.URL, error) {
-   ref := r.id(r.SegmentTemplate.Initialization)
-   return base.Parse(ref)
-}
-
-func (r Represent) Media(base *url.URL) ([]*url.URL, error) {
-   var addrs []*url.URL
-   start, number := r.number()
-   for _, seg := range r.SegmentTemplate.SegmentTimeline.S {
-      for seg.T = start; seg.R >= 0; seg.R-- {
-         ref := r.id(r.SegmentTemplate.Media)
-         if number {
-            ref = seg.number(ref)
-            seg.T++
-            start++
-         } else {
-            ref = seg.time(ref)
-            seg.T += seg.D
-            start += seg.D
-         }
-         addr, err := base.Parse(ref)
-         if err != nil {
-            return nil, err
-         }
-         addrs = append(addrs, addr)
-      }
-   }
-   return addrs, nil
 }
 
 func (r Represent) String() string {
@@ -160,4 +53,112 @@ type Template struct {
       S []Segment
    }
    StartNumber *int `xml:"startNumber,attr"`
+}
+
+func (r Represent) Initialization(base *url.URL) (*url.URL, error) {
+   ref := r.id(r.SegmentTemplate.Initialization)
+   return base.Parse(ref)
+}
+
+func (r Represent) Media(base *url.URL) ([]*url.URL, error) {
+   var addrs []*url.URL
+   start, number := r.number()
+   for _, seg := range r.SegmentTemplate.SegmentTimeline.S {
+      for seg.T = start; seg.R >= 0; seg.R-- {
+         ref := r.id(r.SegmentTemplate.Media)
+         if number {
+            ref = seg.number(ref)
+            seg.T++
+            start++
+         } else {
+            ref = seg.time(ref)
+            seg.T += seg.D
+            start += seg.D
+         }
+         addr, err := base.Parse(ref)
+         if err != nil {
+            return nil, err
+         }
+         addrs = append(addrs, addr)
+      }
+   }
+   return addrs, nil
+}
+
+func NewPeriod(body io.Reader) (*Period, error) {
+   var media struct {
+      Period Period
+   }
+   err := xml.NewDecoder(body).Decode(&media)
+   if err != nil {
+      return nil, err
+   }
+   return &media.Period, nil
+}
+
+func (p Period) Protection() *Protection {
+   for _, ada := range p.AdaptationSet {
+      if ada.ContentProtection != nil {
+         return ada.ContentProtection
+      }
+      for _, rep := range ada.Representation {
+         if rep.ContentProtection != nil {
+            return rep.ContentProtection
+         }
+      }
+   }
+   return nil
+}
+
+type Represent struct {
+   ID string `xml:"id,attr"` // RepresentationID
+   Width int64 `xml:"width,attr"`
+   Height int64 `xml:"height,attr"`
+   Bandwidth int64 `xml:"bandwidth,attr"` // handle duplicate height
+   Codecs string `xml:"codecs,attr"` // handle missing height
+   MimeType string `xml:"mimeType,attr"`
+   ContentProtection *Protection
+   SegmentTemplate *Template
+}
+
+type Period struct {
+   AdaptationSet []struct {
+      MimeType string `xml:"mimeType,attr"`
+      Representation []Represent
+      ContentProtection *Protection
+      SegmentTemplate *Template
+   }
+}
+
+type Represents []Represent
+
+func (p Period) MimeType(typ string) Represents {
+   var reps Represents
+   for _, ada := range p.AdaptationSet {
+      for _, rep := range ada.Representation {
+         if ada.MimeType == typ || rep.MimeType == typ {
+            if rep.SegmentTemplate == nil {
+               rep.SegmentTemplate = ada.SegmentTemplate
+            }
+            reps = append(reps, rep)
+         }
+      }
+   }
+   return reps
+}
+
+func (r Represents) Represent(bandwidth int64) *Represent {
+   distance := func(r *Represent) int64 {
+      if r.Bandwidth > bandwidth {
+         return r.Bandwidth - bandwidth
+      }
+      return bandwidth - r.Bandwidth
+   }
+   var dst *Represent
+   for i, src := range r {
+      if dst == nil || distance(&src) < distance(dst) {
+         dst = &r[i]
+      }
+   }
+   return dst
 }
