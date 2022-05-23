@@ -54,13 +54,6 @@ func (r Represent) id(in string) string {
    return strings.Replace(in, "$RepresentationID$", r.ID, 1)
 }
 
-func (r Represent) number() (int, bool) {
-   if r.SegmentTemplate.StartNumber != nil {
-      return *r.SegmentTemplate.StartNumber, true
-   }
-   return 0, false
-}
-
 func (s Segment) number(in string) string {
    return strings.Replace(in, "$Number$", strconv.Itoa(s.T), 1)
 }

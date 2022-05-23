@@ -32,5 +32,8 @@ func TestRepresent(t *testing.T) {
       for _, rep := range period.MimeType(Video) {
          fmt.Println(rep)
       }
+      for _, rep := range period.MimeType(Audio) {
+         fmt.Println(rep)
+      }
    }
 }
