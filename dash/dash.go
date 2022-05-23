@@ -121,31 +121,7 @@ type Represent struct {
    SegmentTemplate *Template
 }
 
-type Period struct {
-   AdaptationSet []struct {
-      MimeType string `xml:"mimeType,attr"`
-      Representation []Represent
-      ContentProtection *Protection
-      SegmentTemplate *Template
-   }
-}
-
 type Represents []Represent
-
-func (p Period) MimeType(typ string) Represents {
-   var reps Represents
-   for _, ada := range p.AdaptationSet {
-      for _, rep := range ada.Representation {
-         if ada.MimeType == typ || rep.MimeType == typ {
-            if rep.SegmentTemplate == nil {
-               rep.SegmentTemplate = ada.SegmentTemplate
-            }
-            reps = append(reps, rep)
-         }
-      }
-   }
-   return reps
-}
 
 func (r Represents) Represent(bandwidth int64) *Represent {
    distance := func(r *Represent) int64 {
@@ -161,4 +137,33 @@ func (r Represents) Represent(bandwidth int64) *Represent {
       }
    }
    return dst
+}
+
+type Period struct {
+   AdaptationSet []struct {
+      ContentProtection *Protection
+      MimeType string `xml:"mimeType,attr"`
+      Representation []Represent
+      Role *struct {
+         Value string `xml:"value,attr"`
+      }
+      SegmentTemplate *Template
+   }
+}
+
+func (p Period) MimeType(typ string) Represents {
+   var reps Represents
+   for _, ada := range p.AdaptationSet {
+      if ada.Role == nil {
+         for _, rep := range ada.Representation {
+            if ada.MimeType == typ || rep.MimeType == typ {
+               if rep.SegmentTemplate == nil {
+                  rep.SegmentTemplate = ada.SegmentTemplate
+               }
+               reps = append(reps, rep)
+            }
+         }
+      }
+   }
+   return reps
 }
