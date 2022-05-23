@@ -9,6 +9,60 @@ import (
    "strings"
 )
 
+func Audio(a Adaptation, r Represent) bool {
+   if !strings.HasPrefix(a.Lang, "en") {
+      return false
+   }
+   if a.MimeType != TypeAudio && r.MimeType != TypeAudio {
+      return false
+   }
+   if a.Role != nil {
+      return false
+   }
+   return true
+}
+
+func Video(a Adaptation, r Represent) bool {
+   return a.MimeType == TypeVideo || r.MimeType == TypeVideo
+}
+
+type Period struct {
+   AdaptationSet []Adaptation
+}
+
+const (
+   TypeAudio = "audio/mp4"
+   TypeVideo = "video/mp4"
+)
+
+type Adaptation struct {
+   ContentProtection *Protection
+   Lang string `xml:"lang,attr"`
+   MimeType string `xml:"mimeType,attr"`
+   Representation []Represent
+   Role *struct {
+      Value string `xml:"value,attr"`
+   }
+   SegmentTemplate *Template
+}
+
+type PeriodFunc func(Adaptation, Represent) bool
+
+func (p Period) Represents(fn PeriodFunc) Represents {
+   var reps Represents
+   for _, ada := range p.AdaptationSet {
+      for _, rep := range ada.Representation {
+         if fn(ada, rep) {
+            if rep.SegmentTemplate == nil {
+               rep.SegmentTemplate = ada.SegmentTemplate
+            }
+            reps = append(reps, rep)
+         }
+      }
+   }
+   return reps
+}
+
 func (r Represent) Media(base *url.URL) ([]*url.URL, error) {
    var addrs []*url.URL
    start := r.SegmentTemplate.StartNumber
@@ -33,11 +87,6 @@ func (r Represent) Media(base *url.URL) ([]*url.URL, error) {
    }
    return addrs, nil
 }
-
-const (
-   Audio = "audio/mp4"
-   Video = "video/mp4"
-)
 
 type Protection struct {
    Default_KID string `xml:"default_KID,attr"`
@@ -128,35 +177,6 @@ func (r Represents) Represent(bandwidth int64) *Represent {
       }
    }
    return dst
-}
-
-type Period struct {
-   AdaptationSet []struct {
-      ContentProtection *Protection
-      MimeType string `xml:"mimeType,attr"`
-      Representation []Represent
-      Role *struct {
-         Value string `xml:"value,attr"`
-      }
-      SegmentTemplate *Template
-   }
-}
-
-func (p Period) MimeType(typ string) Represents {
-   var reps Represents
-   for _, ada := range p.AdaptationSet {
-      if ada.Role == nil {
-         for _, rep := range ada.Representation {
-            if ada.MimeType == typ || rep.MimeType == typ {
-               if rep.SegmentTemplate == nil {
-                  rep.SegmentTemplate = ada.SegmentTemplate
-               }
-               reps = append(reps, rep)
-            }
-         }
-      }
-   }
-   return reps
 }
 
 type Template struct {

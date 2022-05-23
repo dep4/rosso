@@ -7,7 +7,8 @@ import (
 )
 
 var tests = []string{
-   "paramount.mpd",
+   "paramount-lang.mpd",
+   "paramount-role.mpd",
    "roku.mpd",
 }
 
@@ -29,10 +30,10 @@ func TestRepresent(t *testing.T) {
          t.Fatal(err)
       }
       fmt.Printf("%x\n", kID)
-      for _, rep := range period.MimeType(Video) {
+      for _, rep := range period.Represents(Video) {
          fmt.Println(rep)
       }
-      for _, rep := range period.MimeType(Audio) {
+      for _, rep := range period.Represents(Audio) {
          fmt.Println(rep)
       }
    }
