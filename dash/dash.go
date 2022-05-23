@@ -13,7 +13,7 @@ func Audio(a Adaptation, r Represent) bool {
    if !strings.HasPrefix(a.Lang, "en") {
       return false
    }
-   if a.MimeType != TypeAudio && r.MimeType != TypeAudio {
+   if r.MimeType != TypeAudio {
       return false
    }
    if a.Role != nil {
@@ -23,17 +23,8 @@ func Audio(a Adaptation, r Represent) bool {
 }
 
 func Video(a Adaptation, r Represent) bool {
-   return a.MimeType == TypeVideo || r.MimeType == TypeVideo
+   return r.MimeType == TypeVideo
 }
-
-type Period struct {
-   AdaptationSet []Adaptation
-}
-
-const (
-   TypeAudio = "audio/mp4"
-   TypeVideo = "video/mp4"
-)
 
 type Adaptation struct {
    ContentProtection *Protection
@@ -46,22 +37,45 @@ type Adaptation struct {
    SegmentTemplate *Template
 }
 
-type PeriodFunc func(Adaptation, Represent) bool
+type Represent struct {
+   ID string `xml:"id,attr"` // RepresentationID
+   Width int64 `xml:"width,attr"`
+   Height int64 `xml:"height,attr"`
+   Bandwidth int64 `xml:"bandwidth,attr"` // handle duplicate height
+   Codecs string `xml:"codecs,attr"` // handle missing height
+   MimeType string `xml:"mimeType,attr"`
+   ContentProtection *Protection
+   SegmentTemplate *Template
+}
 
 func (p Period) Represents(fn PeriodFunc) Represents {
    var reps Represents
    for _, ada := range p.AdaptationSet {
       for _, rep := range ada.Representation {
+         if rep.MimeType == "" {
+            rep.MimeType = ada.MimeType
+         }
+         if rep.SegmentTemplate == nil {
+            rep.SegmentTemplate = ada.SegmentTemplate
+         }
          if fn(ada, rep) {
-            if rep.SegmentTemplate == nil {
-               rep.SegmentTemplate = ada.SegmentTemplate
-            }
             reps = append(reps, rep)
          }
       }
    }
    return reps
 }
+
+type Period struct {
+   AdaptationSet []Adaptation
+}
+
+const (
+   TypeAudio = "audio/mp4"
+   TypeVideo = "video/mp4"
+)
+
+type PeriodFunc func(Adaptation, Represent) bool
 
 func (r Represent) Media(base *url.URL) ([]*url.URL, error) {
    var addrs []*url.URL
@@ -148,17 +162,6 @@ func (p Period) Protection() *Protection {
       }
    }
    return nil
-}
-
-type Represent struct {
-   ID string `xml:"id,attr"` // RepresentationID
-   Width int64 `xml:"width,attr"`
-   Height int64 `xml:"height,attr"`
-   Bandwidth int64 `xml:"bandwidth,attr"` // handle duplicate height
-   Codecs string `xml:"codecs,attr"` // handle missing height
-   MimeType string `xml:"mimeType,attr"`
-   ContentProtection *Protection
-   SegmentTemplate *Template
 }
 
 type Represents []Represent
