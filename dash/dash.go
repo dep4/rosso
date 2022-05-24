@@ -9,23 +9,6 @@ import (
    "strings"
 )
 
-func Audio(a Adaptation, r Represent) bool {
-   if !strings.HasPrefix(a.Lang, "en") {
-      return false
-   }
-   if r.MimeType != TypeAudio {
-      return false
-   }
-   if a.Role != nil {
-      return false
-   }
-   return true
-}
-
-func Video(a Adaptation, r Represent) bool {
-   return r.MimeType == TypeVideo
-}
-
 type Adaptation struct {
    ContentProtection *Protection
    Lang string `xml:"lang,attr"`
@@ -69,11 +52,6 @@ func (p Period) Represents(fn PeriodFunc) Represents {
 type Period struct {
    AdaptationSet []Adaptation
 }
-
-const (
-   TypeAudio = "audio/mp4"
-   TypeVideo = "video/mp4"
-)
 
 type PeriodFunc func(Adaptation, Represent) bool
 
@@ -189,4 +167,21 @@ type Template struct {
       S []Segment
    }
    StartNumber int `xml:"startNumber,attr"`
+}
+
+func Video(a Adaptation, r Represent) bool {
+   return r.MimeType == "video/mp4"
+}
+
+func Audio(a Adaptation, r Represent) bool {
+   if !strings.HasPrefix(a.Lang, "en") {
+      return false
+   }
+   if r.MimeType != "audio/mp4" {
+      return false
+   }
+   if a.Role != nil {
+      return false
+   }
+   return true
 }

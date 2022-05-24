@@ -9,6 +9,8 @@ import (
    "sort"
 )
 
+// Check Bytes for Unmarshaled Messages, check Message for manually constructed
+// Messages.
 func (m Message) Get(num Number) Message {
    switch value := m[num].(type) {
    case Bytes:

@@ -35,14 +35,3 @@ func TestTransport(t *testing.T) {
    }
    fmt.Printf("%+v\n", res)
 }
-
-func TestReader(t *testing.T) {
-   var buf []byte
-   buf = append(buf, 0,0,0,5, 'h', 'e', 'l', 'l', 'o')
-   buf = append(buf, 0,0,0,5, 'w', 'o', 'r', 'l', 'd')
-   read := NewReader(buf)
-   one, two, ok := read.ReadUint32LengthPrefixed()
-   fmt.Printf("%v %s %v\n", one, two, ok)
-   one, two, ok = read.ReadUint32LengthPrefixed()
-   fmt.Printf("%v %s %v\n", one, two, ok)
-}

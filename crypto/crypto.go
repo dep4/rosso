@@ -13,6 +13,28 @@ import (
    "strings"
 )
 
+// len 122, 8fcaa9e4a15f48af0a7d396e3fa5c5eb
+const AndroidAPI24 =
+   "771,49195-49196-52393-49199-49200-52392-158-159-49161-49162-49171-" +
+   "49172-51-57-156-157-47-53,65281-0-23-35-13-16-11-10,23,0"
+
+// len 128, 9fc6ef6efc99b933c5e2d8fcf4f68955
+const AndroidAPI25 =
+   "771,49195-49196-52393-49199-49200-52392-158-159-49161-49162-49171-" +
+   "49172-51-57-156-157-47-53,65281-0-23-35-13-16-11-10,23-24-25,0"
+
+// len 116, d8c87b9bfde38897979e41242626c2f3
+const AndroidAPI26 =
+   "771,49195-49196-52393-49199-49200-52392-49161-49162-49171-" +
+   "49172-156-157-47-53,65281-0-23-35-13-5-16-11-10,29-23-24,0"
+
+// len 143, 9b02ebd3a43b62d825e1ac605b621dc8
+const AndroidAPI29 =
+   "771,4865-4866-4867-49195-49196-52393-49199-49200-52392-49161-49162-49171-" +
+   "49172-156-157-47-53,0-23-65281-10-11-35-16-5-13-51-45-43-21,29-23-24,0"
+
+const AndroidAPI32 = AndroidAPI29
+
 func Fingerprint(ja3 string) string {
    hash := md5.New()
    io.WriteString(hash, ja3)
@@ -109,51 +131,6 @@ func extensionType(ext tls.TLSExtension) (uint16, error) {
    }
    return binary.BigEndian.Uint16(buf), nil
 }
-
-type Reader struct {
-   buf []byte
-}
-
-func NewReader(buf []byte) *Reader {
-   return &Reader{buf}
-}
-
-// github.com/golang/go/issues/49227
-func (r *Reader) ReadUint32LengthPrefixed() ([]byte, []byte, bool) {
-   low := 4
-   if len(r.buf) < low {
-      return nil, nil, false
-   }
-   high := low + int(binary.BigEndian.Uint32(r.buf))
-   if len(r.buf) < high {
-      return nil, nil, false
-   }
-   pre, buf := r.buf[:low], r.buf[low:high]
-   r.buf = r.buf[high:]
-   return pre, buf, true
-}
-
-// len 122, 8fcaa9e4a15f48af0a7d396e3fa5c5eb
-const AndroidAPI24 =
-   "771,49195-49196-52393-49199-49200-52392-158-159-49161-49162-49171-" +
-   "49172-51-57-156-157-47-53,65281-0-23-35-13-16-11-10,23,0"
-
-// len 128, 9fc6ef6efc99b933c5e2d8fcf4f68955
-const AndroidAPI25 =
-   "771,49195-49196-52393-49199-49200-52392-158-159-49161-49162-49171-" +
-   "49172-51-57-156-157-47-53,65281-0-23-35-13-16-11-10,23-24-25,0"
-
-// len 116, d8c87b9bfde38897979e41242626c2f3
-const AndroidAPI26 =
-   "771,49195-49196-52393-49199-49200-52392-49161-49162-49171-" +
-   "49172-156-157-47-53,65281-0-23-35-13-5-16-11-10,29-23-24,0"
-
-// len 143, 9b02ebd3a43b62d825e1ac605b621dc8
-const AndroidAPI29 =
-   "771,4865-4866-4867-49195-49196-52393-49199-49200-52392-49161-49162-49171-" +
-   "49172-156-157-47-53,0-23-65281-10-11-35-16-5-13-51-45-43-21,29-23-24,0"
-
-const AndroidAPI32 = AndroidAPI29
 
 func ParseTLS(buf []byte) (*tls.ClientHelloSpec, error) {
    // unsupported extension 0x16
