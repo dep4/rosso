@@ -229,5 +229,3 @@ func get[T Token](mes Message, num Number) (T, error) {
    }
    return b, err
 }
-
-
