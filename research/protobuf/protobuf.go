@@ -27,85 +27,6 @@ func Decode(src io.Reader) (Message, error) {
    return Unmarshal(buf)
 }
 
-func (m Message) AddString(num Number, val String) {
-   add(m, num, val)
-}
-
-type Number = protowire.Number
-
-type Token interface {
-   appendField([]byte, Number) []byte
-}
-
-func add[T Token](mes Message, num Number, val T) {
-   switch value := mes[num].(type) {
-   case nil:
-      mes[num] = val
-   case T:
-      mes[num] = Tokens[T]{value, val}
-   case Tokens[T]:
-      mes[num] = append(value, val)
-   }
-}
-
-type Varint uint64
-
-type Tokens[T Token] []T
-
-func (f Fixed32) appendField(in []byte, num Number) []byte {
-   in = protowire.AppendTag(in, num, protowire.Fixed32Type)
-   return protowire.AppendFixed32(in, uint32(f))
-}
-
-func (f Fixed64) appendField(in []byte, num Number) []byte {
-   in = protowire.AppendTag(in, num, protowire.Fixed64Type)
-   return protowire.AppendFixed64(in, uint64(f))
-}
-
-func (m Message) Marshal() []byte {
-   var (
-      buf []byte
-      nums []Number
-   )
-   for num := range m {
-      nums = append(nums, num)
-   }
-   sort.Slice(nums, func(a, b int) bool {
-      return nums[a] < nums[b]
-   })
-   for _, num := range nums {
-      buf = m[num].appendField(buf, num)
-   }
-   return buf
-}
-
-func (t Tokens[T]) appendField(in []byte, num Number) []byte {
-   for _, tok := range t {
-      in = tok.appendField(in, num)
-   }
-   return in
-}
-
-func (v Varint) appendField(in []byte, num Number) []byte {
-   in = protowire.AppendTag(in, num, protowire.VarintType)
-   return protowire.AppendVarint(in, uint64(v))
-}
-
-type String struct {
-   Raw string
-   Message
-}
-
-func (s String) appendField(in []byte, num Number) []byte {
-   in = protowire.AppendTag(in, num, protowire.BytesType)
-   return protowire.AppendString(in, s.Raw)
-}
-
-func (b Bytes) appendField(in []byte, num Number) []byte {
-   in = protowire.AppendTag(in, num, protowire.BytesType)
-   return protowire.AppendBytes(in, b.Raw)
-}
-
 // Using this function strings will always be String, and []byte will always be
 // Bytes. Message will be Bytes or String.
 func Unmarshal(buf []byte) (Message, error) {
@@ -170,9 +91,8 @@ func (m Message) Add(num Number, val Message) {
    add(m, num, val)
 }
 
-func (m Message) appendField(in []byte, num Number) []byte {
-   in = protowire.AppendTag(in, num, protowire.BytesType)
-   return protowire.AppendBytes(in, m.Marshal())
+func (m Message) AddString(num Number, val String) {
+   add(m, num, val)
 }
 
 func (m Message) Get(num Number) Message {
@@ -185,30 +105,12 @@ func (m Message) Get(num Number) Message {
    return nil
 }
 
-func (m Message) GetFixed64(num Number) (Fixed64, error) {
-   return get[Fixed64](m, num)
-}
-
 func (m Message) GetBytes(num Number) (Bytes, error) {
    return get[Bytes](m, num)
 }
 
-func get[T Token](mes Message, num Number) (T, error) {
-   var err error
-   a := mes[num]
-   b, ok := a.(T)
-   if !ok {
-      err = fmt.Errorf("cannot unmarshal %T into field %v of type %T", a, num, b)
-   }
-   return b, err
-}
-
-func (m Message) GetString(num Number) (String, error) {
-   return get[String](m, num)
-}
-
-func (m Message) GetVarint(num Number) (Varint, error) {
-   return get[Varint](m, num)
+func (m Message) GetFixed64(num Number) (Fixed64, error) {
+   return get[Fixed64](m, num)
 }
 
 func (m Message) GetMessages(num Number) []Message {
@@ -229,3 +131,103 @@ func (m Message) GetMessages(num Number) []Message {
    }
    return mes
 }
+
+func (m Message) GetString(num Number) (String, error) {
+   return get[String](m, num)
+}
+
+func (m Message) GetVarint(num Number) (Varint, error) {
+   return get[Varint](m, num)
+}
+
+func (m Message) Marshal() []byte {
+   var (
+      buf []byte
+      nums []Number
+   )
+   for num := range m {
+      nums = append(nums, num)
+   }
+   sort.Slice(nums, func(a, b int) bool {
+      return nums[a] < nums[b]
+   })
+   for _, num := range nums {
+      buf = m[num].appendField(buf, num)
+   }
+   return buf
+}
+
+type Number = protowire.Number
+
+type String struct {
+   Raw string
+   Message
+}
+
+type Token interface {
+   appendField([]byte, Number) []byte
+}
+
+type Tokens[T Token] []T
+
+type Varint uint64
+
+func add[T Token](mes Message, num Number, val T) {
+   switch value := mes[num].(type) {
+   case nil:
+      mes[num] = val
+   case T:
+      mes[num] = Tokens[T]{value, val}
+   case Tokens[T]:
+      mes[num] = append(value, val)
+   }
+}
+
+func (f Fixed32) appendField(in []byte, num Number) []byte {
+   in = protowire.AppendTag(in, num, protowire.Fixed32Type)
+   return protowire.AppendFixed32(in, uint32(f))
+}
+
+func (f Fixed64) appendField(in []byte, num Number) []byte {
+   in = protowire.AppendTag(in, num, protowire.Fixed64Type)
+   return protowire.AppendFixed64(in, uint64(f))
+}
+
+func (t Tokens[T]) appendField(in []byte, num Number) []byte {
+   for _, tok := range t {
+      in = tok.appendField(in, num)
+   }
+   return in
+}
+
+func (v Varint) appendField(in []byte, num Number) []byte {
+   in = protowire.AppendTag(in, num, protowire.VarintType)
+   return protowire.AppendVarint(in, uint64(v))
+}
+
+func (s String) appendField(in []byte, num Number) []byte {
+   in = protowire.AppendTag(in, num, protowire.BytesType)
+   return protowire.AppendString(in, s.Raw)
+}
+
+func (b Bytes) appendField(in []byte, num Number) []byte {
+   in = protowire.AppendTag(in, num, protowire.BytesType)
+   return protowire.AppendBytes(in, b.Raw)
+}
+
+func (m Message) appendField(in []byte, num Number) []byte {
+   in = protowire.AppendTag(in, num, protowire.BytesType)
+   return protowire.AppendBytes(in, m.Marshal())
+}
+
+func get[T Token](mes Message, num Number) (T, error) {
+   var err error
+   a := mes[num]
+   b, ok := a.(T)
+   if !ok {
+      err = fmt.Errorf("cannot unmarshal %T into field %v of type %T", a, num, b)
+   }
+   return b, err
+}
+
+
