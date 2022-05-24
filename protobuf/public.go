@@ -9,6 +9,29 @@ import (
    "sort"
 )
 
+func (m Message) Get(num Number) Message {
+   switch value := m[num].(type) {
+   case Bytes:
+      return value.Message
+   case Message:
+      return value
+   }
+   return nil
+}
+
+func (m Message) GetMessages(num Number) []Message {
+   var mes []Message
+   switch value := m[num].(type) {
+   case Bytes:
+      return []Message{value.Message}
+   case Tokens[Bytes]:
+      for _, val := range value {
+         mes = append(mes, val.Message)
+      }
+   }
+   return mes
+}
+
 func String(s string) Bytes {
    var dst Bytes
    dst.Raw = []byte(s)
@@ -86,19 +109,6 @@ func Unmarshal(buf []byte) (Message, error) {
    return mes, nil
 }
 
-func (m Message) GetMessages(num Number) []Message {
-   var mes []Message
-   switch value := m[num].(type) {
-   case Bytes:
-      return []Message{value.Message}
-   case Tokens[Bytes]:
-      for _, val := range value {
-         mes = append(mes, val.Message)
-      }
-   }
-   return mes
-}
-
 func (m Message) GetVarint(num Number) (uint64, error) {
    src := m[num]
    dst, ok := src.(Varint)
@@ -162,14 +172,6 @@ func (m Message) GetString(num Number) (string, error) {
       return "", getError{src, num, dst}
    }
    return string(dst.Raw), nil
-}
-
-func (m Message) Get(num Number) Message {
-   dst, ok := m[num].(Bytes)
-   if !ok {
-      return nil
-   }
-   return dst.Message
 }
 
 func (m Message) GetFixed64(num Number) (uint64, error) {
