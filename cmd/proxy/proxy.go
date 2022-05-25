@@ -16,7 +16,6 @@ func (s spyConn) Read(buf []byte) (int, error) {
       if err == nil {
          fmt.Printf("%q\n", buf[:num])
          fmt.Print("\t", ja3, "\n")
-         fmt.Print("\t", crypto.Fingerprint(ja3), "\n")
       }
    }
    return num, err
