@@ -36,10 +36,9 @@ const curlHandshake =
    "00000000000000000000000000"
 
 var hellos = []string{
-   //AndroidAPI24,
-   //AndroidAPI25,
-   //AndroidAPI26,
-   
+   AndroidAPI24,
+   AndroidAPI25,
+   AndroidAPI26,
    AndroidAPI29,
 }
 
