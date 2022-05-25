@@ -153,7 +153,7 @@ func (p *Progress) Write(buf []byte) (int, error) {
       p.timeLap = time.Now()
    }
    since := time.Since(p.timeLap)
-   if since >= time.Second/2 {
+   if since >= time.Second {
       os.Stderr.WriteString(p.String())
       os.Stderr.WriteString("\n")
       p.timeLap = p.timeLap.Add(since)
