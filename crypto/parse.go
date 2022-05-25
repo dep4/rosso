@@ -64,9 +64,13 @@ func ParseJA3(str string) (*tls.ClientHelloSpec, error) {
          // Android API 26
          ext = &tls.StatusRequestExtension{}
       case "10":
-         ext = &tls.SupportedCurvesExtension{info.SupportedCurves}
+         ext = &tls.SupportedCurvesExtension{
+            Curves: info.SupportedCurves,
+         }
       case "11":
-         ext = &tls.SupportedPointsExtension{info.SupportedPoints}
+         ext = &tls.SupportedPointsExtension{
+            SupportedPoints: info.SupportedPoints,
+         }
       case "13":
          ext = &tls.SignatureAlgorithmsExtension{
             SupportedSignatureAlgorithms: []tls.SignatureScheme{
@@ -77,25 +81,24 @@ func ParseJA3(str string) (*tls.ClientHelloSpec, error) {
             },
          }
       case "16":
-         ext = &tls.ALPNExtension{
-            AlpnProtocols: []string{
-               // Android API 24
-               "http/1.1",
-            },
-         }
+         ext = &tls.ALPNExtension{AlpnProtocols: []string{
+            // Android API 24
+            "http/1.1",
+         }}
+      // EXTENSION 21 CAUSES 403 FORBIDDEN
       case "23":
          // Android API 24
          ext = &tls.UtlsExtendedMasterSecretExtension{}
       case "43":
          // Android API 29
-         ext = &tls.SupportedVersionsExtension{
-            Versions: []uint16{tls.VersionTLS12},
-         }
+         ext = &tls.SupportedVersionsExtension{Versions: []uint16{
+            tls.VersionTLS12,
+         }}
       case "45":
          // Android API 29
-         ext = &tls.PSKKeyExchangeModesExtension{
-            Modes: []uint8{tls.PskModeDHE},
-         }
+         ext = &tls.PSKKeyExchangeModesExtension{Modes: []uint8{
+            tls.PskModeDHE,
+         }}
       case "65281":
          // Android API 24
          ext = &tls.RenegotiationInfoExtension{}

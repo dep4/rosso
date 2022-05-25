@@ -35,7 +35,13 @@ const curlHandshake =
    "000000000000000000000000000000000000000000000000000000000000000000000000" +
    "00000000000000000000000000"
 
-var hellos = []string{AndroidAPI24, AndroidAPI25, AndroidAPI26, AndroidAPI29}
+var hellos = []string{
+   //AndroidAPI24,
+   //AndroidAPI25,
+   //AndroidAPI26,
+   
+   AndroidAPI29,
+}
 
 func TestParseJA3(t *testing.T) {
    val := url.Values{
