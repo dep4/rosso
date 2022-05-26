@@ -55,31 +55,6 @@ type Period struct {
 
 type PeriodFunc func(Adaptation, Represent) bool
 
-func (r Represent) Media(base *url.URL) ([]*url.URL, error) {
-   var addrs []*url.URL
-   start := r.SegmentTemplate.StartNumber
-   for _, seg := range r.SegmentTemplate.SegmentTimeline.S {
-      for seg.T = start; seg.R >= 0; seg.R-- {
-         ref := r.id(r.SegmentTemplate.Media)
-         if r.SegmentTemplate.StartNumber >= 1 {
-            ref = seg.number(ref)
-            seg.T++
-            start++
-         } else {
-            ref = seg.time(ref)
-            seg.T += seg.D
-            start += seg.D
-         }
-         addr, err := base.Parse(ref)
-         if err != nil {
-            return nil, err
-         }
-         addrs = append(addrs, addr)
-      }
-   }
-   return addrs, nil
-}
-
 type Protection struct {
    Default_KID string `xml:"default_KID,attr"`
 }
@@ -160,15 +135,6 @@ func (r Represents) Represent(bandwidth int64) *Represent {
    return dst
 }
 
-type Template struct {
-   Initialization string `xml:"initialization,attr"`
-   Media string `xml:"media,attr"`
-   SegmentTimeline struct {
-      S []Segment
-   }
-   StartNumber int `xml:"startNumber,attr"`
-}
-
 func Video(a Adaptation, r Represent) bool {
    return r.MimeType == "video/mp4"
 }
@@ -184,4 +150,43 @@ func Audio(a Adaptation, r Represent) bool {
       return false
    }
    return true
+}
+
+type Template struct {
+   Initialization string `xml:"initialization,attr"`
+   Media string `xml:"media,attr"`
+   SegmentTimeline struct {
+      S []Segment
+   }
+   StartNumber *int `xml:"startNumber,attr"`
+}
+
+func (r Represent) Media(base *url.URL) ([]*url.URL, error) {
+   var (
+      addrs []*url.URL
+      start int
+   )
+   if r.SegmentTemplate.StartNumber != nil {
+      start = *r.SegmentTemplate.StartNumber
+   }
+   for _, seg := range r.SegmentTemplate.SegmentTimeline.S {
+      for seg.T = start; seg.R >= 0; seg.R-- {
+         ref := r.id(r.SegmentTemplate.Media)
+         if r.SegmentTemplate.StartNumber != nil {
+            ref = seg.number(ref)
+            seg.T++
+            start++
+         } else {
+            ref = seg.time(ref)
+            seg.T += seg.D
+            start += seg.D
+         }
+         addr, err := base.Parse(ref)
+         if err != nil {
+            return nil, err
+         }
+         addrs = append(addrs, addr)
+      }
+   }
+   return addrs, nil
 }

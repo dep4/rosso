@@ -9,44 +9,15 @@ import (
    "sort"
 )
 
-// Check Bytes for Unmarshaled Messages, check Message for manually constructed
-// Messages.
-func (m Message) Get(num Number) Message {
-   switch value := m[num].(type) {
-   case Bytes:
-      return value.Message
-   case Message:
-      return value
-   }
-   return nil
-}
-
-func (m Message) GetMessages(num Number) []Message {
-   var mes []Message
-   switch value := m[num].(type) {
-   case Bytes:
-      return []Message{value.Message}
-   case Tokens[Bytes]:
-      for _, val := range value {
-         mes = append(mes, val.Message)
-      }
-   }
-   return mes
+type Bytes struct {
+   Raw Raw // Do not embed to keep MarshalText scoped to this field
+   Message
 }
 
 func String(s string) Bytes {
    var dst Bytes
    dst.Raw = []byte(s)
    return dst
-}
-
-func (m Message) AddString(num Number, val string) {
-   add(m, num, String(val))
-}
-
-type Bytes struct {
-   Raw Raw // Do not embed to keep MarshalText scoped to this field
-   Message
 }
 
 type Fixed32 uint32
@@ -111,6 +82,66 @@ func Unmarshal(buf []byte) (Message, error) {
    return mes, nil
 }
 
+func (m Message) Add(num Number, val Message) {
+   add(m, num, val)
+}
+
+func (m Message) AddString(num Number, val string) {
+   add(m, num, String(val))
+}
+
+// Check Bytes for Unmarshaled Messages, check Message for manually constructed
+// Messages.
+func (m Message) Get(num Number) Message {
+   switch value := m[num].(type) {
+   case Bytes:
+      return value.Message
+   case Message:
+      return value
+   }
+   return nil
+}
+
+func (m Message) GetBytes(num Number) ([]byte, error) {
+   src := m[num]
+   dst, ok := src.(Bytes)
+   if !ok {
+      return nil, getError{src, num, dst}
+   }
+   return dst.Raw, nil
+}
+
+func (m Message) GetFixed64(num Number) (uint64, error) {
+   src := m[num]
+   dst, ok := src.(Fixed64)
+   if !ok {
+      return 0, getError{src, num, dst}
+   }
+   return uint64(dst), nil
+}
+
+func (m Message) GetMessages(num Number) []Message {
+   var mes []Message
+   switch value := m[num].(type) {
+   case Bytes:
+      return []Message{value.Message}
+   case Tokens[Bytes]:
+      for _, val := range value {
+         mes = append(mes, val.Message)
+      }
+   }
+   return mes
+}
+
+func (m Message) GetString(num Number) (string, error) {
+   src := m[num]
+   dst, ok := src.(Bytes)
+   if !ok {
+      return "", getError{src, num, dst}
+   }
+   return string(dst.Raw), nil
+}
+
 func (m Message) GetVarint(num Number) (uint64, error) {
    src := m[num]
    dst, ok := src.(Varint)
@@ -157,35 +188,3 @@ type Token interface {
 type Tokens[T Token] []T
 
 type Varint uint64
-
-func (m Message) GetBytes(num Number) ([]byte, error) {
-   src := m[num]
-   dst, ok := src.(Bytes)
-   if !ok {
-      return nil, getError{src, num, dst}
-   }
-   return dst.Raw, nil
-}
-
-func (m Message) GetString(num Number) (string, error) {
-   src := m[num]
-   dst, ok := src.(Bytes)
-   if !ok {
-      return "", getError{src, num, dst}
-   }
-   return string(dst.Raw), nil
-}
-
-func (m Message) GetFixed64(num Number) (uint64, error) {
-   src := m[num]
-   dst, ok := src.(Fixed64)
-   if !ok {
-      return 0, getError{src, num, dst}
-   }
-   return uint64(dst), nil
-}
-
-func (m Message) Add(num Number, val Message) {
-   add(m, num, val)
-}
-

@@ -26,11 +26,11 @@ func TestOpen(t *testing.T) {
       Services string
       Token string
    }
-   cache, err := os.UserHomeDir()
+   home, err := os.UserHomeDir()
    if err != nil {
       t.Fatal(err)
    }
-   tok, err := Open[token](cache, "googleplay/token.json")
+   tok, err := Open[token](home, "googleplay/token.json")
    if err != nil {
       t.Fatal(err)
    }
