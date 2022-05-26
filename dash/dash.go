@@ -9,6 +9,19 @@ import (
    "strings"
 )
 
+func Audio(a Adaptation, r Represent) bool {
+   if !strings.HasPrefix(a.Lang, "en") {
+      return false
+   }
+   if r.MimeType != "audio/mp4" {
+      return false
+   }
+   if a.Role != nil && a.Role.Value != "main" {
+      return false
+   }
+   return true
+}
+
 type Adaptation struct {
    ContentProtection *Protection
    Lang string `xml:"lang,attr"`
@@ -137,19 +150,6 @@ func (r Represents) Represent(bandwidth int64) *Represent {
 
 func Video(a Adaptation, r Represent) bool {
    return r.MimeType == "video/mp4"
-}
-
-func Audio(a Adaptation, r Represent) bool {
-   if !strings.HasPrefix(a.Lang, "en") {
-      return false
-   }
-   if r.MimeType != "audio/mp4" {
-      return false
-   }
-   if a.Role != nil {
-      return false
-   }
-   return true
 }
 
 type Template struct {
