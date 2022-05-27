@@ -49,6 +49,8 @@ func ReadRequest(src io.Reader) (*http.Request, error) {
       req.ContentLength = length
    }
    // .Body
-   req.Body = io.NopCloser(text.R)
+   if _, err := text.R.Peek(1); err == nil {
+      req.Body = io.NopCloser(text.R)
+   }
    return &req, nil
 }
