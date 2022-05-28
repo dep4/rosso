@@ -2,11 +2,11 @@ package net
 
 import (
    "bufio"
+   "bytes"
    "io"
    "net/http"
    "net/textproto"
    "net/url"
-   "strconv"
    "strings"
 )
 
@@ -39,18 +39,15 @@ func ReadRequest(src io.Reader) (*http.Request, error) {
    }
    // .Header
    req.Header = http.Header(head)
-   // .ContentLength
-   sLength := head.Get("Content-Length")
-   if sLength != "" {
-      length, err := strconv.ParseInt(sLength, 10, 64)
-      if err != nil {
-         return nil, err
-      }
-      req.ContentLength = length
-   }
    // .Body
-   if _, err := text.R.Peek(1); err == nil {
-      req.Body = io.NopCloser(text.R)
+   buf := new(bytes.Buffer)
+   bLen, err := text.R.WriteTo(buf)
+   if err != nil {
+      return nil, err
    }
+   if bLen >= 1 {
+      req.Body = io.NopCloser(buf)
+   }
+   req.ContentLength = bLen
    return &req, nil
 }
