@@ -7,7 +7,27 @@ import (
    "testing"
 )
 
-func TestDecode(t *testing.T) {
+func TestScanner(t *testing.T) {
+   file, err := os.Open("roku.html")
+   if err != nil {
+      t.Fatal(err)
+   }
+   defer file.Close()
+   scan, err := NewScanner(file)
+   if err != nil {
+      t.Fatal(err)
+   }
+   scan.Split = []byte("\tcsrf:")
+   scan.Scan()
+   scan.Split = nil
+   var token string
+   if err := scan.Decode(&token); err != nil {
+      t.Fatal(err)
+   }
+   fmt.Printf("%q\n", token)
+}
+
+func TestDecoder(t *testing.T) {
    src := strings.NewReader(`{"month":12,"day":31}`)
    var date struct {
       Month int
@@ -18,25 +38,4 @@ func TestDecode(t *testing.T) {
       t.Fatal(err)
    }
    fmt.Printf("%+v\n", date)
-}
-
-func TestPBS(t *testing.T) {
-   file, err := os.Open("pbs-widget.html")
-   if err != nil {
-      t.Fatal(err)
-   }
-   defer file.Close()
-   scan, err := NewScanner(file)
-   if err != nil {
-      t.Fatal(err)
-   }
-   scan.Split = []byte(`{"availability"`)
-   scan.Scan()
-   var object struct {
-      Encodings []string
-   }
-   if err := scan.Decode(&object); err != nil {
-      t.Fatal(err)
-   }
-   fmt.Printf("%+v\n", object)
 }
