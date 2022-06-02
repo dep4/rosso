@@ -8,18 +8,13 @@ import (
    "testing"
 )
 
-const nature = "https://ga.video.cdn.pbs.org/videos/nature" +
-   "/77d6ad42-30d7-41bb-86c5-3a9fcd87c7bf/2000291170/hd-16x9-mezzanine-1080p" +
-   "/naat4011-hls-16x9-1080p_097.m3u8"
-
 func TestMaster(t *testing.T) {
-   fmt.Println("GET", nature)
-   res, err := http.Get(nature)
+   file, err := os.Open("m3u8/roku-master.m3u8")
    if err != nil {
       t.Fatal(err)
    }
-   defer res.Body.Close()
-   master, err := NewScanner(res.Body).Master(res.Request.URL)
+   defer file.Close()
+   master, err := NewScanner(file).Master(&url.URL{})
    if err != nil {
       t.Fatal(err)
    }
@@ -30,7 +25,6 @@ func TestMaster(t *testing.T) {
       fmt.Println(media)
    }
    fmt.Println(master.Stream(7996499))
-   fmt.Println(master.Audio("English"))
 }
 
 func TestSegment(t *testing.T) {
