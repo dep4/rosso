@@ -3,7 +3,7 @@ module github.com/89z/format
 go 1.18
 
 require (
-	github.com/edgeware/mp4ff v0.28.0
+	github.com/edgeware/mp4ff v0.28.1-0.20220602113314-1abe9a5439ec
 	github.com/refraction-networking/utls v1.1.0
 	google.golang.org/protobuf v1.28.0
 )
