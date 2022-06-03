@@ -16,14 +16,14 @@ func TestXML(t *testing.T) {
    if err != nil {
       t.Fatal(err)
    }
-   var script struct {
-      DataTralbum []byte `xml:"data-tralbum,attr"`
+   var meta struct {
+      Content string `xml:"content,attr"`
    }
-   scan.Split = []byte(" data-tralbum=")
+   scan.Split = []byte(`"web-tv-app/config/environment"`)
    scan.Scan()
-   scan.Split = []byte("<script data-tralbum=")
-   if err := scan.Decode(&script); err != nil {
+   scan.Split = []byte("<meta")
+   if err := scan.Decode(&meta); err != nil {
       t.Fatal(err)
    }
-   fmt.Println(string(script.DataTralbum))
+   fmt.Printf("%+v\n", meta)
 }

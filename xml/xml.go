@@ -6,6 +6,14 @@ import (
    "io"
 )
 
+func NewDecoder(buf []byte) *xml.Decoder {
+   src := bytes.NewReader(buf)
+   dec := xml.NewDecoder(src)
+   dec.AutoClose = xml.HTMLAutoClose
+   dec.Strict = false
+   return dec
+}
+
 type Scanner struct {
    Split []byte
    buf []byte
@@ -21,12 +29,12 @@ func NewScanner(src io.Reader) (*Scanner, error) {
 
 func (s Scanner) Decode(val any) error {
    buf := append(s.Split, s.buf...)
-   dec := xml.NewDecoder(bytes.NewReader(buf))
+   dec := NewDecoder(buf)
    for {
       _, err := dec.Token()
       if err != nil {
          high := dec.InputOffset()
-         return xml.Unmarshal(buf[:high], val)
+         return NewDecoder(buf[:high]).Decode(val)
       }
    }
 }
