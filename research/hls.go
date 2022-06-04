@@ -1,6 +1,7 @@
 package hls
 
 import (
+   "fmt"
    "io"
    "net/url"
    "strconv"
@@ -59,24 +60,17 @@ func (s *Scanner) splitWords() {
    s.Whitespace = 1 << ' '
 }
 
-type Stream struct {
-   Resolution string
-   Bandwidth int64 // handle duplicate resolution
-   Codecs string // handle missing resolution
-   URI *url.URL
-}
-
-type Media struct {
-   Name string
-   Type string
-   URI *url.URL
-}
-
-////////////////////////
-
-type Master struct {
-   Streams []Stream
-   Media []Media
+func (s Stream) Format(f fmt.State, verb rune) {
+   if s.Resolution != "" {
+      fmt.Fprint(f, "Resolution:", s.Resolution, " ")
+   }
+   fmt.Fprint(f, "Bandwidth:", s.Bandwidth)
+   if s.Codecs != "" {
+      fmt.Fprint(f, " Codecs:", s.Codecs)
+   }
+   if verb == 'a' {
+      fmt.Fprint(f, " URI:", s.URI)
+   }
 }
 
 func (s *Scanner) Master(addr *url.URL) (*Master, error) {
@@ -141,4 +135,36 @@ func (s *Scanner) Master(addr *url.URL) (*Master, error) {
       }
    }
    return &mas, nil
+}
+
+type Media struct {
+   Name string
+   Type string
+   URI *url.URL
+}
+
+type Master struct {
+   Media []Media
+   Streams Streams
+}
+
+type Stream struct {
+   Resolution string
+   Bandwidth int64 // handle duplicate resolution
+   Codecs string // handle missing resolution
+   URI *url.URL
+}
+
+type StreamFunc func(Stream) bool
+
+type Streams []Stream
+
+func (s Streams) Streams(fn StreamFunc) Streams {
+   var out Streams
+   for _, stream := range s {
+      if fn(stream) {
+         out = append(out, stream)
+      }
+   }
+   return out
 }
