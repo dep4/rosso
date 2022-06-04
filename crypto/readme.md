@@ -2,7 +2,9 @@
 
 ## Extensions
 
-https://iana.org/assignments/tls-extensiontype-values/tls-extensiontype-values.xhtml
+- <https://github.com/refraction-networking/utls/blob/9d36ce36/u_fingerprinter.go#L33-L43>
+- https://github.com/refraction-networking/utls/blob/9d36ce36/common.go#L79-L99
+- https://iana.org/assignments/tls-extensiontype-values/tls-extensiontype-values.xhtml
 
 ## How to get Android JA3?
 
