@@ -4,6 +4,7 @@ import (
    "fmt"
    "net/url"
    "os"
+   "strings"
    "testing"
 )
 
@@ -11,6 +12,21 @@ const base = "https://play.itunes.apple.com" +
    "/WebObjects/MZPlay.woa/hls/subscription/playlist.m3u8"
 
 func TestMaster(t *testing.T) {
+   fn := func(s Stream) bool {
+      if s.URI.Query().Get("cdn") != "vod-ak-aoc.tv.apple.com" {
+         return false
+      }
+      if !strings.Contains(s.Codecs, "mp4a") {
+         return false
+      }
+      if !strings.Contains(s.Codecs, "hvc1") {
+         return false
+      }
+      if s.VideoRange != "PQ" {
+         return false
+      }
+      return true
+   }
    file, err := os.Open("ignore.m3u8")
    if err != nil {
       t.Fatal(err)
@@ -24,33 +40,8 @@ func TestMaster(t *testing.T) {
    if err != nil {
       t.Fatal(err)
    }
-   streams := master.Streams.Streams(func(s Stream) bool {
-      return s.URI.Query().Get("cdn") == "vod-ak-aoc.tv.apple.com"
-   })
+   streams := master.Streams.Streams(fn)
    for _, stream := range streams {
       fmt.Println(stream)
    }
 }
-
-/*
-Codecs:ac-3,dvh1.05.06
-Codecs:ac-3,dvh1.05.06
-Codecs:ac-3,dvh1.05.06
-Codecs:ac-3,hvc1.2.20000000.H150.B0
-Codecs:ac-3,hvc1.2.20000000.H150.B0
-Codecs:ac-3,hvc1.2.20000000.H150.B0
-
-Codecs:dvh1.05.06,ec-3
-Codecs:dvh1.05.06,ec-3
-Codecs:dvh1.05.06,ec-3
-Codecs:ec-3,hvc1.2.20000000.H150.B0
-Codecs:ec-3,hvc1.2.20000000.H150.B0
-Codecs:ec-3,hvc1.2.20000000.H150.B0
-
-Codecs:dvh1.05.06,mp4a.40.2
-Codecs:dvh1.05.06,mp4a.40.2
-Codecs:dvh1.05.06,mp4a.40.2
-Codecs:hvc1.2.20000000.H150.B0,mp4a.40.2
-Codecs:hvc1.2.20000000.H150.B0,mp4a.40.2
-Codecs:hvc1.2.20000000.H150.B0,mp4a.40.2
-*/

@@ -1,38 +1,25 @@
 # Research
 
-~~~
-ac-3
-AC-3 audio
-
-alac
-Apple Lossless
-
-avc1
-H.264 (Advanced Video Coding)
-
-avc3
-H.264 (Advanced Video Coding)
-
-dvh1
-Dolby Vision (based on hvc1)
-
-dvh3
-Dolby Vision (based on hev1)
-
-ec-3
-Enchanced AC-3 audio
-
-fLaC
-Free Lossless Audio Codec
-
-hev1
-HEVC (High-Efficiency Video Coding)
-
-hvc1
-HEVC (High-Efficiency Video Coding)
-
-mp4a
-MPEG-4 audio
-~~~
-
 <https://developer.apple.com/documentation/http_live_streaming/http_live_streaming_hls_authoring_specification_for_apple_devices/hls_authoring_specification_for_apple_devices_appendixes>
+
+## Audio
+
+~~~
+audio-HE-stereo-32_vod-ak-aoc.tv.apple.com-Deutsch
+aac (HE-AACv2) (mp4a / 0x6134706D), 44100 Hz, stereo, fltp, 30 kb/s
+
+audio-HE-stereo-64_vod-ak-aoc.tv.apple.com-Deutsch
+aac (HE-AAC) (mp4a / 0x6134706D), 44100 Hz, stereo, fltp, 61 kb/s
+
+audio-stereo-128_vod-ak-aoc.tv.apple.com-Deutsch
+aac (LC) (mp4a / 0x6134706D), 44100 Hz, stereo, fltp, 114 kb/s
+
+audio-stereo-160_vod-ak-aoc.tv.apple.com-Deutsch
+aac (LC) (mp4a / 0x6134706D), 48000 Hz, stereo, fltp, 142 kb/s
+
+audio-ac3_vod-ak-aoc.tv.apple.com-Deutsch
+ac3 (ac-3 / 0x332D6361), 48000 Hz, 5.1(side), fltp, 384 kb/s
+
+audio-atmos_vod-ak-aoc.tv.apple.com-Deutsch
+eac3 (ec-3 / 0x332D6365), 48000 Hz, 5.1(side), fltp, 448 kb/s
+~~~
