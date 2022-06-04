@@ -2,9 +2,9 @@ package hls
 
 import (
    "fmt"
-   "github.com/89z/format/hls"
    "net/url"
    "os"
+   "sort"
    "testing"
 )
 
@@ -14,11 +14,18 @@ func TestMaster(t *testing.T) {
       t.Fatal(err)
    }
    defer file.Close()
-   master, err := hls.NewScanner(file).Master(&url.URL{})
+   master, err := NewScanner(file).Master(&url.URL{})
    if err != nil {
       t.Fatal(err)
    }
-   for _, stream := range master.Streams {
+   var streams []Stream
+   for stream := range master.Streams {
+      streams = append(streams, stream)
+   }
+   sort.Slice(streams, func(a, b int) bool {
+      return streams[a].Bandwidth < streams[b].Bandwidth
+   })
+   for _, stream := range streams {
       fmt.Println(stream)
    }
 }
