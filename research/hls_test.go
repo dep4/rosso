@@ -4,7 +4,6 @@ import (
    "fmt"
    "net/url"
    "os"
-   "strings"
    "testing"
 )
 
@@ -12,21 +11,6 @@ const base = "https://play.itunes.apple.com" +
    "/WebObjects/MZPlay.woa/hls/subscription/playlist.m3u8"
 
 func TestMaster(t *testing.T) {
-   fn := func(s Stream) bool {
-      if s.URI.Query().Get("cdn") != "vod-ak-aoc.tv.apple.com" {
-         return false
-      }
-      if !strings.Contains(s.Codecs, "mp4a") {
-         return false
-      }
-      if !strings.Contains(s.Codecs, "hvc1") {
-         return false
-      }
-      if s.VideoRange != "PQ" {
-         return false
-      }
-      return true
-   }
    file, err := os.Open("ignore.m3u8")
    if err != nil {
       t.Fatal(err)
@@ -40,7 +24,11 @@ func TestMaster(t *testing.T) {
    if err != nil {
       t.Fatal(err)
    }
-   streams := master.Streams.Streams(fn)
+   streams := master.Streams.
+      Codec("hvc1").
+      Codec("mp4a").
+      Query("cdn", "vod-ak-aoc.tv.apple.com").
+      VideoRange("PQ")
    for _, stream := range streams {
       fmt.Println(stream)
    }
