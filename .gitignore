@@ -1,10 +1,4 @@
 ignore
-ignore.aac
 ignore.go
 ignore.html
-ignore.json
-ignore.mp4
-ignore.mpd
-ignore.ts
-ignore.txt
-ignore.xml
+ignore.m3u8

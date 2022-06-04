@@ -1,13 +1,12 @@
 package hls
 
 import (
-   "crypto/aes"
-   "crypto/cipher"
    "fmt"
    "io"
    "net/url"
    "strconv"
    "text/scanner"
+   "unicode"
 )
 
 // Provide a name such as "English"
@@ -18,51 +17,6 @@ func (m Master) Audio(name string) *Media {
       }
    }
    return nil
-}
-
-const (
-   AAC = ".aac"
-   TS = ".ts"
-)
-
-type Cipher struct {
-   cipher.Block
-   key []byte
-}
-
-func NewCipher(src io.Reader) (*Cipher, error) {
-   key, err := io.ReadAll(src)
-   if err != nil {
-      return nil, err
-   }
-   block, err := aes.NewCipher(key)
-   if err != nil {
-      return nil, err
-   }
-   return &Cipher{block, key}, nil
-}
-
-func (c Cipher) Copy(w io.Writer, r io.Reader, iv []byte) (int, error) {
-   buf, err := io.ReadAll(r)
-   if err != nil {
-      return 0, err
-   }
-   if iv == nil {
-      iv = c.key
-   }
-   cipher.NewCBCDecrypter(c.Block, iv).CryptBlocks(buf, buf)
-   if len(buf) >= 1 {
-      pad := buf[len(buf)-1]
-      if len(buf) >= int(pad) {
-         buf = buf[:len(buf)-int(pad)]
-      }
-   }
-   return w.Write(buf)
-}
-
-type Information struct {
-   IV []byte
-   URI *url.URL
 }
 
 type Master struct {
@@ -174,54 +128,6 @@ func (s *Scanner) Master(addr *url.URL) (*Master, error) {
    return &mas, nil
 }
 
-func (s *Scanner) Segment(addr *url.URL) (*Segment, error) {
-   var (
-      info Information
-      seg Segment
-   )
-   for {
-      s.splitWords()
-      if s.Scan() == scanner.EOF {
-         break
-      }
-      var err error
-      switch s.TokenText() {
-      case "EXT-X-KEY":
-         for s.Scan() != '\n' {
-            switch s.TokenText() {
-            case "IV":
-               s.Scan()
-               s.Scan()
-               info.IV, err = scanHex(s.TokenText())
-            case "URI":
-               s.Scan()
-               s.Scan()
-               seg.Key, err = scanURL(s.TokenText(), addr)
-            }
-            if err != nil {
-               return nil, err
-            }
-         }
-      case "EXTINF":
-         s.splitLines()
-         s.Scan()
-         s.Scan()
-         info.URI, err = addr.Parse(s.TokenText())
-         if err != nil {
-            return nil, err
-         }
-         seg.Info = append(seg.Info, info)
-         info = Information{}
-      }
-   }
-   return &seg, nil
-}
-
-type Segment struct {
-   Key *url.URL
-   Info []Information
-}
-
 type Stream struct {
    Resolution string
    Bandwidth int64 // handle duplicate resolution
@@ -240,4 +146,45 @@ func (s Stream) Format(f fmt.State, verb rune) {
    if verb == 'a' {
       fmt.Fprint(f, " URI:", s.URI)
    }
+}
+
+func scanURL(s string, addr *url.URL) (*url.URL, error) {
+   ref, err := strconv.Unquote(s)
+   if err != nil {
+      return nil, err
+   }
+   return addr.Parse(ref)
+}
+
+func (s *Scanner) splitLines() {
+   s.IsIdentRune = func(r rune, i int) bool {
+      if r == '\n' {
+         return false
+      }
+      if r == '\r' {
+         return false
+      }
+      return true
+   }
+   s.Whitespace |= 1 << '\n'
+   s.Whitespace |= 1 << '\r'
+}
+
+func (s *Scanner) splitWords() {
+   s.IsIdentRune = func(r rune, i int) bool {
+      if r == '-' {
+         return true
+      }
+      if r == '.' {
+         return true
+      }
+      if unicode.IsDigit(r) {
+         return true
+      }
+      if unicode.IsLetter(r) {
+         return true
+      }
+      return false
+   }
+   s.Whitespace = 1 << ' '
 }
