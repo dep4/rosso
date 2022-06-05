@@ -63,6 +63,7 @@ type Master struct {
 
 type Media []Medium
 
+// stereo
 func (m Media) GroupID(val string) Media {
    var out Media
    for _, medium := range m {
@@ -285,6 +286,7 @@ func (s Stream) Format(f fmt.State, verb rune) {
 
 type Streams []Stream
 
+// hvc1 mp4a
 func (s Streams) Codec(val string) Streams {
    var out Streams
    for _, stream := range s {
@@ -295,6 +297,7 @@ func (s Streams) Codec(val string) Streams {
    return out
 }
 
+// cdn=vod-ak-aoc.tv.apple.com
 func (s Streams) RawQuery(val string) Streams {
    var out Streams
    for _, stream := range s {
@@ -321,6 +324,7 @@ func (s Streams) Stream(bandwidth int64) *Stream {
    return out
 }
 
+// PQ
 func (s Streams) VideoRange(val string) Streams {
    var out Streams
    for _, stream := range s {
