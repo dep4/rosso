@@ -11,6 +11,116 @@ import (
    "unicode"
 )
 
+func (s Scanner) Master(base *url.URL) Master {
+   var mas Master
+   for s.bufio.Scan() {
+      slice := s.bufio.Bytes()
+      switch {
+      case isMedia(slice):
+         var med Medium
+         for s.Scan() != scanner.EOF {
+            switch s.TokenText() {
+            case "TYPE":
+               s.Scan()
+               s.Scan()
+               med.Type = s.TokenText()
+            }
+         }
+         mas.Media = append(mas.Media, med)
+      }
+   }
+   return mas
+}
+
+func NewScanner(body io.Reader) Scanner {
+   var scan Scanner
+   scan.bufio = bufio.NewScanner(body)
+   scan.IsIdentRune = func(r rune, i int) bool {
+      if r == '-' {
+         return true
+      }
+      if unicode.IsDigit(r) {
+         return true
+      }
+      if unicode.IsLetter(r) {
+         return true
+      }
+      return false
+   }
+   return scan
+}
+
+func (s Scanner) Master2(base *url.URL) (*Master, error) {
+   var (
+      err error
+      mas Master
+   )
+   for s.bufio.Scan() {
+      slice := s.bufio.Bytes()
+      switch {
+      case isMedia(slice):
+         var med Medium
+         for s.Scan() != scanner.EOF {
+            switch s.TokenText() {
+            case "GROUP-ID":
+               s.Scan()
+               s.Scan()
+               med.GroupID, err = strconv.Unquote(s.TokenText())
+            case "TYPE":
+               s.Scan()
+               s.Scan()
+               med.Type = s.TokenText()
+            case "NAME":
+               s.Scan()
+               s.Scan()
+               med.Name, err = strconv.Unquote(s.TokenText())
+            case "URI":
+               s.Scan()
+               s.Scan()
+               med.URI, err = scanURL(base, s.TokenText())
+            }
+            if err != nil {
+               return nil, err
+            }
+         }
+         mas.Media = append(mas.Media, med)
+      case isStream(slice):
+         var str Stream
+         s.Init(bytes.NewReader(slice))
+         for s.Scan() != scanner.EOF {
+            switch s.TokenText() {
+            case "RESOLUTION":
+               s.Scan()
+               s.Scan()
+               str.Resolution = s.TokenText()
+            case "BANDWIDTH":
+               s.Scan()
+               s.Scan()
+               str.Bandwidth, err = strconv.ParseInt(s.TokenText(), 10, 64)
+            case "CODECS":
+               s.Scan()
+               s.Scan()
+               str.Codecs, err = strconv.Unquote(s.TokenText())
+            case "VIDEO-RANGE":
+               s.Scan()
+               s.Scan()
+               str.VideoRange = s.TokenText()
+            }
+            if err != nil {
+               return nil, err
+            }
+         }
+         s.bufio.Scan()
+         str.URI, err = base.Parse(s.bufio.Text())
+         if err != nil {
+            return nil, err
+         }
+         mas.Streams = append(mas.Streams, str)
+      }
+   }
+   return &mas, nil
+}
+
 func scanURL(base *url.URL, raw string) (*url.URL, error) {
    ref, err := strconv.Unquote(raw)
    if err != nil {
@@ -47,69 +157,14 @@ type Scanner struct {
    scanner.Scanner
 }
 
-func NewScanner(body io.Reader) Scanner {
-   var scan Scanner
-   scan.bufio = bufio.NewScanner(body)
-   scan.IsIdentRune = func(r rune, i int) bool {
-      if r == '-' {
-         return true
-      }
-      if unicode.IsDigit(r) {
-         return true
-      }
-      if unicode.IsLetter(r) {
-         return true
-      }
-      return false
-   }
-   return scan
+func isStream(s []byte) bool {
+   prefix := []byte("#EXT-X-STREAM-INF:")
+   return bytes.HasPrefix(s, prefix)
 }
 
-func (s Scanner) Master(base *url.URL) (*Master, error) {
-   var (
-      mas Master
-      prefix = []byte("#EXT-X-STREAM-INF:")
-   )
-   for s.bufio.Scan() {
-      slice := s.bufio.Bytes()
-      if bytes.HasPrefix(slice, prefix) {
-         var (
-            err error
-            str Stream
-         )
-         s.Init(bytes.NewReader(slice))
-         for s.Scan() != scanner.EOF {
-            switch s.TokenText() {
-            case "RESOLUTION":
-               s.Scan()
-               s.Scan()
-               str.Resolution = s.TokenText()
-            case "BANDWIDTH":
-               s.Scan()
-               s.Scan()
-               str.Bandwidth, err = strconv.ParseInt(s.TokenText(), 10, 64)
-            case "CODECS":
-               s.Scan()
-               s.Scan()
-               str.Codecs, err = strconv.Unquote(s.TokenText())
-            case "VIDEO-RANGE":
-               s.Scan()
-               s.Scan()
-               str.VideoRange = s.TokenText()
-            }
-            if err != nil {
-               return nil, err
-            }
-         }
-         s.bufio.Scan()
-         str.URI, err = base.Parse(s.bufio.Text())
-         if err != nil {
-            return nil, err
-         }
-         mas.Streams = append(mas.Streams, str)
-      }
-   }
-   return &mas, nil
+func isMedia(s []byte) bool {
+   prefix := []byte("#EXT-X-MEDIA:")
+   return bytes.HasPrefix(s, prefix)
 }
 
 type Stream struct {
