@@ -2,10 +2,10 @@ package hls
 
 import (
    "bufio"
+   "bytes"
    "io"
    "net/url"
    "strconv"
-   "strings"
 )
 
 type Scanner struct {
@@ -16,22 +16,6 @@ func NewScanner(body io.Reader) Scanner {
    var scan Scanner
    scan.Scanner = bufio.NewScanner(body)
    return scan
-}
-
-func (s Scanner) isStream() bool {
-   text := s.Text()
-   return strings.HasPrefix(text, "#EXT-X-STREAM-INF:")
-}
-
-func (s Scanner) isURI() bool {
-   text := s.Text()
-   if text == "" {
-      return false
-   }
-   if strings.HasPrefix(text, "#") {
-      return false
-   }
-   return true
 }
 
 func scanURL(base *url.URL, raw string) (*url.URL, error) {
@@ -49,7 +33,7 @@ type Master struct {
 
 type Media []Medium
 
-type Streams []Stream
+type Streams []*Stream
 
 type Medium struct {
    Type string
@@ -64,4 +48,22 @@ type Stream struct {
    Bandwidth int64 // handle duplicate resolution
    Codecs string // handle missing resolution
    URI *url.URL
+}
+
+func (s Scanner) Master(base *url.URL) (*Master, error) {
+   var (
+      mas Master
+      prefix = []byte("#EXT-X-STREAM-INF:")
+   )
+   for s.Scan() {
+      slice := s.Bytes()
+      if bytes.HasPrefix(slice, prefix) {
+         stream, err := s.Stream(base)
+         if err != nil {
+            return nil, err
+         }
+         mas.Streams = append(mas.Streams, stream)
+      }
+   }
+   return &mas, nil
 }
