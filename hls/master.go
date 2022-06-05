@@ -1,59 +1,60 @@
 package hls
 
 import (
-   "crypto/aes"
-   "crypto/cipher"
+   "encoding/hex"
    "fmt"
    "io"
    "net/url"
    "strconv"
    "strings"
    "text/scanner"
+   "unicode"
 )
 
-const (
-   AAC = ".aac"
-   TS = ".ts"
-)
-
-type Cipher struct {
-   cipher.Block
-   key []byte
+func scanHex(s string) ([]byte, error) {
+   up := strings.ToUpper(s)
+   return hex.DecodeString(strings.TrimPrefix(up, "0X"))
 }
 
-func NewCipher(src io.Reader) (*Cipher, error) {
-   key, err := io.ReadAll(src)
+func scanURL(s string, addr *url.URL) (*url.URL, error) {
+   ref, err := strconv.Unquote(s)
    if err != nil {
       return nil, err
    }
-   block, err := aes.NewCipher(key)
-   if err != nil {
-      return nil, err
-   }
-   return &Cipher{block, key}, nil
+   return addr.Parse(ref)
 }
 
-func (c Cipher) Copy(w io.Writer, r io.Reader, iv []byte) (int, error) {
-   buf, err := io.ReadAll(r)
-   if err != nil {
-      return 0, err
-   }
-   if iv == nil {
-      iv = c.key
-   }
-   cipher.NewCBCDecrypter(c.Block, iv).CryptBlocks(buf, buf)
-   if len(buf) >= 1 {
-      pad := buf[len(buf)-1]
-      if len(buf) >= int(pad) {
-         buf = buf[:len(buf)-int(pad)]
+func (s *Scanner) splitLines() {
+   s.IsIdentRune = func(r rune, i int) bool {
+      if r == '\n' {
+         return false
       }
+      if r == '\r' {
+         return false
+      }
+      return true
    }
-   return w.Write(buf)
+   s.Whitespace |= 1 << '\n'
+   s.Whitespace |= 1 << '\r'
 }
 
-type Information struct {
-   IV []byte
-   URI *url.URL
+func (s *Scanner) splitWords() {
+   s.IsIdentRune = func(r rune, i int) bool {
+      if r == '-' {
+         return true
+      }
+      if r == '.' {
+         return true
+      }
+      if unicode.IsDigit(r) {
+         return true
+      }
+      if unicode.IsLetter(r) {
+         return true
+      }
+      return false
+   }
+   s.Whitespace = 1 << ' '
 }
 
 type Master struct {
@@ -212,54 +213,6 @@ func (s *Scanner) Master(addr *url.URL) (*Master, error) {
       }
    }
    return &mas, nil
-}
-
-func (s *Scanner) Segment(addr *url.URL) (*Segment, error) {
-   var (
-      info Information
-      seg Segment
-   )
-   for {
-      s.splitWords()
-      if s.Scan() == scanner.EOF {
-         break
-      }
-      var err error
-      switch s.TokenText() {
-      case "EXT-X-KEY":
-         for s.Scan() != '\n' {
-            switch s.TokenText() {
-            case "IV":
-               s.Scan()
-               s.Scan()
-               info.IV, err = scanHex(s.TokenText())
-            case "URI":
-               s.Scan()
-               s.Scan()
-               seg.Key, err = scanURL(s.TokenText(), addr)
-            }
-            if err != nil {
-               return nil, err
-            }
-         }
-      case "EXTINF":
-         s.splitLines()
-         s.Scan()
-         s.Scan()
-         info.URI, err = addr.Parse(s.TokenText())
-         if err != nil {
-            return nil, err
-         }
-         seg.Info = append(seg.Info, info)
-         info = Information{}
-      }
-   }
-   return &seg, nil
-}
-
-type Segment struct {
-   Key *url.URL
-   Info []Information
 }
 
 type Stream struct {
