@@ -11,59 +11,18 @@ import (
 const base = "https://play.itunes.apple.com" +
    "/WebObjects/MZPlay.woa/hls/subscription/playlist.m3u8"
 
-func TestStream(t *testing.T) {
-   file, err := os.Open("ignore.m3u8")
-   if err != nil {
-      t.Fatal(err)
-   }
-   defer file.Close()
-   base, err := url.Parse(base)
-   if err != nil {
-      t.Fatal(err)
-   }
-   master, err := NewScanner(file).Master(base)
-   if err != nil {
-      t.Fatal(err)
-   }
-   streams := master.Streams.
-      Codec("hvc1").
-      Codec("mp4a").
-      RawQuery("cdn=vod-ak-aoc.tv.apple.com").
-      VideoRange("PQ")
-   for _, stream := range streams {
-      fmt.Println(stream)
-   }
-}
-
-func TestMedia(t *testing.T) {
-   file, err := os.Open("ignore.m3u8")
-   if err != nil {
-      t.Fatal(err)
-   }
-   defer file.Close()
-   base, err := url.Parse(base)
-   if err != nil {
-      t.Fatal(err)
-   }
-   master, err := NewScanner(file).Master(base)
-   if err != nil {
-      t.Fatal(err)
-   }
-   media := master.Media.
-      GroupID("stereo").
-      Name("English").
-      RawQuery("cdn=vod-ak-aoc.tv.apple.com").
-      Type("AUDIO")
-   for _, medium := range media {
-      fmt.Println(medium)
-   }
-}
-
 func TestSegment(t *testing.T) {
-   seg, err := newSegment()
+   file, err := os.Open("m3u8/cbc-video.m3u8")
    if err != nil {
-      t.Fatal(err)
+      return nil, err
    }
+   defer file.Close()
+   addr, err := url.Parse(cbcSegment)
+   if err != nil {
+      return nil, err
+   }
+   return NewScanner(file).Segment(addr)
+   // FIXME
    fmt.Println("GET", seg.Key)
    res, err := http.Get(seg.Key.String())
    if err != nil {
@@ -97,20 +56,52 @@ func TestSegment(t *testing.T) {
    }
 }
 
-const cbcSegment = 
-   "https://cbcrcott-gem.akamaized.net/0f73fb9d-87f0-4577-81d1-e6e970b89a69" +
-   "/CBC_DOWNTON_ABBEY_S01E05.ism/QualityLevels(400044)" +
-   "/Manifest(video,format=m3u8-aapl,filter=desktop)"
-
-func newSegment() (*Segment, error) {
-   file, err := os.Open("m3u8/cbc-video.m3u8")
+func TestStream(t *testing.T) {
+   file, err := os.Open("ignore/apple-master.m3u8")
    if err != nil {
-      return nil, err
+      t.Fatal(err)
    }
    defer file.Close()
-   addr, err := url.Parse(cbcSegment)
+   base, err := url.Parse(base)
    if err != nil {
-      return nil, err
+      t.Fatal(err)
    }
-   return NewScanner(file).Segment(addr)
+   master, err := NewScanner(file).Master(base)
+   if err != nil {
+      t.Fatal(err)
+   }
+   streams := master.Streams.
+      Codecs("hvc1").
+      Codecs("mp4a").
+      RawQuery("cdn=vod-ak-aoc.tv.apple.com").
+      VideoRange("PQ")
+   for _, stream := range streams {
+      fmt.Println(stream)
+   }
+   stream := master.Streams.GetBandwidth(0)
+   fmt.Printf("%a\n", stream)
+}
+
+func TestMedia(t *testing.T) {
+   file, err := os.Open("m3u8/ignore.m3u8")
+   if err != nil {
+      t.Fatal(err)
+   }
+   defer file.Close()
+   base, err := url.Parse(base)
+   if err != nil {
+      t.Fatal(err)
+   }
+   master, err := NewScanner(file).Master(base)
+   if err != nil {
+      t.Fatal(err)
+   }
+   media := master.Media.
+      GroupID("stereo").
+      Name("English").
+      RawQuery("cdn=vod-ak-aoc.tv.apple.com").
+      Type("AUDIO")
+   for _, medium := range media {
+      fmt.Println(medium)
+   }
 }
