@@ -98,18 +98,22 @@ func (s *Scanner) Master(addr *url.URL) (*Master, error) {
          var med Medium
          for s.Scan() != '\n' {
             switch s.TokenText() {
+            case "GROUP-ID":
+               s.Scan()
+               s.Scan()
+               med.GroupID, err = strconv.Unquote(s.TokenText())
             case "TYPE":
                s.Scan()
                s.Scan()
                med.Type = s.TokenText()
-            case "URI":
-               s.Scan()
-               s.Scan()
-               med.URI, err = scanURL(s.TokenText(), addr)
             case "NAME":
                s.Scan()
                s.Scan()
                med.Name, err = strconv.Unquote(s.TokenText())
+            case "URI":
+               s.Scan()
+               s.Scan()
+               med.URI, err = scanURL(s.TokenText(), addr)
             }
             if err != nil {
                return nil, err
@@ -158,6 +162,16 @@ type Master struct {
    Streams Streams
 }
 
+func (s Streams) VideoRange(val string) Streams {
+   var out Streams
+   for _, stream := range s {
+      if stream.VideoRange == val {
+         out = append(out, stream)
+      }
+   }
+   return out
+}
+
 func (s Streams) Codec(val string) Streams {
    var out Streams
    for _, stream := range s {
@@ -168,20 +182,10 @@ func (s Streams) Codec(val string) Streams {
    return out
 }
 
-func (s Streams) Query(key, val string) Streams {
+func (s Streams) RawQuery(val string) Streams {
    var out Streams
    for _, stream := range s {
-      if stream.URI.Query().Get(key) == val {
-         out = append(out, stream)
-      }
-   }
-   return out
-}
-
-func (s Streams) VideoRange(val string) Streams {
-   var out Streams
-   for _, stream := range s {
-      if stream.VideoRange == val {
+      if strings.Contains(stream.URI.RawQuery, val) {
          out = append(out, stream)
       }
    }

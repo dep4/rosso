@@ -3,18 +3,49 @@ package hls
 import (
    "fmt"
    "net/url"
+   "strings"
 )
 
-func (m Media) Query(key, val string) Media {
+// cdn
+func (m Media) RawQuery(val string) Media {
    var out Media
    for _, medium := range m {
-      if medium.URI.Query().Get(key) == val {
+      if strings.Contains(medium.URI.RawQuery, val) {
          out = append(out, medium)
       }
    }
    return out
 }
 
+type Medium struct {
+   Type string
+   Name string
+   GroupID string
+   URI *url.URL
+}
+
+func (m Media) GroupID(val string) Media {
+   var out Media
+   for _, medium := range m {
+      if strings.Contains(medium.GroupID, val) {
+         out = append(out, medium)
+      }
+   }
+   return out
+}
+
+func (m Medium) Format(f fmt.State, verb rune) {
+   fmt.Fprint(f, "Type:", m.Type)
+   fmt.Fprint(f, " Name:", m.Name)
+   fmt.Fprint(f, " ID:", m.GroupID)
+   if verb == 'a' {
+      fmt.Fprint(f, " URI:", m.URI)
+   }
+}
+
+type Media []Medium
+
+// English
 func (m Media) Name(val string) Media {
    var out Media
    for _, medium := range m {
@@ -25,6 +56,7 @@ func (m Media) Name(val string) Media {
    return out
 }
 
+// AUDIO
 func (m Media) Type(val string) Media {
    var out Media
    for _, medium := range m {
@@ -33,20 +65,4 @@ func (m Media) Type(val string) Media {
       }
    }
    return out
-}
-
-type Media []Medium
-
-type Medium struct {
-   Name string
-   Type string
-   URI *url.URL
-}
-
-func (m Medium) Format(f fmt.State, verb rune) {
-   fmt.Fprint(f, "Type:", m.Type)
-   fmt.Fprint(f, " Name:", m.Name)
-   if verb == 'a' {
-      fmt.Fprint(f, " URI:", m.URI)
-   }
 }

@@ -22,8 +22,9 @@ func TestMedia(t *testing.T) {
       t.Fatal(err)
    }
    media := master.Media.
+      GroupID("stereo").
       Name("English").
-      Query("cdn", "vod-ak-aoc.tv.apple.com").
+      RawQuery("cdn=vod-ak-aoc.tv.apple.com").
       Type("AUDIO")
    for _, medium := range media {
       fmt.Println(medium)

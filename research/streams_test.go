@@ -27,7 +27,7 @@ func TestStream(t *testing.T) {
    streams := master.Streams.
       Codec("hvc1").
       Codec("mp4a").
-      Query("cdn", "vod-ak-aoc.tv.apple.com").
+      RawQuery("cdn=vod-ak-aoc.tv.apple.com").
       VideoRange("PQ")
    for _, stream := range streams {
       fmt.Println(stream)

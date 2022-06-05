@@ -10,16 +10,6 @@ import (
    "text/scanner"
 )
 
-// Provide a name such as "English"
-func (m Master) Audio(name string) *Media {
-   for _, med := range m.Media {
-      if med.Type == "AUDIO" && med.Name == name {
-         return &med
-      }
-   }
-   return nil
-}
-
 const (
    AAC = ".aac"
    TS = ".ts"
@@ -68,22 +58,6 @@ type Information struct {
 type Master struct {
    Streams []Stream
    Media []Media
-}
-
-func (m Master) Stream(bandwidth int64) *Stream {
-   distance := func(s *Stream) int64 {
-      if s.Bandwidth > bandwidth {
-         return s.Bandwidth - bandwidth
-      }
-      return bandwidth - s.Bandwidth
-   }
-   var dst *Stream
-   for i, src := range m.Streams {
-      if dst == nil || distance(&src) < distance(dst) {
-         dst = &m.Streams[i]
-      }
-   }
-   return dst
 }
 
 type Media struct {
@@ -240,4 +214,30 @@ func (s Stream) Format(f fmt.State, verb rune) {
    if verb == 'a' {
       fmt.Fprint(f, " URI:", s.URI)
    }
+}
+
+// Provide a name such as "English"
+func (m Master) Audio(name string) *Media {
+   for _, med := range m.Media {
+      if med.Type == "AUDIO" && med.Name == name {
+         return &med
+      }
+   }
+   return nil
+}
+
+func (m Master) Stream(bandwidth int64) *Stream {
+   distance := func(s *Stream) int64 {
+      if s.Bandwidth > bandwidth {
+         return s.Bandwidth - bandwidth
+      }
+      return bandwidth - s.Bandwidth
+   }
+   var dst *Stream
+   for i, src := range m.Streams {
+      if dst == nil || distance(&src) < distance(dst) {
+         dst = &m.Streams[i]
+      }
+   }
+   return dst
 }
