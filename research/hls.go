@@ -11,6 +11,52 @@ import (
    "unicode"
 )
 
+func isMedia(s []byte) bool {
+   prefix := []byte("#EXT-X-MEDIA:")
+   return bytes.HasPrefix(s, prefix)
+}
+
+func isStream(s []byte) bool {
+   prefix := []byte("#EXT-X-STREAM-INF:")
+   return bytes.HasPrefix(s, prefix)
+}
+
+func scanURL(base *url.URL, raw string) (*url.URL, error) {
+   ref, err := strconv.Unquote(raw)
+   if err != nil {
+      return nil, err
+   }
+   return base.Parse(ref)
+}
+
+type Master struct {
+   Media Media
+   Streams Streams
+}
+
+type Media []Medium
+
+type Medium struct {
+   Type string
+   Name string
+   GroupID string
+   URI *url.URL
+}
+
+func (m Medium) Format(f fmt.State, verb rune) {
+   fmt.Fprint(f, "Type:", m.Type)
+   fmt.Fprint(f, " Name:", m.Name)
+   fmt.Fprint(f, " ID:", m.GroupID)
+   if verb == 'a' {
+      fmt.Fprint(f, " URI:", m.URI)
+   }
+}
+
+type Scanner struct {
+   bufio *bufio.Scanner
+   scanner.Scanner
+}
+
 func NewScanner(body io.Reader) Scanner {
    var scan Scanner
    scan.bufio = bufio.NewScanner(body)
@@ -100,52 +146,6 @@ func (s Scanner) Master(base *url.URL) (*Master, error) {
    return &mas, nil
 }
 
-func scanURL(base *url.URL, raw string) (*url.URL, error) {
-   ref, err := strconv.Unquote(raw)
-   if err != nil {
-      return nil, err
-   }
-   return base.Parse(ref)
-}
-
-type Master struct {
-   Media Media
-   Streams Streams
-}
-
-type Media []Medium
-
-type Medium struct {
-   Type string
-   Name string
-   GroupID string
-   URI *url.URL
-}
-
-func (m Medium) Format(f fmt.State, verb rune) {
-   fmt.Fprint(f, "Type:", m.Type)
-   fmt.Fprint(f, " Name:", m.Name)
-   fmt.Fprint(f, " ID:", m.GroupID)
-   if verb == 'a' {
-      fmt.Fprint(f, " URI:", m.URI)
-   }
-}
-
-type Scanner struct {
-   bufio *bufio.Scanner
-   scanner.Scanner
-}
-
-func isStream(s []byte) bool {
-   prefix := []byte("#EXT-X-STREAM-INF:")
-   return bytes.HasPrefix(s, prefix)
-}
-
-func isMedia(s []byte) bool {
-   prefix := []byte("#EXT-X-MEDIA:")
-   return bytes.HasPrefix(s, prefix)
-}
-
 type Stream struct {
    Resolution string
    VideoRange string // handle duplicate bandwidth
@@ -171,3 +171,56 @@ func (s Stream) Format(f fmt.State, verb rune) {
 }
 
 type Streams []Stream
+
+type Segment struct {
+   Key *url.URL
+   Info []Information
+}
+
+type Information struct {
+   IV []byte
+   URI *url.URL
+}
+
+func (s *Scanner) Segment(addr *url.URL) (*Segment, error) {
+   var (
+      info Information
+      seg Segment
+   )
+   for {
+      s.splitWords()
+      if s.Scan() == scanner.EOF {
+         break
+      }
+      var err error
+      switch s.TokenText() {
+      case "EXT-X-KEY":
+         for s.Scan() != '\n' {
+            switch s.TokenText() {
+            case "IV":
+               s.Scan()
+               s.Scan()
+               info.IV, err = scanHex(s.TokenText())
+            case "URI":
+               s.Scan()
+               s.Scan()
+               seg.Key, err = scanURL(s.TokenText(), addr)
+            }
+            if err != nil {
+               return nil, err
+            }
+         }
+      case "EXTINF":
+         s.splitLines()
+         s.Scan()
+         s.Scan()
+         info.URI, err = addr.Parse(s.TokenText())
+         if err != nil {
+            return nil, err
+         }
+         seg.Info = append(seg.Info, info)
+         info = Information{}
+      }
+   }
+   return &seg, nil
+}
