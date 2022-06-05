@@ -63,6 +63,66 @@ type Master struct {
 
 type Media []Medium
 
+func (m Media) GetGroupID(val string) *Medium {
+   for _, medium := range m {
+      if medium.GroupID == val {
+         return &medium
+      }
+   }
+   return nil
+}
+
+// stereo
+func (m Media) GroupID(val string) Media {
+   var out Media
+   for _, medium := range m {
+      if strings.Contains(medium.GroupID, val) {
+         out = append(out, medium)
+      }
+   }
+   return out
+}
+
+// English
+func (m Media) Name(val string) Media {
+   var out Media
+   for _, medium := range m {
+      if medium.Name == val {
+         out = append(out, medium)
+      }
+   }
+   return out
+}
+
+// cdn
+func (m Media) RawQuery(val string) Media {
+   var out Media
+   for _, medium := range m {
+      if strings.Contains(medium.URI.RawQuery, val) {
+         out = append(out, medium)
+      }
+   }
+   return out
+}
+
+// AUDIO
+func (m Media) Type(val string) Media {
+   var out Media
+   for _, medium := range m {
+      if medium.Type == val {
+         out = append(out, medium)
+      }
+   }
+   return out
+}
+
+type Medium struct {
+   Type string
+   Name string
+   GroupID string
+   URI *url.URL
+}
+
 func (m Medium) Format(f fmt.State, verb rune) {
    fmt.Fprint(f, "Type:", m.Type)
    fmt.Fprint(f, " Name:", m.Name)
@@ -202,6 +262,14 @@ type Segment struct {
    Info []Information
 }
 
+type Stream struct {
+   Resolution string
+   VideoRange string // handle duplicate bandwidth
+   Bandwidth int64 // handle duplicate resolution
+   Codecs string // handle missing resolution
+   URI *url.URL
+}
+
 func (s Stream) Format(f fmt.State, verb rune) {
    if s.Resolution != "" {
       fmt.Fprint(f, "Resolution:", s.Resolution, " ")
@@ -218,71 +286,28 @@ func (s Stream) Format(f fmt.State, verb rune) {
 
 type Streams []Stream
 
-type Medium struct {
-   Type string
-   Name string
-   GroupID string
-   URI *url.URL
-}
-
-type Stream struct {
-   Resolution string
-   VideoRange string // handle duplicate bandwidth
-   Bandwidth int64 // handle duplicate resolution
-   Codecs string // handle missing resolution
-   URI *url.URL
-}
-
-// stereo
-func (m Media) GroupID(val string) Media {
-   var out Media
-   for _, medium := range m {
-      if strings.Contains(medium.GroupID, val) {
-         out = append(out, medium)
-      }
-   }
-   return out
-}
-
-// English
-func (m Media) Name(val string) Media {
-   var out Media
-   for _, medium := range m {
-      if medium.Name == val {
-         out = append(out, medium)
-      }
-   }
-   return out
-}
-
-// cdn
-func (m Media) RawQuery(val string) Media {
-   var out Media
-   for _, medium := range m {
-      if strings.Contains(medium.URI.RawQuery, val) {
-         out = append(out, medium)
-      }
-   }
-   return out
-}
-
-// AUDIO
-func (m Media) Type(val string) Media {
-   var out Media
-   for _, medium := range m {
-      if medium.Type == val {
-         out = append(out, medium)
-      }
-   }
-   return out
-}
-
 // hvc1 mp4a
 func (s Streams) Codecs(val string) Streams {
    var out Streams
    for _, stream := range s {
       if strings.Contains(stream.Codecs, val) {
          out = append(out, stream)
+      }
+   }
+   return out
+}
+
+func (s Streams) GetBandwidth(val int64) *Stream {
+   distance := func(s *Stream) int64 {
+      if s.Bandwidth > val {
+         return s.Bandwidth - val
+      }
+      return val - s.Bandwidth
+   }
+   var out *Stream
+   for key, val := range s {
+      if out == nil || distance(&val) < distance(out) {
+         out = &s[key]
       }
    }
    return out
@@ -305,31 +330,6 @@ func (s Streams) VideoRange(val string) Streams {
    for _, stream := range s {
       if stream.VideoRange == val {
          out = append(out, stream)
-      }
-   }
-   return out
-}
-
-func (m Media) GetGroupID(val string) *Medium {
-   for _, medium := range m {
-      if medium.GroupID == val {
-         return &medium
-      }
-   }
-   return nil
-}
-
-func (s Streams) GetBandwidth(val int64) *Stream {
-   distance := func(s *Stream) int64 {
-      if s.Bandwidth > val {
-         return s.Bandwidth - val
-      }
-      return val - s.Bandwidth
-   }
-   var out *Stream
-   for key, val := range s {
-      if out == nil || distance(&val) < distance(out) {
-         out = &s[key]
       }
    }
    return out

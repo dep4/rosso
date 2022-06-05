@@ -11,27 +11,6 @@ import (
    "unicode"
 )
 
-func (s Scanner) Master(base *url.URL) Master {
-   var mas Master
-   for s.bufio.Scan() {
-      slice := s.bufio.Bytes()
-      switch {
-      case isMedia(slice):
-         var med Medium
-         for s.Scan() != scanner.EOF {
-            switch s.TokenText() {
-            case "TYPE":
-               s.Scan()
-               s.Scan()
-               med.Type = s.TokenText()
-            }
-         }
-         mas.Media = append(mas.Media, med)
-      }
-   }
-   return mas
-}
-
 func NewScanner(body io.Reader) Scanner {
    var scan Scanner
    scan.bufio = bufio.NewScanner(body)
@@ -50,13 +29,14 @@ func NewScanner(body io.Reader) Scanner {
    return scan
 }
 
-func (s Scanner) Master2(base *url.URL) (*Master, error) {
+func (s Scanner) Master(base *url.URL) (*Master, error) {
    var (
       err error
       mas Master
    )
    for s.bufio.Scan() {
       slice := s.bufio.Bytes()
+      s.Init(bytes.NewReader(slice))
       switch {
       case isMedia(slice):
          var med Medium
@@ -86,7 +66,6 @@ func (s Scanner) Master2(base *url.URL) (*Master, error) {
          mas.Media = append(mas.Media, med)
       case isStream(slice):
          var str Stream
-         s.Init(bytes.NewReader(slice))
          for s.Scan() != scanner.EOF {
             switch s.TokenText() {
             case "RESOLUTION":
