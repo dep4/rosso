@@ -10,6 +10,111 @@ import (
    "unicode"
 )
 
+type Scanner struct {
+   scanner.Scanner
+}
+
+func NewScanner(body io.Reader) *Scanner {
+   var scan Scanner
+   scan.Init(body)
+   return &scan
+}
+
+func scanURL(s string, addr *url.URL) (*url.URL, error) {
+   ref, err := strconv.Unquote(s)
+   if err != nil {
+      return nil, err
+   }
+   return addr.Parse(ref)
+}
+
+func (s *Scanner) splitLines() {
+   s.IsIdentRune = func(r rune, i int) bool {
+      if r == '\n' {
+         return false
+      }
+      if r == '\r' {
+         return false
+      }
+      return true
+   }
+   s.Whitespace |= 1 << '\n'
+   s.Whitespace |= 1 << '\r'
+}
+
+func (s *Scanner) splitWords() {
+   s.IsIdentRune = func(r rune, i int) bool {
+      if r == '-' {
+         return true
+      }
+      if r == '.' {
+         return true
+      }
+      if unicode.IsDigit(r) {
+         return true
+      }
+      if unicode.IsLetter(r) {
+         return true
+      }
+      return false
+   }
+   s.Whitespace = 1 << ' '
+}
+
+func (s Stream) Format(f fmt.State, verb rune) {
+   if s.Resolution != "" {
+      fmt.Fprint(f, "Resolution:", s.Resolution, " ")
+   }
+   fmt.Fprint(f, "Bandwidth:", s.Bandwidth)
+   if s.Codecs != "" {
+      fmt.Fprint(f, " Codecs:", s.Codecs)
+   }
+   if verb == 'a' {
+      fmt.Fprint(f, " Range:", s.VideoRange)
+      fmt.Fprint(f, " URI:", s.URI)
+   }
+}
+
+type Stream struct {
+   Resolution string
+   VideoRange string // handle duplicate bandwidth
+   Bandwidth int64 // handle duplicate resolution
+   Codecs string // handle missing resolution
+   URI *url.URL
+}
+
+type Streams []Stream
+
+func (s Streams) Codec(val string) Streams {
+   var out Streams
+   for _, stream := range s {
+      if strings.Contains(stream.Codecs, val) {
+         out = append(out, stream)
+      }
+   }
+   return out
+}
+
+func (s Streams) VideoRange(val string) Streams {
+   var out Streams
+   for _, stream := range s {
+      if stream.VideoRange == val {
+         out = append(out, stream)
+      }
+   }
+   return out
+}
+
+func (s Streams) Query(key, val string) Streams {
+   var out Streams
+   for _, stream := range s {
+      if stream.URI.Query().Get(key) == val {
+         out = append(out, stream)
+      }
+   }
+   return out
+}
+
 func (s *Scanner) Master(addr *url.URL) (*Master, error) {
    var mas Master
    for {
@@ -20,7 +125,7 @@ func (s *Scanner) Master(addr *url.URL) (*Master, error) {
       var err error
       switch s.TokenText() {
       case "EXT-X-MEDIA":
-         var med Media
+         var med Medium
          for s.Scan() != '\n' {
             switch s.TokenText() {
             case "TYPE":
@@ -78,118 +183,21 @@ func (s *Scanner) Master(addr *url.URL) (*Master, error) {
    return &mas, nil
 }
 
-type Scanner struct {
-   scanner.Scanner
-}
-
-func NewScanner(body io.Reader) *Scanner {
-   var scan Scanner
-   scan.Init(body)
-   return &scan
-}
-
-func scanURL(s string, addr *url.URL) (*url.URL, error) {
-   ref, err := strconv.Unquote(s)
-   if err != nil {
-      return nil, err
-   }
-   return addr.Parse(ref)
-}
-
-func (s *Scanner) splitLines() {
-   s.IsIdentRune = func(r rune, i int) bool {
-      if r == '\n' {
-         return false
-      }
-      if r == '\r' {
-         return false
-      }
-      return true
-   }
-   s.Whitespace |= 1 << '\n'
-   s.Whitespace |= 1 << '\r'
-}
-
-func (s *Scanner) splitWords() {
-   s.IsIdentRune = func(r rune, i int) bool {
-      if r == '-' {
-         return true
-      }
-      if r == '.' {
-         return true
-      }
-      if unicode.IsDigit(r) {
-         return true
-      }
-      if unicode.IsLetter(r) {
-         return true
-      }
-      return false
-   }
-   s.Whitespace = 1 << ' '
-}
-
-type Media struct {
+type Medium struct {
    Name string
    Type string
    URI *url.URL
 }
 
-func (s Stream) Format(f fmt.State, verb rune) {
-   if s.Resolution != "" {
-      fmt.Fprint(f, "Resolution:", s.Resolution, " ")
-   }
-   fmt.Fprint(f, "Bandwidth:", s.Bandwidth)
-   if s.Codecs != "" {
-      fmt.Fprint(f, " Codecs:", s.Codecs)
-   }
-   if verb == 'a' {
-      fmt.Fprint(f, " Range:", s.VideoRange)
-      fmt.Fprint(f, " URI:", s.URI)
-   }
-}
-
 type Master struct {
-   Media []Media
+   Media []Medium
    Streams Streams
 }
 
-type Stream struct {
-   Resolution string
-   VideoRange string // handle duplicate bandwidth
-   Bandwidth int64 // handle duplicate resolution
-   Codecs string // handle missing resolution
-   URI *url.URL
-}
-
-type Streams []Stream
-
-func (s Streams) Codec(val string) Streams {
-   var out Streams
-   for _, stream := range s {
-      if strings.Contains(stream.Codecs, val) {
-         out = append(out, stream)
-      }
+func (m Medium) Format(f fmt.State, verb rune) {
+   fmt.Fprint(f, "Type:", m.Type)
+   fmt.Fprint(f, " Name:", m.Name)
+   if verb == 'a' {
+      fmt.Fprint(f, " URI:", m.URI)
    }
-   return out
-}
-
-func (s Streams) VideoRange(val string) Streams {
-   var out Streams
-   for _, stream := range s {
-      if stream.VideoRange == val {
-         out = append(out, stream)
-      }
-   }
-   return out
-}
-
-func (s Streams) Query(key, val string) Streams {
-   var out Streams
-   for _, stream := range s {
-      if stream.URI.Query().Get(key) == val {
-         out = append(out, stream)
-      }
-   }
-   return out
 }
