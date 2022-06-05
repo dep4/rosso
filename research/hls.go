@@ -8,86 +8,8 @@ import (
    "net/url"
    "strconv"
    "text/scanner"
+   "unicode"
 )
-
-func (s Stream) Format(f fmt.State, verb rune) {
-   if s.Resolution != "" {
-      fmt.Fprint(f, "Resolution:", s.Resolution, " ")
-   }
-   fmt.Fprint(f, "Bandwidth:", s.Bandwidth)
-   if s.Codecs != "" {
-      fmt.Fprint(f, " Codecs:", s.Codecs)
-   }
-   if verb == 'a' {
-      fmt.Fprint(f, " Range:", s.VideoRange)
-      fmt.Fprint(f, " URI:", s.URI)
-   }
-}
-
-func (s Scanner) Stream(base *url.URL) (*Stream, error) {
-   var t scanner.Scanner
-   t.Init(bytes.NewReader(s.Bytes()))
-   /*
-   t.Whitespace = 1 << ' '
-   t.IsIdentRune = func(r rune, i int) bool {
-      if r == '-' {
-         return true
-      }
-      if r == '.' {
-         return true
-      }
-      if unicode.IsDigit(r) {
-         return true
-      }
-      if unicode.IsLetter(r) {
-         return true
-      }
-      return false
-   }
-   */
-   var (
-      err error
-      str Stream
-   )
-   for t.Scan() != scanner.EOF {
-      switch t.TokenText() {
-      case "BANDWIDTH":
-         t.Scan()
-         t.Scan()
-         str.Bandwidth, err = strconv.ParseInt(t.TokenText(), 10, 64)
-      case "CODECS":
-         t.Scan()
-         t.Scan()
-         str.Codecs, err = strconv.Unquote(t.TokenText())
-      case "RESOLUTION":
-         t.Scan()
-         t.Scan()
-         str.Resolution = t.TokenText()
-      case "VIDEO-RANGE":
-         t.Scan()
-         t.Scan()
-         str.VideoRange = t.TokenText()
-      }
-      if err != nil {
-         return nil, err
-      }
-   }
-   s.Scan()
-   str.URI, err = base.Parse(s.Text())
-   if err != nil {
-      return nil, err
-   }
-   return &str, nil
-}
-type Scanner struct {
-   *bufio.Scanner
-}
-
-func NewScanner(body io.Reader) Scanner {
-   var scan Scanner
-   scan.Scanner = bufio.NewScanner(body)
-   return scan
-}
 
 func scanURL(base *url.URL, raw string) (*url.URL, error) {
    ref, err := strconv.Unquote(raw)
@@ -104,13 +26,90 @@ type Master struct {
 
 type Media []Medium
 
-type Streams []*Stream
-
 type Medium struct {
    Type string
    Name string
    GroupID string
    URI *url.URL
+}
+
+func (m Medium) Format(f fmt.State, verb rune) {
+   fmt.Fprint(f, "Type:", m.Type)
+   fmt.Fprint(f, " Name:", m.Name)
+   fmt.Fprint(f, " ID:", m.GroupID)
+   if verb == 'a' {
+      fmt.Fprint(f, " URI:", m.URI)
+   }
+}
+
+type Scanner struct {
+   bufio *bufio.Scanner
+   scanner.Scanner
+}
+
+func NewScanner(body io.Reader) Scanner {
+   var scan Scanner
+   scan.bufio = bufio.NewScanner(body)
+   scan.IsIdentRune = func(r rune, i int) bool {
+      if r == '-' {
+         return true
+      }
+      if unicode.IsDigit(r) {
+         return true
+      }
+      if unicode.IsLetter(r) {
+         return true
+      }
+      return false
+   }
+   return scan
+}
+
+func (s Scanner) Master(base *url.URL) (*Master, error) {
+   var (
+      mas Master
+      prefix = []byte("#EXT-X-STREAM-INF:")
+   )
+   for s.bufio.Scan() {
+      slice := s.bufio.Bytes()
+      if bytes.HasPrefix(slice, prefix) {
+         var (
+            err error
+            str Stream
+         )
+         s.Init(bytes.NewReader(slice))
+         for s.Scan() != scanner.EOF {
+            switch s.TokenText() {
+            case "RESOLUTION":
+               s.Scan()
+               s.Scan()
+               str.Resolution = s.TokenText()
+            case "BANDWIDTH":
+               s.Scan()
+               s.Scan()
+               str.Bandwidth, err = strconv.ParseInt(s.TokenText(), 10, 64)
+            case "CODECS":
+               s.Scan()
+               s.Scan()
+               str.Codecs, err = strconv.Unquote(s.TokenText())
+            case "VIDEO-RANGE":
+               s.Scan()
+               s.Scan()
+               str.VideoRange = s.TokenText()
+            }
+            if err != nil {
+               return nil, err
+            }
+         }
+         s.bufio.Scan()
+         str.URI, err = base.Parse(s.bufio.Text())
+         if err != nil {
+            return nil, err
+         }
+         mas.Streams = append(mas.Streams, str)
+      }
+   }
+   return &mas, nil
 }
 
 type Stream struct {
@@ -121,20 +120,20 @@ type Stream struct {
    URI *url.URL
 }
 
-func (s Scanner) Master(base *url.URL) (*Master, error) {
-   var (
-      mas Master
-      prefix = []byte("#EXT-X-STREAM-INF:")
-   )
-   for s.Scan() {
-      slice := s.Bytes()
-      if bytes.HasPrefix(slice, prefix) {
-         stream, err := s.Stream(base)
-         if err != nil {
-            return nil, err
-         }
-         mas.Streams = append(mas.Streams, stream)
-      }
+func (s Stream) Format(f fmt.State, verb rune) {
+   if s.Resolution != "" {
+      fmt.Fprint(f, "Resolution:", s.Resolution, " ")
    }
-   return &mas, nil
+   fmt.Fprint(f, "Bandwidth:", s.Bandwidth)
+   if s.Codecs != "" {
+      fmt.Fprint(f, " Codecs:", s.Codecs)
+   }
+   if verb == 'a' {
+      fmt.Fprint(f, " Range:", s.VideoRange)
+   }
+   if verb == 'b' {
+      fmt.Fprint(f, " URI:", s.URI)
+   }
 }
+
+type Streams []Stream
