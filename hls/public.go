@@ -11,54 +11,6 @@ import (
    "text/scanner"
 )
 
-func (s *Scanner) Segment(addr *url.URL) (*Segment, error) {
-   var (
-      info Information
-      seg Segment
-   )
-   for {
-      s.splitWords()
-      if s.Scan() == scanner.EOF {
-         break
-      }
-      var err error
-      switch s.TokenText() {
-      case "EXT-X-KEY":
-         for s.Scan() != '\n' {
-            switch s.TokenText() {
-            case "IV":
-               s.Scan()
-               s.Scan()
-               info.IV, err = scanHex(s.TokenText())
-            case "URI":
-               s.Scan()
-               s.Scan()
-               seg.Key, err = scanURL(s.TokenText(), addr)
-            }
-            if err != nil {
-               return nil, err
-            }
-         }
-      case "EXTINF":
-         s.splitLines()
-         s.Scan()
-         s.Scan()
-         info.URI, err = addr.Parse(s.TokenText())
-         if err != nil {
-            return nil, err
-         }
-         seg.Info = append(seg.Info, info)
-         info = Information{}
-      }
-   }
-   return &seg, nil
-}
-
-type Segment struct {
-   Key *url.URL
-   Info []Information
-}
-
 const (
    AAC = ".aac"
    TS = ".ts"
@@ -104,6 +56,81 @@ type Information struct {
    URI *url.URL
 }
 
+type Master struct {
+   Media Media
+   Streams Streams
+}
+
+type Media []Medium
+
+func (m Media) GroupID(val string) Media {
+   var out Media
+   for _, medium := range m {
+      if strings.Contains(medium.GroupID, val) {
+         out = append(out, medium)
+      }
+   }
+   return out
+}
+
+func (m Media) Medium(groupID string) *Medium {
+   for _, medium := range m {
+      if medium.GroupID == groupID {
+         return &medium
+      }
+   }
+   return nil
+}
+
+// English
+func (m Media) Name(val string) Media {
+   var out Media
+   for _, medium := range m {
+      if medium.Name == val {
+         out = append(out, medium)
+      }
+   }
+   return out
+}
+
+// cdn
+func (m Media) RawQuery(val string) Media {
+   var out Media
+   for _, medium := range m {
+      if strings.Contains(medium.URI.RawQuery, val) {
+         out = append(out, medium)
+      }
+   }
+   return out
+}
+
+// AUDIO
+func (m Media) Type(val string) Media {
+   var out Media
+   for _, medium := range m {
+      if medium.Type == val {
+         out = append(out, medium)
+      }
+   }
+   return out
+}
+
+type Medium struct {
+   Type string
+   Name string
+   GroupID string
+   URI *url.URL
+}
+
+func (m Medium) Format(f fmt.State, verb rune) {
+   fmt.Fprint(f, "Type:", m.Type)
+   fmt.Fprint(f, " Name:", m.Name)
+   fmt.Fprint(f, " ID:", m.GroupID)
+   if verb == 'a' {
+      fmt.Fprint(f, " URI:", m.URI)
+   }
+}
+
 type Scanner struct {
    scanner.Scanner
 }
@@ -112,20 +139,6 @@ func NewScanner(body io.Reader) *Scanner {
    var scan Scanner
    scan.Init(body)
    return &scan
-}
-
-func (s Stream) Format(f fmt.State, verb rune) {
-   if s.Resolution != "" {
-      fmt.Fprint(f, "Resolution:", s.Resolution, " ")
-   }
-   fmt.Fprint(f, "Bandwidth:", s.Bandwidth)
-   if s.Codecs != "" {
-      fmt.Fprint(f, " Codecs:", s.Codecs)
-   }
-   if verb == 'a' {
-      fmt.Fprint(f, " Range:", s.VideoRange)
-      fmt.Fprint(f, " URI:", s.URI)
-   }
 }
 
 func (s *Scanner) Master(addr *url.URL) (*Master, error) {
@@ -200,20 +213,77 @@ func (s *Scanner) Master(addr *url.URL) (*Master, error) {
    return &mas, nil
 }
 
-type Master struct {
-   Media Media
-   Streams Streams
-}
-
-func (s Streams) VideoRange(val string) Streams {
-   var out Streams
-   for _, stream := range s {
-      if stream.VideoRange == val {
-         out = append(out, stream)
+func (s *Scanner) Segment(addr *url.URL) (*Segment, error) {
+   var (
+      info Information
+      seg Segment
+   )
+   for {
+      s.splitWords()
+      if s.Scan() == scanner.EOF {
+         break
+      }
+      var err error
+      switch s.TokenText() {
+      case "EXT-X-KEY":
+         for s.Scan() != '\n' {
+            switch s.TokenText() {
+            case "IV":
+               s.Scan()
+               s.Scan()
+               info.IV, err = scanHex(s.TokenText())
+            case "URI":
+               s.Scan()
+               s.Scan()
+               seg.Key, err = scanURL(s.TokenText(), addr)
+            }
+            if err != nil {
+               return nil, err
+            }
+         }
+      case "EXTINF":
+         s.splitLines()
+         s.Scan()
+         s.Scan()
+         info.URI, err = addr.Parse(s.TokenText())
+         if err != nil {
+            return nil, err
+         }
+         seg.Info = append(seg.Info, info)
+         info = Information{}
       }
    }
-   return out
+   return &seg, nil
 }
+
+type Segment struct {
+   Key *url.URL
+   Info []Information
+}
+
+type Stream struct {
+   Resolution string
+   VideoRange string // handle duplicate bandwidth
+   Bandwidth int64 // handle duplicate resolution
+   Codecs string // handle missing resolution
+   URI *url.URL
+}
+
+func (s Stream) Format(f fmt.State, verb rune) {
+   if s.Resolution != "" {
+      fmt.Fprint(f, "Resolution:", s.Resolution, " ")
+   }
+   fmt.Fprint(f, "Bandwidth:", s.Bandwidth)
+   if s.Codecs != "" {
+      fmt.Fprint(f, " Codecs:", s.Codecs)
+   }
+   if verb == 'a' {
+      fmt.Fprint(f, " Range:", s.VideoRange)
+      fmt.Fprint(f, " URI:", s.URI)
+   }
+}
+
+type Streams []Stream
 
 func (s Streams) Codec(val string) Streams {
    var out Streams
@@ -235,77 +305,6 @@ func (s Streams) RawQuery(val string) Streams {
    return out
 }
 
-// cdn
-func (m Media) RawQuery(val string) Media {
-   var out Media
-   for _, medium := range m {
-      if strings.Contains(medium.URI.RawQuery, val) {
-         out = append(out, medium)
-      }
-   }
-   return out
-}
-
-type Medium struct {
-   Type string
-   Name string
-   GroupID string
-   URI *url.URL
-}
-
-func (m Media) GroupID(val string) Media {
-   var out Media
-   for _, medium := range m {
-      if strings.Contains(medium.GroupID, val) {
-         out = append(out, medium)
-      }
-   }
-   return out
-}
-
-func (m Medium) Format(f fmt.State, verb rune) {
-   fmt.Fprint(f, "Type:", m.Type)
-   fmt.Fprint(f, " Name:", m.Name)
-   fmt.Fprint(f, " ID:", m.GroupID)
-   if verb == 'a' {
-      fmt.Fprint(f, " URI:", m.URI)
-   }
-}
-
-type Media []Medium
-
-// English
-func (m Media) Name(val string) Media {
-   var out Media
-   for _, medium := range m {
-      if medium.Name == val {
-         out = append(out, medium)
-      }
-   }
-   return out
-}
-
-// AUDIO
-func (m Media) Type(val string) Media {
-   var out Media
-   for _, medium := range m {
-      if medium.Type == val {
-         out = append(out, medium)
-      }
-   }
-   return out
-}
-
-type Stream struct {
-   Resolution string
-   VideoRange string // handle duplicate bandwidth
-   Bandwidth int64 // handle duplicate resolution
-   Codecs string // handle missing resolution
-   URI *url.URL
-}
-
-type Streams []Stream
-
 func (s Streams) Stream(bandwidth int64) *Stream {
    distance := func(s *Stream) int64 {
       if s.Bandwidth > bandwidth {
@@ -322,14 +321,12 @@ func (s Streams) Stream(bandwidth int64) *Stream {
    return out
 }
 
-/*
-// Provide a name such as "English"
-func (m Master) Audio(name string) *Media {
-   for _, med := range m.Media {
-      if med.Type == "AUDIO" && med.Name == name {
-         return &med
+func (s Streams) VideoRange(val string) Streams {
+   var out Streams
+   for _, stream := range s {
+      if stream.VideoRange == val {
+         out = append(out, stream)
       }
    }
-   return nil
+   return out
 }
-*/
