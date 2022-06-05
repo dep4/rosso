@@ -85,36 +85,6 @@ type Stream struct {
 
 type Streams []Stream
 
-func (s Streams) Codec(val string) Streams {
-   var out Streams
-   for _, stream := range s {
-      if strings.Contains(stream.Codecs, val) {
-         out = append(out, stream)
-      }
-   }
-   return out
-}
-
-func (s Streams) VideoRange(val string) Streams {
-   var out Streams
-   for _, stream := range s {
-      if stream.VideoRange == val {
-         out = append(out, stream)
-      }
-   }
-   return out
-}
-
-func (s Streams) Query(key, val string) Streams {
-   var out Streams
-   for _, stream := range s {
-      if stream.URI.Query().Get(key) == val {
-         out = append(out, stream)
-      }
-   }
-   return out
-}
-
 func (s *Scanner) Master(addr *url.URL) (*Master, error) {
    var mas Master
    for {
@@ -183,21 +153,37 @@ func (s *Scanner) Master(addr *url.URL) (*Master, error) {
    return &mas, nil
 }
 
-type Medium struct {
-   Name string
-   Type string
-   URI *url.URL
-}
-
 type Master struct {
-   Media []Medium
+   Media Media
    Streams Streams
 }
 
-func (m Medium) Format(f fmt.State, verb rune) {
-   fmt.Fprint(f, "Type:", m.Type)
-   fmt.Fprint(f, " Name:", m.Name)
-   if verb == 'a' {
-      fmt.Fprint(f, " URI:", m.URI)
+func (s Streams) Codec(val string) Streams {
+   var out Streams
+   for _, stream := range s {
+      if strings.Contains(stream.Codecs, val) {
+         out = append(out, stream)
+      }
    }
+   return out
+}
+
+func (s Streams) Query(key, val string) Streams {
+   var out Streams
+   for _, stream := range s {
+      if stream.URI.Query().Get(key) == val {
+         out = append(out, stream)
+      }
+   }
+   return out
+}
+
+func (s Streams) VideoRange(val string) Streams {
+   var out Streams
+   for _, stream := range s {
+      if stream.VideoRange == val {
+         out = append(out, stream)
+      }
+   }
+   return out
 }
