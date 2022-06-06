@@ -14,14 +14,32 @@ func isURI(s []byte) bool {
    return len(s) >= 1 && !bytes.HasPrefix(s, prefix)
 }
 
-func isInf(s []byte) bool {
-   prefix := []byte("#EXTINF:")
-   return bytes.HasPrefix(s, prefix)
-}
-
 func isKey(s []byte) bool {
    prefix := []byte("#EXT-X-KEY:")
    return bytes.HasPrefix(s, prefix)
+}
+
+func (i Information) IV() ([]byte, error) {
+   up := strings.ToUpper(i.iv)
+   return hex.DecodeString(strings.TrimPrefix(up, "0X"))
+}
+
+type Information struct {
+   iv string
+   RawURI string
+}
+
+func (i Information) URI(base *url.URL) (*url.URL, error) {
+   return base.Parse(i.RawURI)
+}
+
+type Segment struct {
+   Info []Information
+   RawKey string
+}
+
+func (s Segment) Key(base *url.URL) (*url.URL, error) {
+   return base.Parse(s.RawKey)
 }
 
 func (s Scanner) Segment() (*Segment, error) {
@@ -44,14 +62,14 @@ func (s Scanner) Segment() (*Segment, error) {
             case "URI":
                s.Scan()
                s.Scan()
-               seg.key, err = strconv.Unquote(s.TokenText())
+               seg.RawKey, err = strconv.Unquote(s.TokenText())
                if err != nil {
                   return nil, err
                }
             }
          }
       case isURI(slice):
-         info.uri = s.bufio.Text()
+         info.RawURI = s.bufio.Text()
          seg.Info = append(seg.Info, info)
          info = Information{}
       }
@@ -59,25 +77,3 @@ func (s Scanner) Segment() (*Segment, error) {
    return &seg, nil
 }
 
-func (i Information) IV() ([]byte, error) {
-   up := strings.ToUpper(i.iv)
-   return hex.DecodeString(strings.TrimPrefix(up, "0X"))
-}
-
-type Information struct {
-   iv string
-   uri string
-}
-
-func (i Information) URI(base *url.URL) (*url.URL, error) {
-   return base.Parse(i.uri)
-}
-
-type Segment struct {
-   Info []Information
-   key string
-}
-
-func (s Segment) Key(base *url.URL) (*url.URL, error) {
-   return base.Parse(s.key)
-}

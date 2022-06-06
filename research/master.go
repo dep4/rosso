@@ -11,6 +11,33 @@ import (
    "unicode"
 )
 
+func (s Stream) Codecs() string {
+   codecs := strings.Split(s.codecs, ",")
+   for i, codec := range codecs {
+      before, _, _ := strings.Cut(codec, ".")
+      codecs[i] = before
+   }
+   return strings.Join(codecs, ",")
+}
+
+func (s Stream) String() string {
+   var buf []byte
+   if s.Resolution != "" {
+      buf = append(buf, "Resolution:"...)
+      buf = append(buf, s.Resolution...)
+      buf = append(buf, ' ')
+   }
+   buf = append(buf, "Bandwidth:"...)
+   buf = strconv.AppendInt(buf, s.Bandwidth, 10)
+   buf = append(buf, " Range:"...)
+   buf = append(buf, s.VideoRange...)
+   if s.codecs != "" {
+      buf = append(buf, " Codecs:"...)
+      buf = append(buf, s.Codecs()...)
+   }
+   return string(buf)
+}
+
 func isMedia(s []byte) bool {
    prefix := []byte("#EXT-X-MEDIA:")
    return bytes.HasPrefix(s, prefix)
@@ -53,6 +80,40 @@ func NewScanner(body io.Reader) Scanner {
 
 type Streams []Stream
 
+func (m Medium) String() string {
+   var buf strings.Builder
+   buf.WriteString("Type:")
+   buf.WriteString(m.Type)
+   buf.WriteString(" Name:")
+   buf.WriteString(m.Name)
+   buf.WriteString(" ID:")
+   buf.WriteString(m.GroupID)
+   return buf.String()
+}
+
+type Stream struct {
+   Resolution string
+   Bandwidth int64 // handle duplicate resolution
+   VideoRange string // handle duplicate bandwidth
+   codecs string // handle missing resolution
+   RawURI string
+}
+
+func (s Stream) URI(base *url.URL) (*url.URL, error) {
+   return base.Parse(s.RawURI)
+}
+
+type Medium struct {
+   Type string
+   Name string
+   GroupID string
+   RawURI string
+}
+
+func (m Medium) URI(base *url.URL) (*url.URL, error) {
+   return base.Parse(m.RawURI)
+}
+
 func (s Scanner) Master() (*Master, error) {
    var (
       err error
@@ -81,7 +142,7 @@ func (s Scanner) Master() (*Master, error) {
             case "URI":
                s.Scan()
                s.Scan()
-               med.uri, err = strconv.Unquote(s.TokenText())
+               med.RawURI, err = strconv.Unquote(s.TokenText())
             }
             if err != nil {
                return nil, err
@@ -103,7 +164,7 @@ func (s Scanner) Master() (*Master, error) {
             case "CODECS":
                s.Scan()
                s.Scan()
-               str.Codecs, err = strconv.Unquote(s.TokenText())
+               str.codecs, err = strconv.Unquote(s.TokenText())
             case "VIDEO-RANGE":
                s.Scan()
                s.Scan()
@@ -114,60 +175,9 @@ func (s Scanner) Master() (*Master, error) {
             }
          }
          s.bufio.Scan()
-         str.uri = s.bufio.Text()
+         str.RawURI = s.bufio.Text()
          mas.Streams = append(mas.Streams, str)
       }
    }
    return &mas, nil
-}
-
-type Stream struct {
-   Resolution string
-   Bandwidth int64 // handle duplicate resolution
-   Codecs string // handle missing resolution
-   VideoRange string // handle duplicate bandwidth
-   uri string
-}
-
-func (s Stream) String() string {
-   var buf []byte
-   if s.Resolution != "" {
-      buf = append(buf, "Resolution:"...)
-      buf = append(buf, s.Resolution...)
-   }
-   buf = append(buf, "Bandwidth:"...)
-   buf = strconv.AppendInt(buf, s.Bandwidth, 10)
-   if s.Codecs != "" {
-      buf = append(buf, " Codecs:"...)
-      buf = append(buf, s.Codecs...)
-   }
-   buf = append(buf, " Range:"...)
-   buf = append(buf, s.VideoRange...)
-   return string(buf)
-}
-
-type Medium struct {
-   Type string
-   Name string
-   GroupID string
-   uri string
-}
-
-func (m Medium) String() string {
-   var buf strings.Builder
-   buf.WriteString("Type:")
-   buf.WriteString(m.Type)
-   buf.WriteString(" Name:")
-   buf.WriteString(m.Name)
-   buf.WriteString(" ID:")
-   buf.WriteString(m.GroupID)
-   return buf.String()
-}
-
-func (s Stream) URI(base *url.URL) (*url.URL, error) {
-   return base.Parse(s.uri)
-}
-
-func (m Medium) URI(base *url.URL) (*url.URL, error) {
-   return base.Parse(m.uri)
 }
