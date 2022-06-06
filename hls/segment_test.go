@@ -2,24 +2,23 @@ package hls
 
 import (
    "fmt"
-   "net/url"
    "os"
    "testing"
 )
 
-var ivs = []string{
+var rawIVs = []string{
    "00000000000000000000000000000001",
    "0X00000000000000000000000000000001",
    "0x00000000000000000000000000000001",
 }
 
 func TestHex(t *testing.T) {
-   for _, iv := range ivs {
-      buf, err := scanHex(iv)
+   for _, rawIV := range rawIVs {
+      iv, err := Information{RawIV: rawIV}.IV()
       if err != nil {
          t.Fatal(err)
       }
-      fmt.Println(buf)
+      fmt.Println(iv)
    }
 }
 
@@ -29,12 +28,16 @@ func TestSegment(t *testing.T) {
       t.Fatal(err)
    }
    defer file.Close()
-   seg, err := NewScanner(file).Segment(&url.URL{})
+   seg, err := NewScanner(file).Segment()
    if err != nil {
       t.Fatal(err)
    }
-   fmt.Println(seg.Key)
    for _, info := range seg.Info {
       fmt.Printf("%+v\n", info)
    }
+   pssh, err := seg.PSSH()
+   if err != nil {
+      t.Fatal(err)
+   }
+   fmt.Println(pssh)
 }
