@@ -1,30 +1,13 @@
 package hls
 
 import (
+   "encoding/base64"
    "encoding/hex"
    "net/url"
    "strconv"
    "strings"
    "text/scanner"
 )
-
-func (i Information) IV() ([]byte, error) {
-   up := strings.ToUpper(i.RawIV)
-   return hex.DecodeString(strings.TrimPrefix(up, "0X"))
-}
-
-func (i Information) URI(base *url.URL) (*url.URL, error) {
-   return base.Parse(i.RawURI)
-}
-
-type Segment struct {
-   Info []Information
-   RawKey string
-}
-
-func (s Segment) Key(base *url.URL) (*url.URL, error) {
-   return base.Parse(s.RawKey)
-}
 
 func (s Scanner) Segment() (*Segment, error) {
    var (
@@ -64,4 +47,27 @@ func (s Scanner) Segment() (*Segment, error) {
 type Information struct {
    RawIV string
    RawURI string
+}
+
+func (i Information) IV() ([]byte, error) {
+   up := strings.ToUpper(i.RawIV)
+   return hex.DecodeString(strings.TrimPrefix(up, "0X"))
+}
+
+func (i Information) URI(base *url.URL) (*url.URL, error) {
+   return base.Parse(i.RawURI)
+}
+
+type Segment struct {
+   Info []Information
+   RawKey string
+}
+
+func (s Segment) Key(base *url.URL) (*url.URL, error) {
+   return base.Parse(s.RawKey)
+}
+
+func (s Segment) Base64() ([]byte, error) {
+   _, after, _ := strings.Cut(s.RawKey, "data:text/plain;base64,")
+   return base64.StdEncoding.DecodeString(after)
 }
