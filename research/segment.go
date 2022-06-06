@@ -4,9 +4,15 @@ import (
    "bytes"
    "encoding/hex"
    "net/url"
+   "strconv"
    "strings"
    "text/scanner"
 )
+
+func isURI(s []byte) bool {
+   prefix := []byte{'#'}
+   return len(s) >= 1 && !bytes.HasPrefix(s, prefix)
+}
 
 func isInf(s []byte) bool {
    prefix := []byte("#EXTINF:")
@@ -18,17 +24,7 @@ func isKey(s []byte) bool {
    return bytes.HasPrefix(s, prefix)
 }
 
-func scanHex(s string) ([]byte, error) {
-   up := strings.ToUpper(s)
-   return hex.DecodeString(strings.TrimPrefix(up, "0X"))
-}
-
-type Information struct {
-   IV []byte
-   URI *url.URL
-}
-
-func (s *Scanner) Segment(base *url.URL) (*Segment, error) {
+func (s Scanner) Segment() (*Segment, error) {
    var (
       err error
       info Information
@@ -44,22 +40,18 @@ func (s *Scanner) Segment(base *url.URL) (*Segment, error) {
             case "IV":
                s.Scan()
                s.Scan()
-               info.IV, err = scanHex(s.TokenText())
+               info.iv = s.TokenText()
             case "URI":
                s.Scan()
                s.Scan()
-               seg.Key, err = scanURL(base, s.TokenText())
-            }
-            if err != nil {
-               return nil, err
+               seg.key, err = strconv.Unquote(s.TokenText())
+               if err != nil {
+                  return nil, err
+               }
             }
          }
-      case isInf(slice):
-         s.bufio.Scan()
-         info.URI, err = base.Parse(s.TokenText())
-         if err != nil {
-            return nil, err
-         }
+      case isURI(slice):
+         info.uri = s.bufio.Text()
          seg.Info = append(seg.Info, info)
          info = Information{}
       }
@@ -67,7 +59,25 @@ func (s *Scanner) Segment(base *url.URL) (*Segment, error) {
    return &seg, nil
 }
 
+func (i Information) IV() ([]byte, error) {
+   up := strings.ToUpper(i.iv)
+   return hex.DecodeString(strings.TrimPrefix(up, "0X"))
+}
+
+type Information struct {
+   iv string
+   uri string
+}
+
+func (i Information) URI(base *url.URL) (*url.URL, error) {
+   return base.Parse(i.uri)
+}
+
 type Segment struct {
-   Key *url.URL
    Info []Information
+   key string
+}
+
+func (s Segment) Key(base *url.URL) (*url.URL, error) {
+   return base.Parse(s.key)
 }

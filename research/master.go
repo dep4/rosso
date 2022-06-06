@@ -3,10 +3,10 @@ package hls
 import (
    "bufio"
    "bytes"
-   "fmt"
    "io"
    "net/url"
    "strconv"
+   "strings"
    "text/scanner"
    "unicode"
 )
@@ -21,36 +21,12 @@ func isStream(s []byte) bool {
    return bytes.HasPrefix(s, prefix)
 }
 
-func scanURL(base *url.URL, raw string) (*url.URL, error) {
-   ref, err := strconv.Unquote(raw)
-   if err != nil {
-      return nil, err
-   }
-   return base.Parse(ref)
-}
-
 type Master struct {
    Media Media
    Streams Streams
 }
 
 type Media []Medium
-
-type Medium struct {
-   Type string
-   Name string
-   GroupID string
-   URI *url.URL
-}
-
-func (m Medium) Format(f fmt.State, verb rune) {
-   fmt.Fprint(f, "Type:", m.Type)
-   fmt.Fprint(f, " Name:", m.Name)
-   fmt.Fprint(f, " ID:", m.GroupID)
-   if verb == 'a' {
-      fmt.Fprint(f, " URI:", m.URI)
-   }
-}
 
 type Scanner struct {
    bufio *bufio.Scanner
@@ -75,7 +51,9 @@ func NewScanner(body io.Reader) Scanner {
    return scan
 }
 
-func (s Scanner) Master(base *url.URL) (*Master, error) {
+type Streams []Stream
+
+func (s Scanner) Master() (*Master, error) {
    var (
       err error
       mas Master
@@ -103,7 +81,7 @@ func (s Scanner) Master(base *url.URL) (*Master, error) {
             case "URI":
                s.Scan()
                s.Scan()
-               med.URI, err = scanURL(base, s.TokenText())
+               med.uri, err = strconv.Unquote(s.TokenText())
             }
             if err != nil {
                return nil, err
@@ -136,10 +114,7 @@ func (s Scanner) Master(base *url.URL) (*Master, error) {
             }
          }
          s.bufio.Scan()
-         str.URI, err = base.Parse(s.bufio.Text())
-         if err != nil {
-            return nil, err
-         }
+         str.uri = s.bufio.Text()
          mas.Streams = append(mas.Streams, str)
       }
    }
@@ -148,26 +123,51 @@ func (s Scanner) Master(base *url.URL) (*Master, error) {
 
 type Stream struct {
    Resolution string
-   VideoRange string // handle duplicate bandwidth
    Bandwidth int64 // handle duplicate resolution
    Codecs string // handle missing resolution
-   URI *url.URL
+   VideoRange string // handle duplicate bandwidth
+   uri string
 }
 
-func (s Stream) Format(f fmt.State, verb rune) {
+func (s Stream) String() string {
+   var buf []byte
    if s.Resolution != "" {
-      fmt.Fprint(f, "Resolution:", s.Resolution, " ")
+      buf = append(buf, "Resolution:"...)
+      buf = append(buf, s.Resolution...)
    }
-   fmt.Fprint(f, "Bandwidth:", s.Bandwidth)
+   buf = append(buf, "Bandwidth:"...)
+   buf = strconv.AppendInt(buf, s.Bandwidth, 10)
    if s.Codecs != "" {
-      fmt.Fprint(f, " Codecs:", s.Codecs)
+      buf = append(buf, " Codecs:"...)
+      buf = append(buf, s.Codecs...)
    }
-   if verb == 'a' {
-      fmt.Fprint(f, " Range:", s.VideoRange)
-   }
-   if verb == 'b' {
-      fmt.Fprint(f, " URI:", s.URI)
-   }
+   buf = append(buf, " Range:"...)
+   buf = append(buf, s.VideoRange...)
+   return string(buf)
 }
 
-type Streams []Stream
+type Medium struct {
+   Type string
+   Name string
+   GroupID string
+   uri string
+}
+
+func (m Medium) String() string {
+   var buf strings.Builder
+   buf.WriteString("Type:")
+   buf.WriteString(m.Type)
+   buf.WriteString(" Name:")
+   buf.WriteString(m.Name)
+   buf.WriteString(" ID:")
+   buf.WriteString(m.GroupID)
+   return buf.String()
+}
+
+func (s Stream) URI(base *url.URL) (*url.URL, error) {
+   return base.Parse(s.uri)
+}
+
+func (m Medium) URI(base *url.URL) (*url.URL, error) {
+   return base.Parse(m.uri)
+}
