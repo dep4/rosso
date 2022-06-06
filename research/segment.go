@@ -1,7 +1,6 @@
 package hls
 
 import (
-   "bytes"
    "encoding/hex"
    "net/url"
    "strconv"
@@ -9,24 +8,9 @@ import (
    "text/scanner"
 )
 
-func isURI(s []byte) bool {
-   prefix := []byte{'#'}
-   return len(s) >= 1 && !bytes.HasPrefix(s, prefix)
-}
-
-func isKey(s []byte) bool {
-   prefix := []byte("#EXT-X-KEY:")
-   return bytes.HasPrefix(s, prefix)
-}
-
 func (i Information) IV() ([]byte, error) {
-   up := strings.ToUpper(i.iv)
+   up := strings.ToUpper(i.RawIV)
    return hex.DecodeString(strings.TrimPrefix(up, "0X"))
-}
-
-type Information struct {
-   iv string
-   RawURI string
 }
 
 func (i Information) URI(base *url.URL) (*url.URL, error) {
@@ -44,32 +28,32 @@ func (s Segment) Key(base *url.URL) (*url.URL, error) {
 
 func (s Scanner) Segment() (*Segment, error) {
    var (
-      err error
       info Information
       seg Segment
    )
-   for s.bufio.Scan() {
-      slice := s.bufio.Bytes()
-      s.Init(bytes.NewReader(slice))
+   for s.line.Scan() != scanner.EOF {
+      line := s.line.TokenText()
+      s.Init(strings.NewReader(line))
       switch {
-      case isKey(slice):
+      case strings.HasPrefix(line, "#EXT-X-KEY:"):
          for s.Scan() != scanner.EOF {
             switch s.TokenText() {
             case "IV":
                s.Scan()
                s.Scan()
-               info.iv = s.TokenText()
+               info.RawIV = s.TokenText()
             case "URI":
                s.Scan()
                s.Scan()
+               var err error
                seg.RawKey, err = strconv.Unquote(s.TokenText())
                if err != nil {
                   return nil, err
                }
             }
          }
-      case isURI(slice):
-         info.RawURI = s.bufio.Text()
+      case len(line) >= 1 && !strings.HasPrefix(line, "#"):
+         info.RawURI = line
          seg.Info = append(seg.Info, info)
          info = Information{}
       }
@@ -77,3 +61,7 @@ func (s Scanner) Segment() (*Segment, error) {
    return &seg, nil
 }
 
+type Information struct {
+   RawIV string
+   RawURI string
+}
