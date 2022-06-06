@@ -1,8 +1,6 @@
 package hls
 
 import (
-   "encoding/hex"
-   "fmt"
    "io"
    "net/url"
    "strconv"
@@ -11,51 +9,10 @@ import (
    "unicode"
 )
 
-func scanHex(s string) ([]byte, error) {
-   up := strings.ToUpper(s)
-   return hex.DecodeString(strings.TrimPrefix(up, "0X"))
-}
-
-func scanURL(s string, addr *url.URL) (*url.URL, error) {
-   ref, err := strconv.Unquote(s)
-   if err != nil {
-      return nil, err
-   }
-   return addr.Parse(ref)
-}
-
-func (s *Scanner) splitLines() {
-   s.IsIdentRune = func(r rune, i int) bool {
-      if r == '\n' {
-         return false
-      }
-      if r == '\r' {
-         return false
-      }
-      return true
-   }
-   s.Whitespace |= 1 << '\n'
-   s.Whitespace |= 1 << '\r'
-}
-
-func (s *Scanner) splitWords() {
-   s.IsIdentRune = func(r rune, i int) bool {
-      if r == '-' {
-         return true
-      }
-      if r == '.' {
-         return true
-      }
-      if unicode.IsDigit(r) {
-         return true
-      }
-      if unicode.IsLetter(r) {
-         return true
-      }
-      return false
-   }
-   s.Whitespace = 1 << ' '
-}
+const (
+   AAC = ".aac"
+   TS = ".ts"
+)
 
 type Master struct {
    Media Media
@@ -67,6 +24,16 @@ type Media []Medium
 func (m Media) GetGroupID(val string) *Medium {
    for _, medium := range m {
       if medium.GroupID == val {
+         return &medium
+      }
+   }
+   return nil
+}
+
+// English
+func (m Media) GetName(val string) *Medium {
+   for _, medium := range m {
+      if medium.Name == val {
          return &medium
       }
    }
@@ -96,10 +63,10 @@ func (m Media) Name(val string) Media {
 }
 
 // cdn
-func (m Media) RawQuery(val string) Media {
+func (m Media) URI(val string) Media {
    var out Media
    for _, medium := range m {
-      if strings.Contains(medium.URI.RawQuery, val) {
+      if strings.Contains(medium.RawURI, val) {
          out = append(out, medium)
       }
    }
@@ -121,40 +88,69 @@ type Medium struct {
    Type string
    Name string
    GroupID string
-   URI *url.URL
+   RawURI string
 }
 
-func (m Medium) Format(f fmt.State, verb rune) {
-   fmt.Fprint(f, "Type:", m.Type)
-   fmt.Fprint(f, " Name:", m.Name)
-   fmt.Fprint(f, " ID:", m.GroupID)
-   if verb == 'a' {
-      fmt.Fprint(f, " URI:", m.URI)
-   }
+func (m Medium) String() string {
+   var buf strings.Builder
+   buf.WriteString("Type:")
+   buf.WriteString(m.Type)
+   buf.WriteString(" Name:")
+   buf.WriteString(m.Name)
+   buf.WriteString(" ID:")
+   buf.WriteString(m.GroupID)
+   return buf.String()
+}
+
+func (m Medium) URI(base *url.URL) (*url.URL, error) {
+   return base.Parse(m.RawURI)
 }
 
 type Scanner struct {
+   line scanner.Scanner
    scanner.Scanner
 }
 
-func NewScanner(body io.Reader) *Scanner {
+func NewScanner(body io.Reader) Scanner {
    var scan Scanner
-   scan.Init(body)
-   return &scan
+   scan.line.Init(body)
+   scan.line.IsIdentRune = func(r rune, i int) bool {
+      if r == '\n' {
+         return false
+      }
+      if r == '\r' {
+         return false
+      }
+      if r == scanner.EOF {
+         return false
+      }
+      return true
+   }
+   scan.IsIdentRune = func(r rune, i int) bool {
+      if r == '-' {
+         return true
+      }
+      if unicode.IsDigit(r) {
+         return true
+      }
+      if unicode.IsLetter(r) {
+         return true
+      }
+      return false
+   }
+   return scan
 }
 
-func (s *Scanner) Master(addr *url.URL) (*Master, error) {
+func (s Scanner) Master() (*Master, error) {
    var mas Master
-   for {
-      s.splitWords()
-      if s.Scan() == scanner.EOF {
-         break
-      }
+   for s.line.Scan() != scanner.EOF {
       var err error
-      switch s.TokenText() {
-      case "EXT-X-MEDIA":
+      line := s.line.TokenText()
+      s.Init(strings.NewReader(line))
+      switch {
+      case strings.HasPrefix(line, "#EXT-X-MEDIA:"):
          var med Medium
-         for s.Scan() != '\n' {
+         for s.Scan() != scanner.EOF {
             switch s.TokenText() {
             case "GROUP-ID":
                s.Scan()
@@ -171,25 +167,21 @@ func (s *Scanner) Master(addr *url.URL) (*Master, error) {
             case "URI":
                s.Scan()
                s.Scan()
-               med.URI, err = scanURL(s.TokenText(), addr)
+               med.RawURI, err = strconv.Unquote(s.TokenText())
             }
             if err != nil {
                return nil, err
             }
          }
          mas.Media = append(mas.Media, med)
-      case "EXT-X-STREAM-INF":
+      case strings.HasPrefix(line, "#EXT-X-STREAM-INF:"):
          var str Stream
-         for s.Scan() != '\n' {
+         for s.Scan() != scanner.EOF {
             switch s.TokenText() {
             case "RESOLUTION":
                s.Scan()
                s.Scan()
                str.Resolution = s.TokenText()
-            case "VIDEO-RANGE":
-               s.Scan()
-               s.Scan()
-               str.VideoRange = s.TokenText()
             case "BANDWIDTH":
                s.Scan()
                s.Scan()
@@ -197,18 +189,18 @@ func (s *Scanner) Master(addr *url.URL) (*Master, error) {
             case "CODECS":
                s.Scan()
                s.Scan()
-               str.Codecs, err = strconv.Unquote(s.TokenText())
+               str.RawCodecs, err = strconv.Unquote(s.TokenText())
+            case "VIDEO-RANGE":
+               s.Scan()
+               s.Scan()
+               str.VideoRange = s.TokenText()
             }
             if err != nil {
                return nil, err
             }
          }
-         s.splitLines()
-         s.Scan()
-         str.URI, err = addr.Parse(s.TokenText())
-         if err != nil {
-            return nil, err
-         }
+         s.line.Scan()
+         str.RawURI = s.line.TokenText()
          mas.Streams = append(mas.Streams, str)
       }
    }
@@ -217,24 +209,43 @@ func (s *Scanner) Master(addr *url.URL) (*Master, error) {
 
 type Stream struct {
    Resolution string
-   VideoRange string // handle duplicate bandwidth
    Bandwidth int64 // handle duplicate resolution
-   Codecs string // handle missing resolution
-   URI *url.URL
+   VideoRange string // handle duplicate bandwidth
+   RawCodecs string // handle missing resolution
+   RawURI string
 }
 
-func (s Stream) Format(f fmt.State, verb rune) {
+func (s Stream) Codecs() string {
+   codecs := strings.Split(s.RawCodecs, ",")
+   for i, codec := range codecs {
+      before, _, found := strings.Cut(codec, ".")
+      if found {
+         codecs[i] = before
+      }
+   }
+   return strings.Join(codecs, ",")
+}
+
+func (s Stream) String() string {
+   var buf []byte
    if s.Resolution != "" {
-      fmt.Fprint(f, "Resolution:", s.Resolution, " ")
+      buf = append(buf, "Resolution:"...)
+      buf = append(buf, s.Resolution...)
+      buf = append(buf, ' ')
    }
-   fmt.Fprint(f, "Bandwidth:", s.Bandwidth)
-   if s.Codecs != "" {
-      fmt.Fprint(f, " Codecs:", s.Codecs)
+   buf = append(buf, "Bandwidth:"...)
+   buf = strconv.AppendInt(buf, s.Bandwidth, 10)
+   buf = append(buf, " Range:"...)
+   buf = append(buf, s.VideoRange...)
+   if s.RawCodecs != "" {
+      buf = append(buf, " Codecs:"...)
+      buf = append(buf, s.Codecs()...)
    }
-   if verb == 'a' {
-      fmt.Fprint(f, " Range:", s.VideoRange)
-      fmt.Fprint(f, " URI:", s.URI)
-   }
+   return string(buf)
+}
+
+func (s Stream) URI(base *url.URL) (*url.URL, error) {
+   return base.Parse(s.RawURI)
 }
 
 type Streams []Stream
@@ -243,7 +254,7 @@ type Streams []Stream
 func (s Streams) Codecs(val string) Streams {
    var out Streams
    for _, stream := range s {
-      if strings.Contains(stream.Codecs, val) {
+      if strings.Contains(stream.RawCodecs, val) {
          out = append(out, stream)
       }
    }
@@ -267,10 +278,10 @@ func (s Streams) GetBandwidth(val int64) *Stream {
 }
 
 // cdn=vod-ak-aoc.tv.apple.com
-func (s Streams) RawQuery(val string) Streams {
+func (s Streams) URI(val string) Streams {
    var out Streams
    for _, stream := range s {
-      if strings.Contains(stream.URI.RawQuery, val) {
+      if strings.Contains(stream.RawURI, val) {
          out = append(out, stream)
       }
    }
