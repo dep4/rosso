@@ -1,41 +1,29 @@
-package dash
+package decrypt
 
 import (
-   "bytes"
    "encoding/hex"
    "os"
    "testing"
 )
 
-const (
-   rawKey = "22bdb0063805260307ee5045c0f3835a"
-   zero = "P377684155_A1524726231_FF_video_gr203_sdr_508x254_cbcs_--0.mp4"
-   one = "P377684155_A1524726231_FF_video_gr203_sdr_508x254_cbcs_--1.m4s"
-)
+const rawKey = "22bdb0063805260307ee5045c0f3835a"
 
 func TestDecrypt(t *testing.T) {
+   enc, err := os.Open("ignore/enc.mp4")
+   if err != nil {
+      t.Fatal(err)
+   }
+   defer enc.Close()
    dec, err := os.Create("ignore/dec.mp4")
    if err != nil {
       t.Fatal(err)
    }
    defer dec.Close()
-   zero, err := os.ReadFile("ignore/" + zero)
-   if err != nil {
-      t.Fatal(err)
-   }
-   dec.Write(zero)
-   one, err := os.ReadFile("ignore/" + one)
-   if err != nil {
-      t.Fatal(err)
-   }
-   buf := new(bytes.Buffer)
-   buf.Write(zero)
-   buf.Write(one)
    key, err := hex.DecodeString(rawKey)
    if err != nil {
       t.Fatal(err)
    }
-   if err := Decrypt(dec, buf, key); err != nil {
+   if err := decryptMP4withCenc(enc, key, dec); err != nil {
       t.Fatal(err)
    }
 }
