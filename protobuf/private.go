@@ -38,8 +38,8 @@ func (m Message) appendField(buf []byte, num Number) []byte {
 }
 
 func (t Tokens[T]) appendField(buf []byte, num Number) []byte {
-   for _, tok := range t {
-      buf = tok.appendField(buf, num)
+   for _, token := range t {
+      buf = token.appendField(buf, num)
    }
    return buf
 }

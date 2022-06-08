@@ -139,13 +139,13 @@ func (r Represents) Represent(bandwidth int64) *Represent {
       }
       return bandwidth - r.Bandwidth
    }
-   var dst *Represent
-   for i, src := range r {
-      if dst == nil || distance(&src) < distance(dst) {
-         dst = &r[i]
+   var output *Represent
+   for i, input := range r {
+      if output == nil || distance(&input) < distance(output) {
+         output = &r[i]
       }
    }
-   return dst
+   return output
 }
 
 func Video(a Adaptation, r Represent) bool {
