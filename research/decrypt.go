@@ -12,21 +12,28 @@ import (
 // aomediacodec.github.io/av1-isobmff
 // crypt_byte_block = 1 and skip_byte_block = 9
 func DecryptSample(input, key, iv []byte, subsamples []mp4.SubSamplePattern) ([]byte, error) {
-   var pos uint32
    block, err := aes.NewCipher(key)
    if err != nil {
       return nil, err
    }
+   var low uint32
    for _, subsample := range subsamples {
-      rem_bytes := subsample.BytesOfProtectedData
-      for rem_bytes >= 16*1 {
-         data := input[pos:][:16*1]
+      for {
+         high := low + 16*1
+         if int(high) >= len(input) {
+            break
+         }
+         data := input[low:high]
          cipher.NewCBCDecrypter(block, iv).CryptBlocks(data, data)
-         pos += 16*1
-         rem_bytes -= 16*1
+         // crypt
+         low += 16*1
+         subsample.BytesOfProtectedData -= 16*1
+         // skip
+         low += 16*9
+         subsample.BytesOfClearData -= 16*9
       }
-      pos += rem_bytes
-      pos += uint32(subsample.BytesOfClearData)
+      low += subsample.BytesOfProtectedData
+      low += uint32(subsample.BytesOfClearData)
    }
    return input, nil
 }
