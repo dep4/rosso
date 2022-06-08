@@ -9,6 +9,64 @@ import (
    "io"
 )
 
+// aomediacodec.github.io/av1-isobmff
+// crypt_byte_block = 1 and skip_byte_block = 9
+func DecryptSample(input, key, iv []byte, subsamples []mp4.SubSamplePattern) ([]byte, error) {
+   var pos uint32
+   block, err := aes.NewCipher(key)
+   if err != nil {
+      return nil, err
+   }
+   for _, subsample := range subsamples {
+      rem_bytes := subsample.BytesOfProtectedData
+      for rem_bytes >= 16*1 {
+         data := input[pos:][:16*1]
+         cipher.NewCBCDecrypter(block, iv).CryptBlocks(data, data)
+         pos += 16*1
+         rem_bytes -= 16*1
+      }
+      pos += rem_bytes
+      pos += uint32(subsample.BytesOfClearData)
+   }
+   return input, nil
+}
+
+func decryptFragment(inMp4 *mp4.File, frag *mp4.Fragment, tracks []trackInfo, key []byte) error {
+   moof := frag.Moof
+   var nrBytesRemoved uint64
+   for _, traf := range moof.Trafs {
+      hasSenc, isParsed := traf.ContainsSencBox()
+      if !hasSenc {
+         continue
+      }
+      ti := findTrackInfo(tracks, traf.Tfhd.TrackID)
+      if !isParsed {
+         defaultIVSize := ti.sinf.Schi.Tenc.DefaultPerSampleIVSize
+         err := traf.ParseReadSenc(defaultIVSize, moof.StartPos)
+         if err != nil {
+            return fmt.Errorf("parseReadSenc: %w", err)
+         }
+      }
+      samples, err := frag.GetFullSamples(ti.trex)
+      if err != nil {
+         return err
+      }
+      iv := ti.sinf.Schi.Tenc.DefaultConstantIV
+      err = decryptSamplesInPlace(samples, key, iv, traf.Senc)
+      if err != nil {
+         return err
+      }
+      nrBytesRemoved += traf.RemoveEncryptionBoxes()
+   }
+   for _, traf := range moof.Trafs {
+      for _, trun := range traf.Truns {
+         trun.DataOffset -= int32(nrBytesRemoved)
+      }
+   }
+   _ = moof.RemovePsshs()
+   return nil
+}
+
 func decryptAndWriteSegments(inMp4 *mp4.File, tracks []trackInfo, key []byte, ofh io.Writer) error {
    var outNr uint32 = 1
    for _, seg := range inMp4.Segments {
@@ -38,7 +96,7 @@ func decryptMP4withCenc(r io.Reader, key []byte, w io.Writer) error {
    if !inMp4.IsFragmented() {
       return fmt.Errorf("file not fragmented. Not supported")
    }
-   tracks := make([]trackInfo, 0, len(inMp4.Init.Moov.Traks))
+   var tracks []trackInfo
    moov := inMp4.Init.Moov
    for _, trak := range moov.Traks {
       trackID := trak.Tkhd.TrackID
@@ -99,48 +157,6 @@ func decryptMP4withCenc(r io.Reader, key []byte, w io.Writer) error {
    return nil
 }
 
-func decryptFragment(inMp4 *mp4.File, frag *mp4.Fragment, tracks []trackInfo, key []byte) error {
-   moof := frag.Moof
-   var nrBytesRemoved uint64 = 0
-   for _, traf := range moof.Trafs {
-      hasSenc, isParsed := traf.ContainsSencBox()
-      if !hasSenc {
-         return fmt.Errorf("no senc box in traf")
-      }
-      ti := findTrackInfo(tracks, traf.Tfhd.TrackID)
-      if !isParsed {
-         defaultIVSize := ti.sinf.Schi.Tenc.DefaultPerSampleIVSize
-         err := traf.ParseReadSenc(defaultIVSize, moof.StartPos)
-         if err != nil {
-            return fmt.Errorf("parseReadSenc: %w", err)
-         }
-      }
-      var iv []byte
-      if sinf := inMp4.Moov.GetSinf(traf.Tfhd.TrackID); sinf != nil {
-         iv = sinf.Schi.Tenc.DefaultConstantIV
-      }
-      if iv == nil {
-         continue
-      }
-      samples, err := frag.GetFullSamples(ti.trex)
-      if err != nil {
-         return err
-      }
-      err = decryptSamplesInPlace(samples, key, iv, traf.Senc)
-      if err != nil {
-         return err
-      }
-      nrBytesRemoved += traf.RemoveEncryptionBoxes()
-   }
-   for _, traf := range moof.Trafs {
-      for _, trun := range traf.Truns {
-         trun.DataOffset -= int32(nrBytesRemoved)
-      }
-   }
-   _ = moof.RemovePsshs()
-   return nil
-}
-
 func decryptSamplesInPlace(samples []mp4.FullSample, key, iv []byte, senc *mp4.SencBox) error {
    for i := range samples {
       encSample := samples[i].Data
@@ -155,48 +171,6 @@ func decryptSamplesInPlace(samples []mp4.FullSample, key, iv []byte, senc *mp4.S
       _ = copy(samples[i].Data, decryptedSample)
    }
    return nil
-}
-
-func DecryptSample(input, key, iv []byte, subsamples []mp4.SubSamplePattern) ([]byte, error) {
-   var (
-      output []byte
-      pos uint32
-   )
-   for _, subsample := range subsamples {
-      output = append(output, input[pos:][:subsample.BytesOfClearData]...)
-      pos += uint32(subsample.BytesOfClearData)
-      rem_bytes := subsample.BytesOfProtectedData
-      for rem_bytes > 0 {
-         // aomediacodec.github.io/av1-isobmff
-         // crypt_byte_block = 1 and skip_byte_block = 9
-         if rem_bytes < 16*1 {
-            output = append(output, input[pos:]...)
-            break
-         }
-         data, err := DecryptBytes(input[pos:][:16*1], key, iv)
-         if err != nil {
-            return nil, err
-         }
-         output = append(output, data...)
-         // crypt
-         pos += 16*1
-         rem_bytes -= 16*1
-         // skip
-         pos += min(16*9, rem_bytes)
-         rem_bytes -= min(16*9, rem_bytes)
-      }
-      pos += subsample.BytesOfProtectedData
-   }
-   return output, nil
-}
-
-func DecryptBytes(data []byte, key []byte, iv []byte) ([]byte, error) {
-   block, err := aes.NewCipher(key)
-   if err != nil {
-      return nil, err
-   }
-   cipher.NewCBCDecrypter(block, iv).CryptBlocks(data, data)
-   return data, nil
 }
 
 func min(a, b uint32) uint32 {
