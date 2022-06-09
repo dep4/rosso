@@ -46,10 +46,23 @@ func (c Cipher) Copy(w io.Writer, r io.Reader, iv []byte) (int, error) {
    return w.Write(buf)
 }
 
-func (s Scanner) Segment() (*Segment, error) {
+func (s Segment) Key(base *url.URL) (*url.URL, error) {
+   return base.Parse(*s.RawKey)
+}
+
+func (s Segment) URI(base *url.URL) (*url.URL, error) {
+   return base.Parse(s.RawURI)
+}
+
+func (s Segment) IV() ([]byte, error) {
+   up := strings.ToUpper(*s.RawIV)
+   return hex.DecodeString(strings.TrimPrefix(up, "0X"))
+}
+
+func (s Scanner) Segments() (Segments, error) {
    var (
-      info Information
       seg Segment
+      segs Segments
    )
    for s.line.Scan() != scanner.EOF {
       line := s.line.TokenText()
@@ -61,45 +74,43 @@ func (s Scanner) Segment() (*Segment, error) {
             case "IV":
                s.Scan()
                s.Scan()
-               info.RawIV = s.TokenText()
+               text := s.TokenText()
+               seg.RawIV = &text
             case "URI":
                s.Scan()
                s.Scan()
-               var err error
-               seg.RawKey, err = strconv.Unquote(s.TokenText())
+               text, err := strconv.Unquote(s.TokenText())
                if err != nil {
                   return nil, err
                }
+               seg.RawKey = &text
             }
          }
       case len(line) >= 1 && !strings.HasPrefix(line, "#"):
-         info.RawURI = line
-         seg.Info = append(seg.Info, info)
-         info = Information{}
+         seg.RawURI = line
+         segs = append(segs, seg)
+      case line == "#EXT-X-DISCONTINUITY":
+         seg.RawIV = nil
+         seg.RawKey = nil
       }
    }
-   return &seg, nil
+   return segs, nil
 }
 
-type Information struct {
-   RawIV string
-   RawURI string
-}
+type Segments []Segment
 
-func (i Information) IV() ([]byte, error) {
-   up := strings.ToUpper(i.RawIV)
-   return hex.DecodeString(strings.TrimPrefix(up, "0X"))
-}
-
-func (i Information) URI(base *url.URL) (*url.URL, error) {
-   return base.Parse(i.RawURI)
+func (s Segments) Key() Segments {
+   var segs Segments
+   for _, seg := range s {
+      if seg.RawKey != nil {
+         segs = append(segs, seg)
+      }
+   }
+   return segs
 }
 
 type Segment struct {
-   Info []Information
-   RawKey string
-}
-
-func (s Segment) Key(base *url.URL) (*url.URL, error) {
-   return base.Parse(s.RawKey)
+   RawURI string
+   RawIV *string
+   RawKey *string
 }

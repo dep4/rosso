@@ -14,7 +14,7 @@ var rawIVs = []string{
 
 func TestHex(t *testing.T) {
    for _, rawIV := range rawIVs {
-      iv, err := Information{RawIV: rawIV}.IV()
+      iv, err := Segment{RawIV: &rawIV}.IV()
       if err != nil {
          t.Fatal(err)
       }
@@ -28,12 +28,11 @@ func TestSegment(t *testing.T) {
       t.Fatal(err)
    }
    defer file.Close()
-   seg, err := NewScanner(file).Segment()
+   segs, err := NewScanner(file).Segments()
    if err != nil {
       t.Fatal(err)
    }
-   for _, info := range seg.Info {
-      fmt.Printf("%+v\n", info)
+   for _, seg := range segs.Key() {
+      fmt.Printf("%+v\n", seg)
    }
-   fmt.Println(seg.RawKey)
 }
