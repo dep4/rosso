@@ -2,12 +2,26 @@ package hls
 
 import (
    "io"
-   "net/url"
    "strconv"
    "strings"
    "text/scanner"
    "unicode"
 )
+
+type Medium struct {
+   Type string
+   Name string
+   GroupID string
+   RawURI string
+}
+
+type Stream struct {
+   Resolution string
+   Bandwidth int64 // handle duplicate resolution
+   VideoRange string // handle duplicate bandwidth
+   RawCodecs string // handle missing resolution
+   RawURI string
+}
 
 const (
    AAC = ".aac"
@@ -84,13 +98,6 @@ func (m Media) Type(val string) Media {
    return out
 }
 
-type Medium struct {
-   Type string
-   Name string
-   GroupID string
-   RawURI string
-}
-
 func (m Medium) String() string {
    var buf strings.Builder
    buf.WriteString("Type:")
@@ -100,10 +107,6 @@ func (m Medium) String() string {
    buf.WriteString(" ID:")
    buf.WriteString(m.GroupID)
    return buf.String()
-}
-
-func (m Medium) URI(base *url.URL) (*url.URL, error) {
-   return base.Parse(m.RawURI)
 }
 
 type Scanner struct {
@@ -207,14 +210,6 @@ func (s Scanner) Master() (*Master, error) {
    return &mas, nil
 }
 
-type Stream struct {
-   Resolution string
-   Bandwidth int64 // handle duplicate resolution
-   VideoRange string // handle duplicate bandwidth
-   RawCodecs string // handle missing resolution
-   RawURI string
-}
-
 func (s Stream) Codecs() string {
    codecs := strings.Split(s.RawCodecs, ",")
    for i, codec := range codecs {
@@ -242,10 +237,6 @@ func (s Stream) String() string {
       buf = append(buf, s.Codecs()...)
    }
    return string(buf)
-}
-
-func (s Stream) URI(base *url.URL) (*url.URL, error) {
-   return base.Parse(s.RawURI)
 }
 
 type Streams []Stream
