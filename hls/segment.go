@@ -48,7 +48,7 @@ func (c Cipher) Copy(w io.Writer, r io.Reader, iv []byte) (int, error) {
 
 func (s Scanner) Segment() (*Segment, error) {
    var (
-      info Information
+      key bool
       seg Segment
    )
    for s.line.Scan() != scanner.EOF {
@@ -56,12 +56,13 @@ func (s Scanner) Segment() (*Segment, error) {
       s.Init(strings.NewReader(line))
       switch {
       case strings.HasPrefix(line, "#EXT-X-KEY:"):
+         key = true
          for s.Scan() != scanner.EOF {
             switch s.TokenText() {
             case "IV":
                s.Scan()
                s.Scan()
-               info.RawIV = s.TokenText()
+               seg.RawIV = s.TokenText()
             case "URI":
                s.Scan()
                s.Scan()
@@ -73,33 +74,30 @@ func (s Scanner) Segment() (*Segment, error) {
             }
          }
       case len(line) >= 1 && !strings.HasPrefix(line, "#"):
-         info.RawURI = line
-         seg.Info = append(seg.Info, info)
-         info = Information{}
+         if key {
+            seg.Protected = append(seg.Protected, line)
+         } else {
+            seg.Clear = append(seg.Clear, line)
+         }
+      case line == "#EXT-X-DISCONTINUITY":
+         key = false
       }
    }
    return &seg, nil
 }
 
-type Information struct {
-   RawIV string
-   RawURI string
-}
-
-func (i Information) IV() ([]byte, error) {
-   up := strings.ToUpper(i.RawIV)
+func (s Segment) IV() ([]byte, error) {
+   up := strings.ToUpper(s.RawIV)
    return hex.DecodeString(strings.TrimPrefix(up, "0X"))
 }
 
-func (i Information) URI(base *url.URL) (*url.URL, error) {
-   return base.Parse(i.RawURI)
-}
-
 type Segment struct {
-   Info []Information
+   Clear []string
+   Protected []string
+   RawIV string
    RawKey string
 }
 
-func (s Segment) Key(base *url.URL) (*url.URL, error) {
-   return base.Parse(s.RawKey)
+func URI(base *url.URL, ref string) (*url.URL, error) {
+   return base.Parse(ref)
 }
