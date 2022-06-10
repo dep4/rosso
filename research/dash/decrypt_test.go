@@ -2,6 +2,7 @@ package decrypt
 
 import (
    "encoding/hex"
+   "fmt"
    "os"
    "testing"
 )
@@ -32,17 +33,20 @@ func TestDecrypt(t *testing.T) {
       t.Fatal(err)
    }
    defer init0.Close()
-   dec.ReadFrom(init0)
+   if err := decryptInit(init0, dec); err != nil {
+      t.Fatal(err)
+   }
    key, err := hex.DecodeString(rawKey)
    if err != nil {
       t.Fatal(err)
    }
    for _, segment := range segments {
+      fmt.Println(segment)
       file, err := os.Open("ignore/" + segment)
       if err != nil {
          t.Fatal(err)
       }
-      if err := decryptMP4withCenc(file, key, dec); err != nil {
+      if err := decryptSegment(file, key, dec); err != nil {
          t.Fatal(err)
       }
       if err := file.Close(); err != nil {
