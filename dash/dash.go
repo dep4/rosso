@@ -72,9 +72,9 @@ type Protection struct {
    Default_KID string `xml:"default_KID,attr"`
 }
 
-func (p Protection) KID() ([]byte, error) {
-   kid := strings.ReplaceAll(p.Default_KID, "-", "")
-   return hex.DecodeString(kid)
+func (p Protection) KeyID() ([]byte, error) {
+   keyID := strings.ReplaceAll(p.Default_KID, "-", "")
+   return hex.DecodeString(keyID)
 }
 
 func (r Represent) String() string {

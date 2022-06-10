@@ -25,16 +25,16 @@ func TestRepresent(t *testing.T) {
       if err := file.Close(); err != nil {
          t.Fatal(err)
       }
-      kID, err := period.Protection().KID()
-      if err != nil {
-         t.Fatal(err)
-      }
-      fmt.Printf("%x\n", kID)
       for _, rep := range period.Represents(Video) {
          fmt.Println(rep)
       }
       for _, rep := range period.Represents(Audio) {
          fmt.Println(rep)
       }
+      keyID, err := period.Protection().KeyID()
+      if err != nil {
+         t.Fatal(err)
+      }
+      fmt.Printf("%x\n", keyID)
    }
 }
