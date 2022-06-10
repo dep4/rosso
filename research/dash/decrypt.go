@@ -7,6 +7,71 @@ import (
    "io"
 )
 
+func decryptMP4withCenc(r io.Reader, key []byte, w io.Writer) error {
+   inMp4, err := mp4.DecodeFile(r)
+   if err != nil {
+      return err
+   }
+   if !inMp4.IsFragmented() {
+      return fmt.Errorf("file not fragmented. Not supported")
+   }
+   tracks := make([]trackInfo, 0, len(inMp4.Init.Moov.Traks))
+   moov := inMp4.Init.Moov
+   for _, trak := range moov.Traks {
+      trackID := trak.Tkhd.TrackID
+      stsd := trak.Mdia.Minf.Stbl.Stsd
+      var encv *mp4.VisualSampleEntryBox
+      var enca *mp4.AudioSampleEntryBox
+      for _, child := range stsd.Children {
+         switch child.Type() {
+         case "encv":
+            encv = child.(*mp4.VisualSampleEntryBox)
+            sinf, err := encv.RemoveEncryption()
+            if err != nil {
+               return err
+            }
+            tracks = append(tracks, trackInfo{
+               trackID: trackID,
+               sinf:    sinf,
+            })
+         case "enca":
+            enca = child.(*mp4.AudioSampleEntryBox)
+            sinf, err := enca.RemoveEncryption()
+            if err != nil {
+               return err
+            }
+            tracks = append(tracks, trackInfo{
+               trackID: trackID,
+               sinf:    sinf,
+            })
+         default:
+            continue
+         }
+      }
+   }
+   for _, trex := range moov.Mvex.Trexs {
+      for i := range tracks {
+         if tracks[i].trackID == trex.TrackID {
+            tracks[i].trex = trex
+            break
+         }
+      }
+   }
+   psshs := moov.RemovePsshs()
+   for _, pssh := range psshs {
+      psshInfo := bytes.Buffer{}
+      err = pssh.Info(&psshInfo, "", "", "  ")
+      if err != nil {
+         return err
+      }
+   }
+   err = inMp4.Init.Encode(w)
+   if err != nil {
+      return err
+   }
+   return decryptAndWriteSegments(inMp4.Segments, tracks, key, w)
+}
+
 type trackInfo struct {
 	trackID uint32
 	sinf    *mp4.SinfBox
@@ -22,84 +87,6 @@ func findTrackInfo(tracks []trackInfo, trackID uint32) trackInfo {
 	return trackInfo{}
 }
 
-// decryptMP4withCenc - decrypt segmented mp4 file with CENC encryption
-func decryptMP4withCenc(r io.Reader, key []byte, w io.Writer) error {
-	inMp4, err := mp4.DecodeFile(r)
-	if err != nil {
-		return err
-	}
-	if !inMp4.IsFragmented() {
-		return fmt.Errorf("file not fragmented. Not supported")
-	}
-
-	tracks := make([]trackInfo, 0, len(inMp4.Init.Moov.Traks))
-
-	moov := inMp4.Init.Moov
-
-	for _, trak := range moov.Traks {
-		trackID := trak.Tkhd.TrackID
-		stsd := trak.Mdia.Minf.Stbl.Stsd
-		var encv *mp4.VisualSampleEntryBox
-		var enca *mp4.AudioSampleEntryBox
-
-		for _, child := range stsd.Children {
-			switch child.Type() {
-			case "encv":
-				encv = child.(*mp4.VisualSampleEntryBox)
-				sinf, err := encv.RemoveEncryption()
-				if err != nil {
-					return err
-				}
-				tracks = append(tracks, trackInfo{
-					trackID: trackID,
-					sinf:    sinf,
-				})
-			case "enca":
-				enca = child.(*mp4.AudioSampleEntryBox)
-				sinf, err := enca.RemoveEncryption()
-				if err != nil {
-					return err
-				}
-				tracks = append(tracks, trackInfo{
-					trackID: trackID,
-					sinf:    sinf,
-				})
-			default:
-				continue
-			}
-		}
-	}
-
-	for _, trex := range moov.Mvex.Trexs {
-		for i := range tracks {
-			if tracks[i].trackID == trex.TrackID {
-				tracks[i].trex = trex
-				break
-			}
-		}
-	}
-	psshs := moov.RemovePsshs()
-	for _, pssh := range psshs {
-		psshInfo := bytes.Buffer{}
-		err = pssh.Info(&psshInfo, "", "", "  ")
-		if err != nil {
-			return err
-		}
-		//fmt.Printf("pssh: %s\n", psshInfo.String())
-	}
-
-	// Write the modified init segment
-	err = inMp4.Init.Encode(w)
-	if err != nil {
-		return err
-	}
-
-	err = decryptAndWriteSegments(inMp4.Segments, tracks, key, w)
-	if err != nil {
-		return err
-	}
-	return nil
-}
 
 func decryptAndWriteSegments(segs []*mp4.MediaSegment, tracks []trackInfo, key []byte, ofh io.Writer) error {
 	var outNr uint32 = 1
