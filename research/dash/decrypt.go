@@ -1,55 +1,11 @@
-package main
+package decrypt
 
 import (
-	"bytes"
-	"encoding/hex"
-	"flag"
-	"fmt"
-	"io"
-	"log"
-	"os"
-
-	"github.com/edgeware/mp4ff/mp4"
+   "bytes"
+   "fmt"
+   "github.com/edgeware/mp4ff/mp4"
+   "io"
 )
-
-func main() {
-	inFilePath := flag.String("i", "", "Required: Path to input file")
-	outFilePath := flag.String("o", "", "Required: Output file")
-	hexKey := flag.String("k", "", "Required: key (hex)")
-
-	flag.Parse()
-
-	ifh, err := os.Open(*inFilePath)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer ifh.Close()
-	ofh, err := os.Create(*outFilePath)
-	if err != nil {
-		log.Fatal(err)
-	}
-	err = start(ifh, ofh, *hexKey)
-	if err != nil {
-		log.Fatalln(err)
-	}
-}
-
-func start(r io.Reader, w io.Writer, hexKey string) error {
-
-	if len(hexKey) != 32 {
-		return fmt.Errorf("Hex key must have length 32 chars")
-	}
-	key, err := hex.DecodeString(hexKey)
-	if err != nil {
-		return err
-	}
-
-	err = decryptMP4withCenc(r, key, w)
-	if err != nil {
-		return err
-	}
-	return nil
-}
 
 type trackInfo struct {
 	trackID uint32
