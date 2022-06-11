@@ -3,12 +3,10 @@ package dash
 import (
    "github.com/edgeware/mp4ff/mp4"
    "io"
-   "strconv"
-   "strings"
 )
 
-func Decrypt(w io.Writer, r io.Reader, key []byte) error {
-   file, err := mp4.DecodeFile(r)
+func Decrypt(dst io.Writer, src io.Reader, key []byte) error {
+   file, err := mp4.DecodeFile(src)
    if err != nil {
       return err
    }
@@ -42,7 +40,7 @@ func Decrypt(w io.Writer, r io.Reader, key []byte) error {
       }
       // fix jerk between fragments
       seg.Sidx = nil
-      err := seg.Encode(w)
+      err := seg.Encode(dst)
       if err != nil {
          return err
       }
@@ -50,14 +48,24 @@ func Decrypt(w io.Writer, r io.Reader, key []byte) error {
    return nil
 }
 
-func (r Represent) id(in string) string {
-   return strings.Replace(in, "$RepresentationID$", r.ID, 1)
-}
-
-func (s Segment) number(in string) string {
-   return strings.Replace(in, "$Number$", strconv.Itoa(s.T), 1)
-}
-
-func (s Segment) time(in string) string {
-   return strings.Replace(in, "$Time$", strconv.Itoa(s.T), 1)
+// Need for Mozilla Firefox and VLC media player
+func DecryptInit(dst io.Writer, src io.Reader) error {
+   file, err := mp4.DecodeFile(src)
+   if err != nil {
+      return err
+   }
+   for _, trak := range file.Init.Moov.Traks {
+      for _, child := range trak.Mdia.Minf.Stbl.Stsd.Children {
+         switch child.Type() {
+         case "enca":
+            _, err = child.(*mp4.AudioSampleEntryBox).RemoveEncryption()
+         case "encv":
+            _, err = child.(*mp4.VisualSampleEntryBox).RemoveEncryption()
+         }
+         if err != nil {
+            return err
+         }
+      }
+   }
+   return file.Init.Encode(dst)
 }

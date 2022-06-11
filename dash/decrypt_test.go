@@ -2,67 +2,54 @@ package dash
 
 import (
    "encoding/hex"
+   "fmt"
    "os"
    "testing"
 )
 
-type decryptTest struct {
-	init    string
-	segment string
-	create  string
-	key     string
-}
+const rawKey = "6b1f79ba70956a37fe716997b8d211ae"
 
-var decTests = []decryptTest{
-	{
-		"ignore/amc-init0.m4f",
-		"ignore/amc-segment0.m4f",
-		"ignore/amc.mp4",
-		"a66a5603545ad206c1a78e160a6710b1",
-	},
-	{
-		"ignore/paramount-init.m4v",
-		"ignore/paramount-seg_1.m4s",
-		"ignore/paramount.mp4",
-		"44f12639c9c4a5a432338aca92e38920",
-	},
-	{
-		"ignore/roku-index_video_1_0_init.mp4",
-		"ignore/roku-index_video_1_0_1.mp4",
-		"ignore/roku.mp4",
-		"13d7c7cf295444944b627ef0ad2c1b3c",
-	},
+var segments = []string{
+   "segment0.m4f",
+   "segment1.m4f",
+   "segment2.m4f",
+   "segment3.m4f",
+   "segment4.m4f",
+   "segment5.m4f",
+   "segment6.m4f",
+   "segment7.m4f",
+   "segment8.m4f",
+   "segment9.m4f",
 }
 
 func TestDecrypt(t *testing.T) {
-   for _, test := range decTests {
-      dst, err := os.Create(test.create)
+   dec, err := os.Create("ignore/dec.mp4")
+   if err != nil {
+      t.Fatal(err)
+   }
+   defer dec.Close()
+   init0, err := os.Open("ignore/init0.m4f")
+   if err != nil {
+      t.Fatal(err)
+   }
+   defer init0.Close()
+   if err := DecryptInit(init0, dec); err != nil {
+      t.Fatal(err)
+   }
+   key, err := hex.DecodeString(rawKey)
+   if err != nil {
+      t.Fatal(err)
+   }
+   for _, segment := range segments {
+      fmt.Println(segment)
+      file, err := os.Open("ignore/" + segment)
       if err != nil {
          t.Fatal(err)
       }
-      init, err := os.Open(test.init)
-      if err != nil {
+      if err := Decrypt(dec, file, key); err != nil {
          t.Fatal(err)
       }
-      dst.ReadFrom(init)
-      if err := init.Close(); err != nil {
-         t.Fatal(err)
-      }
-      seg, err := os.Open(test.segment)
-      if err != nil {
-         t.Fatal(err)
-      }
-      key, err := hex.DecodeString(test.key)
-      if err != nil {
-         t.Fatal(err)
-      }
-      if err := Decrypt(dst, seg, key); err != nil {
-         t.Fatal(err)
-      }
-      if err := seg.Close(); err != nil {
-         t.Fatal(err)
-      }
-      if err := dst.Close(); err != nil {
+      if err := file.Close(); err != nil {
          t.Fatal(err)
       }
    }

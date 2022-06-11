@@ -1,7 +1,6 @@
 package dash
 
 import (
-   "encoding/hex"
    "encoding/xml"
    "io"
    "net/url"
@@ -70,11 +69,6 @@ type PeriodFunc func(Adaptation, Represent) bool
 
 type Protection struct {
    Default_KID string `xml:"default_KID,attr"`
-}
-
-func (p Protection) KeyID() ([]byte, error) {
-   keyID := strings.ReplaceAll(p.Default_KID, "-", "")
-   return hex.DecodeString(keyID)
 }
 
 func (r Represent) String() string {
@@ -189,4 +183,16 @@ func (r Represent) Media(base *url.URL) ([]*url.URL, error) {
       }
    }
    return addrs, nil
+}
+
+func (r Represent) id(in string) string {
+   return strings.Replace(in, "$RepresentationID$", r.ID, 1)
+}
+
+func (s Segment) number(in string) string {
+   return strings.Replace(in, "$Number$", strconv.Itoa(s.T), 1)
+}
+
+func (s Segment) time(in string) string {
+   return strings.Replace(in, "$Time$", strconv.Itoa(s.T), 1)
 }

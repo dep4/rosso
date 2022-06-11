@@ -31,10 +31,10 @@ func TestRepresent(t *testing.T) {
       for _, rep := range period.Represents(Audio) {
          fmt.Println(rep)
       }
-      keyID, err := period.Protection().KeyID()
+      protect := period.Protection()
       if err != nil {
          t.Fatal(err)
       }
-      fmt.Printf("%x\n", keyID)
+      fmt.Println(protect.Default_KID)
    }
 }
