@@ -1,6 +1,7 @@
 package format
 
 import (
+   "encoding/json"
    "fmt"
    "io"
    "net/http"
@@ -22,19 +23,21 @@ func TestString(t *testing.T) {
 }
 
 func TestOpen(t *testing.T) {
-   type token struct {
-      Services string
-      Token string
-   }
    home, err := os.UserHomeDir()
    if err != nil {
       t.Fatal(err)
    }
-   tok, err := Open[token](home, "googleplay/token.json")
+   file, err := Open(home, "googleplay/token.json")
    if err != nil {
       t.Fatal(err)
    }
-   fmt.Printf("%+v\n", tok)
+   defer file.Close()
+   var token struct {
+      Services string
+      Token string
+   }
+   json.NewDecoder(file).Decode(&token)
+   fmt.Printf("%+v\n", token)
 }
 
 func TestLabel(t *testing.T) {

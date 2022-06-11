@@ -2,7 +2,6 @@ package format
 
 import (
    "bytes"
-   "encoding/json"
    "io"
    "net/http"
    "net/http/httputil"
@@ -13,6 +12,24 @@ import (
    "time"
    "unicode/utf8"
 )
+
+func Create(elem ...string) (*os.File, error) {
+   join := filepath.Join(elem...)
+   dir := filepath.Dir(join)
+   err := os.MkdirAll(dir, os.ModePerm)
+   if err != nil {
+      return nil, err
+   }
+   os.Stderr.WriteString("Create ")
+   os.Stderr.WriteString(join)
+   os.Stderr.WriteString("\n")
+   return os.Create(join)
+}
+
+func Open(elem ...string) (*os.File, error) {
+   join := filepath.Join(elem...)
+   return os.Open(join)
+}
 
 // mimesniff.spec.whatwg.org#binary-data-byte
 func IsString(buf []byte) bool {
@@ -32,37 +49,6 @@ func IsString(buf []byte) bool {
    }
    // []byte{0xE0, '<'}
    return utf8.Valid(buf)
-}
-
-func Create[T any](value T, elem ...string) error {
-   name := filepath.Join(elem...)
-   err := os.MkdirAll(filepath.Dir(name), os.ModePerm)
-   if err != nil {
-      return err
-   }
-   os.Stderr.WriteString("Create " + name + "\n")
-   file, err := os.Create(name)
-   if err != nil {
-      return err
-   }
-   defer file.Close()
-   enc := json.NewEncoder(file)
-   enc.SetIndent("", " ")
-   return enc.Encode(value)
-}
-
-func Open[T any](elem ...string) (*T, error) {
-   name := filepath.Join(elem...)
-   file, err := os.Open(name)
-   if err != nil {
-      return nil, err
-   }
-   defer file.Close()
-   value := new(T)
-   if err := json.NewDecoder(file).Decode(value); err != nil {
-      return nil, err
-   }
-   return value, nil
 }
 
 func Label[T Number](value T, unit ...string) string {
