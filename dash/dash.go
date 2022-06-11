@@ -190,3 +190,15 @@ func (r Represent) Media(base *url.URL) ([]*url.URL, error) {
    }
    return addrs, nil
 }
+
+func (r Represent) id(in string) string {
+   return strings.Replace(in, "$RepresentationID$", r.ID, 1)
+}
+
+func (s Segment) number(in string) string {
+   return strings.Replace(in, "$Number$", strconv.Itoa(s.T), 1)
+}
+
+func (s Segment) time(in string) string {
+   return strings.Replace(in, "$Time$", strconv.Itoa(s.T), 1)
+}
