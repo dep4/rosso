@@ -7,12 +7,12 @@ import (
 )
 
 func TestCheckin(t *testing.T) {
-   buf, err := os.ReadFile("details.txt")
+   data, err := os.ReadFile("details.txt")
    if err != nil {
       t.Fatal(err)
    }
-   mes, err := Unmarshal(buf)
-   if err != nil {
+   mes := make(Message)
+   if err := mes.UnmarshalBinary(data); err != nil {
       t.Fatal(err)
    }
    enc := json.NewEncoder(os.Stdout)

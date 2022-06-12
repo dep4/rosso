@@ -11,6 +11,25 @@ import (
    "text/scanner"
 )
 
+// this has less allocations than `io.ReadAll`
+func (c *Cipher) ReadFrom(r io.Reader) (int64, error) {
+   num, err := c.key.ReadFrom(r)
+   if err != nil {
+      return 0, err
+   }
+   c.Block, err = aes.NewCipher(c.key.Bytes())
+   if err != nil {
+      return 0, err
+   }
+   return num, nil
+}
+
+type Cipher struct {
+   IV []byte
+   cipher.Block
+   key bytes.Buffer
+}
+
 func (s Scanner) Segment() (*Segment, error) {
    var (
       key bool
@@ -61,25 +80,6 @@ type Segment struct {
    Protected []string
    RawIV string
    RawKey string
-}
-
-type Cipher struct {
-   IV []byte
-   cipher.Block
-   key bytes.Buffer
-}
-
-// this has less allocations than `io.ReadAll`
-func (c *Cipher) ReadFrom(r io.Reader) (int64, error) {
-   num, err := io.Copy(&c.key, r)
-   if err != nil {
-      return 0, err
-   }
-   c.Block, err = aes.NewCipher(c.key.Bytes())
-   if err != nil {
-      return 0, err
-   }
-   return num, nil
 }
 
 func (c Cipher) Copy(w io.Writer, r io.Reader) (int, error) {

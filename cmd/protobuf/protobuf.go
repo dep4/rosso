@@ -7,20 +7,20 @@ import (
 )
 
 func doProtoBuf(input, output string) error {
-   buf, err := os.ReadFile(input)
+   data, err := os.ReadFile(input)
    if err != nil {
       return err
    }
-   mes, err := protobuf.Unmarshal(buf)
-   if err != nil {
+   mes := make(protobuf.Message)
+   if err := mes.UnmarshalBinary(data); err != nil {
       return err
    }
-   dst, err := os.Create(output)
+   file, err := os.Create(output)
    if err != nil {
-      dst = os.Stdout
+      file = os.Stdout
    }
-   defer dst.Close()
-   enc := json.NewEncoder(dst)
+   defer file.Close()
+   enc := json.NewEncoder(file)
    enc.SetEscapeHTML(false)
    enc.SetIndent("", " ")
    return enc.Encode(mes)

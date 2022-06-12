@@ -6,6 +6,17 @@ import (
    "io"
 )
 
+// this uses less allocations than `io.ReadAll`
+func (s *Scanner) ReadFrom(r io.Reader) (int64, error) {
+   var buf bytes.Buffer
+   num, err := buf.ReadFrom(r)
+   if err != nil {
+      return 0, err
+   }
+   s.buf = buf.Bytes()
+   return num, nil
+}
+
 var (
    NewDecoder = json.NewDecoder
    NewEncoder = json.NewEncoder
@@ -32,15 +43,4 @@ func (s *Scanner) Scan() bool {
    var found bool
    _, s.buf, found = bytes.Cut(s.buf, s.Split)
    return found
-}
-
-// this uses less allocations than `io.ReadAll`
-func (s *Scanner) ReadFrom(r io.Reader) (int64, error) {
-   var buf bytes.Buffer
-   num, err := io.Copy(&buf, r)
-   if err != nil {
-      return 0, err
-   }
-   s.buf = buf.Bytes()
-   return num, nil
 }
