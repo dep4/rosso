@@ -34,10 +34,13 @@ func (s *Scanner) Scan() bool {
    return found
 }
 
-func NewScanner(src io.Reader) (*Scanner, error) {
-   buf, err := io.ReadAll(src)
+// this uses less allocations than `io.ReadAll`
+func (s *Scanner) ReadFrom(r io.Reader) (int64, error) {
+   var buf bytes.Buffer
+   num, err := io.Copy(&buf, r)
    if err != nil {
-      return nil, err
+      return 0, err
    }
-   return &Scanner{buf: buf}, nil
+   s.buf = buf.Bytes()
+   return num, nil
 }

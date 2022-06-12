@@ -88,6 +88,7 @@ type requestTemplate struct {
    Query url.Values
    VarBody string
 }
+
 func ReadRequest(src io.Reader) (*http.Request, error) {
    var req http.Request
    text := textproto.NewReader(bufio.NewReader(src))

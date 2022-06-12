@@ -1,16 +1,22 @@
 package net
 
 import (
-   "fmt"
+   "os"
+   "strings"
    "testing"
 )
 
+var r = strings.NewReader(`alfa=bravo
+charlie=delta`)
+
 func TestValues(t *testing.T) {
-   text := []byte("alfa=bravo&charlie=delta")
-   var val Values
-   err := val.UnmarshalText(text)
+   val := NewValues()
+   n, err := val.ReadFrom(r)
    if err != nil {
       t.Fatal(err)
    }
-   fmt.Println(val.Get("charlie"))
+   if n != 24 {
+      t.Fatal(n)
+   }
+   val.WriteTo(os.Stdout)
 }

@@ -26,62 +26,6 @@ type Fixed64 uint64
 
 type Message map[Number]Token
 
-func Decode(src io.Reader) (Message, error) {
-   buf, err := io.ReadAll(src)
-   if err != nil {
-      return nil, err
-   }
-   return Unmarshal(buf)
-}
-
-func Unmarshal(buf []byte) (Message, error) {
-   if len(buf) == 0 {
-      return nil, io.ErrUnexpectedEOF
-   }
-   mes := make(Message)
-   for len(buf) >= 1 {
-      num, typ, tLen := protowire.ConsumeTag(buf)
-      err := protowire.ParseError(tLen)
-      if err != nil {
-         return nil, err
-      }
-      buf = buf[tLen:]
-      var vLen int
-      switch typ {
-      case protowire.BytesType:
-         var val []byte
-         val, vLen = protowire.ConsumeBytes(buf)
-         embed, _ := Unmarshal(val)
-         add(mes, num, Bytes{val, embed})
-      case protowire.Fixed32Type:
-         var val uint32
-         val, vLen = protowire.ConsumeFixed32(buf)
-         add(mes, num, Fixed32(val))
-      case protowire.Fixed64Type:
-         var val uint64
-         val, vLen = protowire.ConsumeFixed64(buf)
-         add(mes, num, Fixed64(val))
-      case protowire.StartGroupType:
-         var val []byte
-         val, vLen = protowire.ConsumeGroup(num, buf)
-         embed, err := Unmarshal(val)
-         if err != nil {
-            return nil, err
-         }
-         add(mes, num, embed)
-      case protowire.VarintType:
-         var val uint64
-         val, vLen = protowire.ConsumeVarint(buf)
-         add(mes, num, Varint(val))
-      }
-      if err := protowire.ParseError(vLen); err != nil {
-         return nil, err
-      }
-      buf = buf[vLen:]
-   }
-   return mes, nil
-}
-
 func (m Message) Add(num Number, val Message) {
    add(m, num, val)
 }
@@ -151,23 +95,6 @@ func (m Message) GetVarint(num Number) (uint64, error) {
    return uint64(dst), nil
 }
 
-func (m Message) Marshal() []byte {
-   var (
-      buf []byte
-      nums []Number
-   )
-   for num := range m {
-      nums = append(nums, num)
-   }
-   sort.Slice(nums, func(a, b int) bool {
-      return nums[a] < nums[b]
-   })
-   for _, num := range nums {
-      buf = m[num].appendField(buf, num)
-   }
-   return buf
-}
-
 type Number = protowire.Number
 
 type Raw []byte
@@ -188,3 +115,76 @@ type Token interface {
 type Tokens[T Token] []T
 
 type Varint uint64
+
+func Unmarshal(buf []byte) (Message, error) {
+   if len(buf) == 0 {
+      return nil, io.ErrUnexpectedEOF
+   }
+   mes := make(Message)
+   for len(buf) >= 1 {
+      num, typ, tLen := protowire.ConsumeTag(buf)
+      err := protowire.ParseError(tLen)
+      if err != nil {
+         return nil, err
+      }
+      buf = buf[tLen:]
+      var vLen int
+      switch typ {
+      case protowire.BytesType:
+         var val []byte
+         val, vLen = protowire.ConsumeBytes(buf)
+         embed, _ := Unmarshal(val)
+         add(mes, num, Bytes{val, embed})
+      case protowire.Fixed32Type:
+         var val uint32
+         val, vLen = protowire.ConsumeFixed32(buf)
+         add(mes, num, Fixed32(val))
+      case protowire.Fixed64Type:
+         var val uint64
+         val, vLen = protowire.ConsumeFixed64(buf)
+         add(mes, num, Fixed64(val))
+      case protowire.StartGroupType:
+         var val []byte
+         val, vLen = protowire.ConsumeGroup(num, buf)
+         embed, err := Unmarshal(val)
+         if err != nil {
+            return nil, err
+         }
+         add(mes, num, embed)
+      case protowire.VarintType:
+         var val uint64
+         val, vLen = protowire.ConsumeVarint(buf)
+         add(mes, num, Varint(val))
+      }
+      if err := protowire.ParseError(vLen); err != nil {
+         return nil, err
+      }
+      buf = buf[vLen:]
+   }
+   return mes, nil
+}
+
+func Decode(src io.Reader) (Message, error) {
+   buf, err := io.ReadAll(src)
+   if err != nil {
+      return nil, err
+   }
+   return Unmarshal(buf)
+}
+
+func (m Message) Marshal() []byte {
+   var (
+      buf []byte
+      nums []Number
+   )
+   for num := range m {
+      nums = append(nums, num)
+   }
+   sort.Slice(nums, func(a, b int) bool {
+      return nums[a] < nums[b]
+   })
+   for _, num := range nums {
+      buf = m[num].appendField(buf, num)
+   }
+   return buf
+}
