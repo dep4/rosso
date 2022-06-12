@@ -1,6 +1,7 @@
 package hls
 
 import (
+   "bytes"
    "crypto/aes"
    "crypto/cipher"
    "encoding/hex"
@@ -9,41 +10,6 @@ import (
    "strings"
    "text/scanner"
 )
-
-type Cipher struct {
-   cipher.Block
-   key []byte
-}
-
-func NewCipher(src io.Reader) (*Cipher, error) {
-   key, err := io.ReadAll(src)
-   if err != nil {
-      return nil, err
-   }
-   block, err := aes.NewCipher(key)
-   if err != nil {
-      return nil, err
-   }
-   return &Cipher{block, key}, nil
-}
-
-func (c Cipher) Copy(w io.Writer, r io.Reader, iv []byte) (int, error) {
-   buf, err := io.ReadAll(r)
-   if err != nil {
-      return 0, err
-   }
-   if iv == nil {
-      iv = c.key
-   }
-   cipher.NewCBCDecrypter(c.Block, iv).CryptBlocks(buf, buf)
-   if len(buf) >= 1 {
-      pad := buf[len(buf)-1]
-      if len(buf) >= int(pad) {
-         buf = buf[:len(buf)-int(pad)]
-      }
-   }
-   return w.Write(buf)
-}
 
 func (s Scanner) Segment() (*Segment, error) {
    var (
@@ -95,4 +61,41 @@ type Segment struct {
    Protected []string
    RawIV string
    RawKey string
+}
+
+type Cipher struct {
+   IV []byte
+   cipher.Block
+   key bytes.Buffer
+}
+
+// this has less allocations than `io.ReadAll`
+func (c *Cipher) ReadFrom(r io.Reader) (int64, error) {
+   num, err := io.Copy(&c.key, r)
+   if err != nil {
+      return 0, err
+   }
+   c.Block, err = aes.NewCipher(c.key.Bytes())
+   if err != nil {
+      return 0, err
+   }
+   return num, nil
+}
+
+func (c Cipher) Copy(w io.Writer, r io.Reader) (int, error) {
+   if c.IV == nil {
+      c.IV = c.key.Bytes()
+   }
+   buf, err := io.ReadAll(r)
+   if err != nil {
+      return 0, err
+   }
+   cipher.NewCBCDecrypter(c.Block, c.IV).CryptBlocks(buf, buf)
+   if len(buf) >= 1 {
+      pad := buf[len(buf)-1]
+      if len(buf) >= int(pad) {
+         buf = buf[:len(buf)-int(pad)]
+      }
+   }
+   return w.Write(buf)
 }

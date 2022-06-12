@@ -7,31 +7,31 @@ import (
 )
 
 var tests = []string{
-   "paramount-lang.mpd",
-   "paramount-role.mpd",
-   "roku.mpd",
+   "mpd/paramount-lang.mpd",
+   "mpd/paramount-role.mpd",
+   "mpd/roku.mpd",
 }
 
 func TestRepresent(t *testing.T) {
    for _, test := range tests {
+      var med Media
       file, err := os.Open(test)
       if err != nil {
          t.Fatal(err)
       }
-      media, err := NewMedia(file)
-      if err != nil {
+      if _, err := med.ReadFrom(file); err != nil {
          t.Fatal(err)
       }
       if err := file.Close(); err != nil {
          t.Fatal(err)
       }
-      for _, rep := range media.Represents(Video) {
+      for _, rep := range med.Represents(Video) {
          fmt.Println(rep)
       }
-      for _, rep := range media.Represents(Audio) {
+      for _, rep := range med.Represents(Audio) {
          fmt.Println(rep)
       }
-      protect := media.Protection()
+      protect := med.Protection()
       if err != nil {
          t.Fatal(err)
       }

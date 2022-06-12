@@ -8,13 +8,15 @@ import (
    "strings"
 )
 
-func NewMedia(r io.Reader) (*Media, error) {
-   med := new(Media)
-   err := xml.NewDecoder(r).Decode(med)
+// For empty input, `0, io.EOF` is returned. This uses less allocations than
+// `bytes.Buffer`, and less than `new(Type)` as well.
+func (m *Media) ReadFrom(r io.Reader) (int64, error) {
+   dec := xml.NewDecoder(r)
+   err := dec.Decode(m)
    if err != nil {
-      return nil, err
+      return 0, err
    }
-   return med, nil
+   return dec.InputOffset()+1, nil
 }
 
 type Protection struct {
