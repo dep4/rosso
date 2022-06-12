@@ -13,6 +13,24 @@ import (
    "strings"
 )
 
+func ParseTLS(buf []byte) (*tls.ClientHelloSpec, error) {
+   // unsupported extension 0x16
+   printer := tls.Fingerprinter{AllowBluntMimicry: true}
+   // FingerprintClientHello does bounds checking, so we dont need to worry
+   // about it in this function.
+   spec, err := printer.FingerprintClientHello(buf)
+   if err != nil {
+      return nil, err
+   }
+   // If SupportedVersionsExtension is present, then TLSVersMax is set to zero.
+   // In which case we need to manually read the bytes.
+   if spec.TLSVersMax == 0 {
+      // \x16\x03\x01\x00\xbc\x01\x00\x00\xb8\x03\x03
+      spec.TLSVersMax = binary.BigEndian.Uint16(buf[9:])
+   }
+   return spec, nil
+}
+
 // len 122, 8fcaa9e4a15f48af0a7d396e3fa5c5eb
 const AndroidAPI24 =
    "771,49195-49196-52393-49199-49200-52392-158-159-49161-49162-49171-" +
@@ -130,22 +148,4 @@ func extensionType(ext tls.TLSExtension) (uint16, error) {
       return 0, err
    }
    return binary.BigEndian.Uint16(buf), nil
-}
-
-func ParseTLS(buf []byte) (*tls.ClientHelloSpec, error) {
-   // unsupported extension 0x16
-   printer := tls.Fingerprinter{AllowBluntMimicry: true}
-   // FingerprintClientHello does bounds checking, so we dont need to worry
-   // about it in this function.
-   spec, err := printer.FingerprintClientHello(buf)
-   if err != nil {
-      return nil, err
-   }
-   // If SupportedVersionsExtension is present, then TLSVersMax is set to zero.
-   // In which case we need to manually read the bytes.
-   if spec.TLSVersMax == 0 {
-      // \x16\x03\x01\x00\xbc\x01\x00\x00\xb8\x03\x03
-      spec.TLSVersMax = binary.BigEndian.Uint16(buf[9:])
-   }
-   return spec, nil
 }

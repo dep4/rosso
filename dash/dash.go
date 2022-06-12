@@ -8,28 +8,17 @@ import (
    "strings"
 )
 
-func Audio(a Adaptation, r Represent) bool {
-   if !strings.HasPrefix(a.Lang, "en") {
-      return false
+func NewMedia(r io.Reader) (*Media, error) {
+   med := new(Media)
+   err := xml.NewDecoder(r).Decode(med)
+   if err != nil {
+      return nil, err
    }
-   if r.MimeType != "audio/mp4" {
-      return false
-   }
-   if a.Role != nil && a.Role.Value != "main" {
-      return false
-   }
-   return true
+   return med, nil
 }
 
-type Adaptation struct {
-   ContentProtection *Protection
-   Lang string `xml:"lang,attr"`
-   MimeType string `xml:"mimeType,attr"`
-   Representation []Represent
-   Role *struct {
-      Value string `xml:"value,attr"`
-   }
-   SegmentTemplate *Template
+type Protection struct {
+   Default_KID string `xml:"default_KID,attr"`
 }
 
 type Represent struct {
@@ -41,34 +30,6 @@ type Represent struct {
    MimeType string `xml:"mimeType,attr"`
    ContentProtection *Protection
    SegmentTemplate *Template
-}
-
-func (p Period) Represents(fn PeriodFunc) Represents {
-   var reps Represents
-   for _, ada := range p.AdaptationSet {
-      for _, rep := range ada.Representation {
-         if rep.MimeType == "" {
-            rep.MimeType = ada.MimeType
-         }
-         if rep.SegmentTemplate == nil {
-            rep.SegmentTemplate = ada.SegmentTemplate
-         }
-         if fn(ada, rep) {
-            reps = append(reps, rep)
-         }
-      }
-   }
-   return reps
-}
-
-type Period struct {
-   AdaptationSet []Adaptation
-}
-
-type PeriodFunc func(Adaptation, Represent) bool
-
-type Protection struct {
-   Default_KID string `xml:"default_KID,attr"`
 }
 
 func (r Represent) String() string {
@@ -88,71 +49,9 @@ func (r Represent) String() string {
    return string(buf)
 }
 
-type Segment struct {
-   D int `xml:"d,attr"`
-   R int `xml:"r,attr"`
-   T int `xml:"t,attr"`
-}
-
 func (r Represent) Initialization(base *url.URL) (*url.URL, error) {
    ref := r.id(r.SegmentTemplate.Initialization)
    return base.Parse(ref)
-}
-
-func NewPeriod(body io.Reader) (*Period, error) {
-   var media struct {
-      Period Period
-   }
-   err := xml.NewDecoder(body).Decode(&media)
-   if err != nil {
-      return nil, err
-   }
-   return &media.Period, nil
-}
-
-func (p Period) Protection() *Protection {
-   for _, ada := range p.AdaptationSet {
-      if ada.ContentProtection != nil {
-         return ada.ContentProtection
-      }
-      for _, rep := range ada.Representation {
-         if rep.ContentProtection != nil {
-            return rep.ContentProtection
-         }
-      }
-   }
-   return nil
-}
-
-type Represents []Represent
-
-func (r Represents) Represent(bandwidth int64) *Represent {
-   distance := func(r *Represent) int64 {
-      if r.Bandwidth > bandwidth {
-         return r.Bandwidth - bandwidth
-      }
-      return bandwidth - r.Bandwidth
-   }
-   var output *Represent
-   for i, input := range r {
-      if output == nil || distance(&input) < distance(output) {
-         output = &r[i]
-      }
-   }
-   return output
-}
-
-func Video(a Adaptation, r Represent) bool {
-   return r.MimeType == "video/mp4"
-}
-
-type Template struct {
-   Initialization string `xml:"initialization,attr"`
-   Media string `xml:"media,attr"`
-   SegmentTimeline struct {
-      S []Segment
-   }
-   StartNumber *int `xml:"startNumber,attr"`
 }
 
 func (r Represent) Media(base *url.URL) ([]*url.URL, error) {
@@ -189,10 +88,111 @@ func (r Represent) id(in string) string {
    return strings.Replace(in, "$RepresentationID$", r.ID, 1)
 }
 
+type Template struct {
+   Initialization string `xml:"initialization,attr"`
+   Media string `xml:"media,attr"`
+   SegmentTimeline struct {
+      S []Segment
+   }
+   StartNumber *int `xml:"startNumber,attr"`
+}
+
+type Segment struct {
+   D int `xml:"d,attr"`
+   R int `xml:"r,attr"`
+   T int `xml:"t,attr"`
+}
+
 func (s Segment) number(in string) string {
    return strings.Replace(in, "$Number$", strconv.Itoa(s.T), 1)
 }
 
 func (s Segment) time(in string) string {
    return strings.Replace(in, "$Time$", strconv.Itoa(s.T), 1)
+}
+
+type Represents []Represent
+
+func (r Represents) Represent(bandwidth int64) *Represent {
+   distance := func(r *Represent) int64 {
+      if r.Bandwidth > bandwidth {
+         return r.Bandwidth - bandwidth
+      }
+      return bandwidth - r.Bandwidth
+   }
+   var output *Represent
+   for i, input := range r {
+      if output == nil || distance(&input) < distance(output) {
+         output = &r[i]
+      }
+   }
+   return output
+}
+
+func Video(a Adaptation, r Represent) bool {
+   return r.MimeType == "video/mp4"
+}
+
+type Adaptation struct {
+   ContentProtection *Protection
+   Lang string `xml:"lang,attr"`
+   MimeType string `xml:"mimeType,attr"`
+   Representation Represents
+   Role *struct {
+      Value string `xml:"value,attr"`
+   }
+   SegmentTemplate *Template
+}
+
+func (m Media) Protection() *Protection {
+   for _, ada := range m.Period.AdaptationSet {
+      if ada.ContentProtection != nil {
+         return ada.ContentProtection
+      }
+      for _, rep := range ada.Representation {
+         if rep.ContentProtection != nil {
+            return rep.ContentProtection
+         }
+      }
+   }
+   return nil
+}
+
+func Audio(a Adaptation, r Represent) bool {
+   if !strings.HasPrefix(a.Lang, "en") {
+      return false
+   }
+   if r.MimeType != "audio/mp4" {
+      return false
+   }
+   if a.Role != nil && a.Role.Value != "main" {
+      return false
+   }
+   return true
+}
+
+type AdaptationFunc func(Adaptation, Represent) bool
+
+type Media struct {
+   Period struct {
+      AdaptationSet []Adaptation
+   }
+}
+
+func (m Media) Represents(fn AdaptationFunc) Represents {
+   var reps Represents
+   for _, ada := range m.Period.AdaptationSet {
+      for _, rep := range ada.Representation {
+         if rep.MimeType == "" {
+            rep.MimeType = ada.MimeType
+         }
+         if rep.SegmentTemplate == nil {
+            rep.SegmentTemplate = ada.SegmentTemplate
+         }
+         if fn(ada, rep) {
+            reps = append(reps, rep)
+         }
+      }
+   }
+   return reps
 }

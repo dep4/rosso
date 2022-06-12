@@ -18,20 +18,20 @@ func TestRepresent(t *testing.T) {
       if err != nil {
          t.Fatal(err)
       }
-      period, err := NewPeriod(file)
+      media, err := NewMedia(file)
       if err != nil {
          t.Fatal(err)
       }
       if err := file.Close(); err != nil {
          t.Fatal(err)
       }
-      for _, rep := range period.Represents(Video) {
+      for _, rep := range media.Represents(Video) {
          fmt.Println(rep)
       }
-      for _, rep := range period.Represents(Audio) {
+      for _, rep := range media.Represents(Audio) {
          fmt.Println(rep)
       }
-      protect := period.Protection()
+      protect := media.Protection()
       if err != nil {
          t.Fatal(err)
       }
