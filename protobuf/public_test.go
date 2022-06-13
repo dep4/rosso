@@ -1,6 +1,7 @@
 package protobuf
 
 import (
+   "bytes"
    "encoding/json"
    "os"
    "testing"

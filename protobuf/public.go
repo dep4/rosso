@@ -3,13 +3,36 @@ package protobuf
 import (
    "bytes"
    "encoding/base64"
-   "fmt"
    "github.com/89z/format"
    "google.golang.org/protobuf/encoding/protowire"
    "io"
    "sort"
-   "strings"
 )
+
+func (m Message) WriteTo(w io.Writer) (int64, error) {
+   buf, err := m.MarshalBinary()
+   if err != nil {
+      return 0, err
+   }
+   num, err := w.Write(buf)
+   if err != nil {
+      return 0, err
+   }
+   return int64(num), nil
+}
+
+// this uses less allocations than `io.ReadAll`
+func (m Message) ReadFrom(r io.Reader) (int64, error) {
+   var buf bytes.Buffer
+   num, err := buf.ReadFrom(r)
+   if err != nil {
+      return 0, err
+   }
+   if err := m.UnmarshalBinary(buf.Bytes()); err != nil {
+      return 0, err
+   }
+   return num, nil
+}
 
 func (m Message) MarshalBinary() ([]byte, error) {
    var (
@@ -32,87 +55,6 @@ func (m Message) MarshalBinary() ([]byte, error) {
    return vals, nil
 }
 
-func (e Encoders[T]) encode(num Number) ([]byte, error) {
-   var vals []byte
-   for _, encoder := range e {
-      val, err := encoder.encode(num)
-      if err != nil {
-         return nil, err
-      }
-      vals = append(vals, val...)
-   }
-   return vals, nil
-}
-
-func (b Bytes) encode(num Number) ([]byte, error) {
-   tag := protowire.AppendTag(nil, num, protowire.BytesType)
-   return protowire.AppendBytes(tag, b.Raw), nil
-}
-
-func (f Fixed32) encode(num Number) ([]byte, error) {
-   tag := protowire.AppendTag(nil, num, protowire.Fixed32Type)
-   val := uint32(f)
-   return protowire.AppendFixed32(tag, val), nil
-}
-
-func (f Fixed64) encode(num Number) ([]byte, error) {
-   tag := protowire.AppendTag(nil, num, protowire.Fixed64Type)
-   val := uint64(f)
-   return protowire.AppendFixed64(tag, val), nil
-}
-
-func (v Varint) encode(num Number) ([]byte, error) {
-   tag := protowire.AppendTag(nil, num, protowire.VarintType)
-   val := uint64(v)
-   return protowire.AppendVarint(tag, val), nil
-}
-
-func (m Message) encode(num Number) ([]byte, error) {
-   tag := protowire.AppendTag(nil, num, protowire.BytesType)
-   val, err := m.MarshalBinary()
-   if err != nil {
-      return nil, err
-   }
-   return protowire.AppendBytes(tag, val), nil
-}
-
-type Encoder interface {
-   encode(Number) ([]byte, error)
-}
-
-type Message map[Number]Encoder
-
-func (m Message) GetMessages(num Number) []Message {
-   var mes []Message
-   switch value := m[num].(type) {
-   case Bytes:
-      return []Message{value.Message}
-   case Encoders[Bytes]:
-      for _, val := range value {
-         mes = append(mes, val.Message)
-      }
-   }
-   return mes
-}
-
-type Encoders[T Encoder] []T
-
-func add[T Encoder](mes Message, num Number, val T) {
-   switch value := mes[num].(type) {
-   case nil:
-      mes[num] = val
-   case T:
-      mes[num] = Encoders[T]{value, val}
-   case Encoders[T]:
-      mes[num] = append(value, val)
-   }
-}
-
-type getError struct {
-   src Encoder
-   Number
-   dst Encoder
-}
 func (m Message) UnmarshalBinary(data []byte) error {
    if len(data) == 0 {
       return io.ErrUnexpectedEOF
@@ -251,10 +193,23 @@ type Raw []byte
 
 type Varint uint64
 
-func (g getError) Error() string {
-   b := new(strings.Builder)
-   fmt.Fprintf(b, "cannot unmarshal %T", g.src)
-   fmt.Fprintf(b, " into field %v", g.Number)
-   fmt.Fprintf(b, " of type %T", g.dst)
-   return b.String()
+type Encoder interface {
+   encode(Number) ([]byte, error)
 }
+
+type Message map[Number]Encoder
+
+func (m Message) GetMessages(num Number) []Message {
+   var mes []Message
+   switch value := m[num].(type) {
+   case Bytes:
+      return []Message{value.Message}
+   case Encoders[Bytes]:
+      for _, val := range value {
+         mes = append(mes, val.Message)
+      }
+   }
+   return mes
+}
+
+type Encoders[T Encoder] []T
