@@ -1,23 +1,10 @@
 package dash
 
 import (
-   "encoding/xml"
-   "io"
    "net/url"
    "strconv"
    "strings"
 )
-
-// For empty input, `0, io.EOF` is returned. This uses less allocations than
-// `bytes.Buffer`, and less than `new(Type)` as well.
-func (m *Media) ReadFrom(r io.Reader) (int64, error) {
-   dec := xml.NewDecoder(r)
-   err := dec.Decode(m)
-   if err != nil {
-      return 0, err
-   }
-   return dec.InputOffset()+1, nil
-}
 
 type Protection struct {
    Default_KID string `xml:"default_KID,attr"`

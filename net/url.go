@@ -9,36 +9,37 @@ import (
 )
 
 type Values struct {
-   num int
-   r io.Reader
    url.Values
 }
 
-func NewValues() *Values {
+func NewValues() Values {
    var val Values
    val.Values = make(url.Values)
-   return &val
-}
-
-func (v *Values) Read(p []byte) (int, error) {
-   num, err := v.r.Read(p)
-   v.num += num
-   return num, err
+   return val
 }
 
 func (v Values) ReadFrom(r io.Reader) (int64, error) {
-   v.r = r
-   scan := bufio.NewScanner(&v)
-   for scan.Scan() {
-      if scan.Err() != nil {
-         return 0, scan.Err()
+   buf := bufio.NewReader(r)
+   var num int
+   for {
+      key, err := buf.ReadString('=')
+      if err == io.EOF {
+         break
+      } else if err != nil {
+         return 0, err
       }
-      key, val, ok := strings.Cut(scan.Text(), "=")
-      if ok {
-         v.Set(key, val)
+      val, err := buf.ReadString('\n')
+      num += len(key) + len(val)
+      key = strings.TrimSuffix(key, "=")
+      val = strings.TrimSuffix(val, "\n")
+      v.Set(key, val)
+      if err == io.EOF {
+         break
+      } else if err != nil {
+         return 0, err
       }
    }
-   return int64(v.num), nil
+   return int64(num), nil
 }
 
 func (v Values) WriteTo(w io.Writer) (int64, error) {

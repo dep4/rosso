@@ -11,7 +11,6 @@ import (
    "text/scanner"
 )
 
-// this has less allocations than `io.ReadAll`
 func (c *Cipher) ReadFrom(r io.Reader) (int64, error) {
    num, err := c.key.ReadFrom(r)
    if err != nil {
