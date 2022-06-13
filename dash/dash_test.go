@@ -1,6 +1,7 @@
 package dash
 
 import (
+   "encoding/xml"
    "fmt"
    "os"
    "testing"
@@ -14,12 +15,12 @@ var tests = []string{
 
 func TestRepresent(t *testing.T) {
    for _, test := range tests {
-      var med Media
       file, err := os.Open(test)
       if err != nil {
          t.Fatal(err)
       }
-      if _, err := med.ReadFrom(file); err != nil {
+      var med Media
+      if err := xml.NewDecoder(file).Decode(&med); err != nil {
          t.Fatal(err)
       }
       if err := file.Close(); err != nil {
