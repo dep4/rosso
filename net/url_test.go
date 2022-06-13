@@ -2,21 +2,22 @@ package net
 
 import (
    "os"
-   "strings"
    "testing"
 )
 
-var r = strings.NewReader(`alfa=bravo
-charlie=delta`)
-
 func TestValues(t *testing.T) {
-   val := NewValues()
-   n, err := val.ReadFrom(r)
+   file, err := os.Open("ignore.txt")
    if err != nil {
       t.Fatal(err)
    }
-   if n != 24 {
-      t.Fatal(n)
+   defer file.Close()
+   val := NewValues()
+   num, err := val.ReadFrom(file)
+   if err != nil {
+      t.Fatal(err)
+   }
+   if num != 679 {
+      t.Fatal(err)
    }
    val.WriteTo(os.Stdout)
 }
