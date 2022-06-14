@@ -1,7 +1,6 @@
 package hls
 
 import (
-   "bytes"
    "crypto/aes"
    "crypto/cipher"
    "encoding/hex"
@@ -10,24 +9,6 @@ import (
    "strings"
    "text/scanner"
 )
-
-func (c *Cipher) ReadFrom(r io.Reader) (int64, error) {
-   num, err := c.key.ReadFrom(r)
-   if err != nil {
-      return 0, err
-   }
-   c.Block, err = aes.NewCipher(c.key.Bytes())
-   if err != nil {
-      return 0, err
-   }
-   return num, nil
-}
-
-type Cipher struct {
-   IV []byte
-   cipher.Block
-   key bytes.Buffer
-}
 
 func (s Scanner) Segment() (*Segment, error) {
    var (
@@ -81,20 +62,42 @@ type Segment struct {
    RawKey string
 }
 
-func (c Cipher) Copy(w io.Writer, r io.Reader) (int, error) {
-   if c.IV == nil {
-      c.IV = c.key.Bytes()
-   }
-   buf, err := io.ReadAll(r)
+type Block struct {
+   cipher.Block
+   key []byte
+}
+
+func NewBlock(key []byte) (*Block, error) {
+   block, err := aes.NewCipher(key)
    if err != nil {
-      return 0, err
+      return nil, err
    }
-   cipher.NewCBCDecrypter(c.Block, c.IV).CryptBlocks(buf, buf)
-   if len(buf) >= 1 {
-      pad := buf[len(buf)-1]
-      if len(buf) >= int(pad) {
-         buf = buf[:len(buf)-int(pad)]
-      }
-   }
-   return w.Write(buf)
+   return &Block{block, key}, nil
+}
+
+func (b Block) Mode(r io.Reader, iv []byte) *BlockMode {
+   var mode BlockMode
+   mode.BlockMode = cipher.NewCBCDecrypter(b.Block, iv)
+   mode.reader = r
+   return &mode
+}
+
+func (b Block) ModeKey(r io.Reader) *BlockMode {
+   return b.Mode(r, b.key)
+}
+
+type BlockMode struct {
+   cipher.BlockMode
+   reader io.Reader
+   rem []byte
+}
+
+func (b *BlockMode) Read(p []byte) (int, error) {
+   rem := copy(p, b.rem)
+   n, err := b.reader.Read(p[rem:])
+   n += rem
+   input := n - n % 16
+   b.CryptBlocks(p, p[:input])
+   b.rem = p[input:n]
+   return input, err
 }
