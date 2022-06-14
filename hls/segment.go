@@ -88,22 +88,37 @@ func (b Block) ModeKey(r io.Reader) *BlockMode {
 
 type BlockMode struct {
    cipher.BlockMode
-   clear []byte
-   protected []byte
    reader io.Reader
+   cipher []byte
+   plain []byte
+}
+
+func (b BlockMode) lenMessage(err error) int {
+   num := len(b.plain)
+   pad := b.plain[num-1]
+   if err == nil {
+      pad = 16
+   }
+   return num - int(pad)
+}
+
+func (b BlockMode) lenPlain() int {
+   num := len(b.cipher)
+   return num - num % 16
 }
 
 func (b *BlockMode) Read(p []byte) (int, error) {
-   // move to protected
+   // move to ciphertext
    num, err := b.reader.Read(p)
-   b.protected = append(b.protected, p[:num]...)
-   // move to clear
-   num = len(b.protected) - len(b.protected) % 16
-   b.CryptBlocks(b.protected, b.protected[:num])
-   b.clear = append(b.clear, b.protected[:num]...)
-   b.protected = b.protected[num:]
+   b.cipher = append(b.cipher, p[:num]...)
+   // move to plaintext
+   num = b.lenPlain()
+   b.CryptBlocks(b.cipher, b.cipher[:num])
+   b.plain = append(b.plain, b.cipher[:num]...)
+   b.cipher = b.cipher[num:]
    // move to out
-   num = copy(p, b.clear)
-   b.clear = b.clear[num:]
+   num = b.lenMessage(err)
+   num = copy(p, b.plain[:num])
+   b.plain = b.plain[num:]
    return num, err
 }
