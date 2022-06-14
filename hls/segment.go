@@ -88,16 +88,26 @@ func (b Block) ModeKey(r io.Reader) *BlockMode {
 
 type BlockMode struct {
    cipher.BlockMode
+   clear []byte
+   protected []byte
    reader io.Reader
-   rem []byte
 }
 
 func (b *BlockMode) Read(p []byte) (int, error) {
-   rem := copy(p, b.rem)
-   n, err := b.reader.Read(p[rem:])
-   n += rem
-   input := n - n % 16
-   b.CryptBlocks(p, p[:input])
-   b.rem = p[input:n]
-   return input, err
+   protected, err := b.reader.Read(p)
+   // add to protected
+   b.protected = append(b.protected, p[:protected]...)
+   cut := len(b.protected) - len(b.protected) % 16
+   // decrypt
+   b.CryptBlocks(b.protected, b.protected[:cut])
+   // add to clear
+   b.clear = append(b.clear, b.protected[:cut]...)
+   // remove from protected
+   b.protected = b.protected[cut:]
+   // add to out
+   clear := copy(p, b.clear)
+   // remove from clear
+   b.clear = b.clear[clear:]
+   // return
+   return clear, err
 }
