@@ -94,20 +94,16 @@ type BlockMode struct {
 }
 
 func (b *BlockMode) Read(p []byte) (int, error) {
-   protected, err := b.reader.Read(p)
-   // add to protected
-   b.protected = append(b.protected, p[:protected]...)
-   cut := len(b.protected) - len(b.protected) % 16
-   // decrypt
-   b.CryptBlocks(b.protected, b.protected[:cut])
-   // add to clear
-   b.clear = append(b.clear, b.protected[:cut]...)
-   // remove from protected
-   b.protected = b.protected[cut:]
-   // add to out
-   clear := copy(p, b.clear)
-   // remove from clear
-   b.clear = b.clear[clear:]
-   // return
-   return clear, err
+   // move to protected
+   num, err := b.reader.Read(p)
+   b.protected = append(b.protected, p[:num]...)
+   // move to clear
+   num = len(b.protected) - len(b.protected) % 16
+   b.CryptBlocks(b.protected, b.protected[:num])
+   b.clear = append(b.clear, b.protected[:num]...)
+   b.protected = b.protected[num:]
+   // move to out
+   num = copy(p, b.clear)
+   b.clear = b.clear[num:]
+   return num, err
 }
