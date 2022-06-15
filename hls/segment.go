@@ -108,16 +108,17 @@ func (b BlockMode) lenPlain() int {
 }
 
 func (b *BlockMode) Read(p []byte) (int, error) {
-   // move to ciphertext
+   // ciphertext length
    num, err := b.reader.Read(p)
    b.cipher = append(b.cipher, p[:num]...)
-   // move to plaintext
+   // plaintext length
    num = b.lenPlain()
    b.CryptBlocks(b.cipher, b.cipher[:num])
    b.plain = append(b.plain, b.cipher[:num]...)
    b.cipher = b.cipher[num:]
-   // move to out
+   // message length
    num = b.lenMessage(err)
+   // output length
    num = copy(p, b.plain[:num])
    b.plain = b.plain[num:]
    return num, err
