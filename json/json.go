@@ -3,18 +3,31 @@ package json
 import (
    "bytes"
    "encoding/json"
+   "github.com/89z/format"
    "io"
+   "os"
 )
 
-// this uses less allocations than `io.ReadAll`
-func (s *Scanner) ReadFrom(r io.Reader) (int64, error) {
-   var buf bytes.Buffer
-   num, err := buf.ReadFrom(r)
+func Create[T any](name string, value T) error {
+   file, err := format.Create(name)
    if err != nil {
-      return 0, err
+      return err
    }
-   s.buf = buf.Bytes()
-   return num, nil
+   defer file.Close()
+   return json.NewEncoder(file).Encode(value)
+}
+
+func Open[T any](name string) (*T, error) {
+   file, err := os.Open(name)
+   if err != nil {
+      return nil, err
+   }
+   defer file.Close()
+   value := new(T)
+   if err := json.NewDecoder(file).Decode(value); err != nil {
+      return nil, err
+   }
+   return value, nil
 }
 
 var (
@@ -37,6 +50,17 @@ func (s Scanner) Decode(val any) error {
          return json.Unmarshal(buf[:high], val)
       }
    }
+}
+
+// this uses less allocations than `io.ReadAll`
+func (s *Scanner) ReadFrom(r io.Reader) (int64, error) {
+   var buf bytes.Buffer
+   num, err := buf.ReadFrom(r)
+   if err != nil {
+      return 0, err
+   }
+   s.buf = buf.Bytes()
+   return num, nil
 }
 
 func (s *Scanner) Scan() bool {
