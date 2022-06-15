@@ -9,31 +9,6 @@ import (
    "sort"
 )
 
-func (m Message) WriteTo(w io.Writer) (int64, error) {
-   buf, err := m.MarshalBinary()
-   if err != nil {
-      return 0, err
-   }
-   num, err := w.Write(buf)
-   if err != nil {
-      return 0, err
-   }
-   return int64(num), nil
-}
-
-// this uses less allocations than `io.ReadAll`
-func (m Message) ReadFrom(r io.Reader) (int64, error) {
-   var buf bytes.Buffer
-   num, err := buf.ReadFrom(r)
-   if err != nil {
-      return 0, err
-   }
-   if err := m.UnmarshalBinary(buf.Bytes()); err != nil {
-      return 0, err
-   }
-   return num, nil
-}
-
 func (m Message) MarshalBinary() ([]byte, error) {
    var (
       nums []Number

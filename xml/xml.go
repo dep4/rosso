@@ -3,44 +3,34 @@ package xml
 import (
    "bytes"
    "encoding/xml"
-   "io"
 )
 
-func NewDecoder(buf []byte) *xml.Decoder {
-   src := bytes.NewReader(buf)
-   dec := xml.NewDecoder(src)
+func newDecoder(data []byte) *xml.Decoder {
+   dec := xml.NewDecoder(bytes.NewReader(data))
    dec.AutoClose = xml.HTMLAutoClose
    dec.Strict = false
    return dec
 }
 
 type Scanner struct {
-   Split []byte
-   buf []byte
-}
-
-func NewScanner(src io.Reader) (*Scanner, error) {
-   buf, err := io.ReadAll(src)
-   if err != nil {
-      return nil, err
-   }
-   return &Scanner{buf: buf}, nil
+   Data []byte
+   Sep []byte
 }
 
 func (s Scanner) Decode(val any) error {
-   buf := append(s.Split, s.buf...)
-   dec := NewDecoder(buf)
+   data := append(s.Sep, s.Data...)
+   dec := newDecoder(data)
    for {
       _, err := dec.Token()
       if err != nil {
          high := dec.InputOffset()
-         return NewDecoder(buf[:high]).Decode(val)
+         return newDecoder(data[:high]).Decode(val)
       }
    }
 }
 
 func (s *Scanner) Scan() bool {
    var found bool
-   _, s.buf, found = bytes.Cut(s.buf, s.Split)
+   _, s.Data, found = bytes.Cut(s.Data, s.Sep)
    return found
 }
