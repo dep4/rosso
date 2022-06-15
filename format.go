@@ -13,22 +13,15 @@ import (
    "unicode/utf8"
 )
 
-func Create(elem ...string) (*os.File, error) {
-   join := filepath.Join(elem...)
-   dir := filepath.Dir(join)
-   err := os.MkdirAll(dir, os.ModePerm)
+func Create(name string) (*os.File, error) {
+   os.Stderr.WriteString("Create ")
+   os.Stderr.WriteString(filepath.FromSlash(name))
+   os.Stderr.WriteString("\n")
+   err := os.MkdirAll(filepath.Dir(name), os.ModePerm)
    if err != nil {
       return nil, err
    }
-   os.Stderr.WriteString("Create ")
-   os.Stderr.WriteString(join)
-   os.Stderr.WriteString("\n")
-   return os.Create(join)
-}
-
-func Open(elem ...string) (*os.File, error) {
-   join := filepath.Join(elem...)
-   return os.Open(join)
+   return os.Create(name)
 }
 
 // mimesniff.spec.whatwg.org#binary-data-byte
@@ -47,7 +40,6 @@ func IsString(buf []byte) bool {
          return false
       }
    }
-   // []byte{0xE0, '<'}
    return utf8.Valid(buf)
 }
 
@@ -84,15 +76,6 @@ func LabelSize[T Number](value T) string {
 type LogLevel int
 
 func (l LogLevel) Dump(req *http.Request) error {
-   quote := func(b []byte) []byte {
-      if !IsString(b) {
-         b = strconv.AppendQuote(nil, string(b))
-      }
-      if !bytes.HasSuffix(b, []byte{'\n'}) {
-         b = append(b, '\n')
-      }
-      return b
-   }
    switch l {
    case 0:
       os.Stderr.WriteString(req.Method)
@@ -104,13 +87,13 @@ func (l LogLevel) Dump(req *http.Request) error {
       if err != nil {
          return err
       }
-      os.Stderr.Write(quote(buf))
-   case 2:
-      buf, err := httputil.DumpRequestOut(req, true)
-      if err != nil {
-         return err
+      if !IsString(buf) {
+         buf = strconv.AppendQuote(nil, string(buf))
       }
-      os.Stderr.Write(quote(buf))
+      if !bytes.HasSuffix(buf, []byte{'\n'}) {
+         buf = append(buf, '\n')
+      }
+      os.Stderr.Write(buf)
    }
    return nil
 }
@@ -177,4 +160,22 @@ func (p Progress) String() string {
    buf.WriteByte('\t')
    buf.WriteString(LabelRate(rate))
    return buf.String()
+}
+
+type ReadWriter struct {
+   N int
+   R io.Reader
+   W io.Writer
+}
+
+func (rw *ReadWriter) Read(p []byte) (int, error) {
+   n, err := rw.R.Read(p)
+   rw.N += n
+   return n, err
+}
+
+func (rw *ReadWriter) Write(p []byte) (int, error) {
+   n, err := rw.W.Write(p)
+   rw.N += n
+   return n, err
 }
