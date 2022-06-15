@@ -8,7 +8,8 @@ import (
    "os"
 )
 
-func Create[T any](name string, value T) error {
+// `value` is the receiver
+func Create[T any](value T, name string) error {
    file, err := format.Create(name)
    if err != nil {
       return err
