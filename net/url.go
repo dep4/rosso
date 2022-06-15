@@ -2,7 +2,6 @@ package net
 
 import (
    "bufio"
-   "bytes"
    "io"
    "net/url"
    "strings"
@@ -43,12 +42,14 @@ func (v Values) ReadFrom(r io.Reader) (int64, error) {
 }
 
 func (v Values) WriteTo(w io.Writer) (int64, error) {
-   var buf bytes.Buffer
+   var ns int
    for key := range v.Values {
-      buf.WriteString(key)
-      buf.WriteByte('=')
-      buf.WriteString(v.Get(key))
-      buf.WriteByte('\n')
+      val := v.Get(key)
+      n, err := io.WriteString(w, key + "=" + val + "\n")
+      if err != nil {
+         return 0, err
+      }
+      ns += n
    }
-   return buf.WriteTo(w)
+   return int64(ns), nil
 }
