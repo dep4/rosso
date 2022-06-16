@@ -11,6 +11,18 @@ import (
    "strconv"
 )
 
+func consumeTag(buf io.ByteReader) (protowire.Number, protowire.Type, error) {
+   tag, err := binary.ReadUvarint(buf)
+   if err != nil {
+      return 0, 0, err
+   }
+   num, typ := protowire.DecodeTag(tag)
+   if num < protowire.MinValidNumber {
+      return 0, 0, errors.New("invalid field number")
+   }
+   return num, typ, nil
+}
+
 func (m Message) GetMessages(num Number) []Message {
    var mes []Message
    switch value := m[num].(type) {
@@ -83,18 +95,6 @@ func (m Message) Get(num Number) Message {
       return value
    }
    return nil
-}
-
-func consumeTag(buf io.ByteReader) (protowire.Number, protowire.Type, error) {
-   tag, err := binary.ReadUvarint(buf)
-   if err != nil {
-      return 0, 0, err
-   }
-   num, typ := protowire.DecodeTag(tag)
-   if num < protowire.MinValidNumber {
-      return 0, 0, errors.New("invalid field number")
-   }
-   return num, typ, nil
 }
 
 func add[T Encoder](mes Message, num Number, val T) {
@@ -207,7 +207,8 @@ func (e Encoders[T]) encode(num Number) ([]byte, error) {
    return vals, nil
 }
 
-func ReadMessage(buf *bufio.Reader) (Message, error) {
+func Decode(r io.Reader) (Message, error) {
+   buf := bufio.NewReader(r)
    mes := make(Message)
    for {
       num, typ, err := consumeTag(buf)
@@ -217,12 +218,6 @@ func ReadMessage(buf *bufio.Reader) (Message, error) {
          return nil, err
       }
       switch typ {
-      case protowire.VarintType:
-         val, err := binary.ReadUvarint(buf)
-         if err != nil {
-            return nil, err
-         }
-         add(mes, num, Varint(val))
       case protowire.Fixed32Type:
          var val Fixed32
          err := binary.Read(buf, binary.LittleEndian, &val)
@@ -243,9 +238,17 @@ func ReadMessage(buf *bufio.Reader) (Message, error) {
          if err != nil {
             return nil, err
          }
-         rd := bytes.NewReader(val.Raw)
-         val.Message, _ = readMessage(bufio.NewReader(rd))
+         val.Message, _ = Decode(bytes.NewReader(val.Raw))
          add(mes, num, val)
+      case protowire.VarintType:
+         val, err := binary.ReadUvarint(buf)
+         if err != nil {
+            return nil, err
+         }
+         add(mes, num, Varint(val))
+      default:
+         // StartGroupType
+         // panic: protowire.Type(3)
       }
    }
 }

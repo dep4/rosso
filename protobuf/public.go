@@ -60,6 +60,10 @@ func (m Message) UnmarshalBinary(data []byte) error {
          var val uint64
          val, vLen = protowire.ConsumeFixed64(data)
          add(m, num, Fixed64(val))
+      case protowire.VarintType:
+         var val uint64
+         val, vLen = protowire.ConsumeVarint(data)
+         add(m, num, Varint(val))
       case protowire.StartGroupType:
          var val Bytes
          val.Message = make(Message)
@@ -69,10 +73,6 @@ func (m Message) UnmarshalBinary(data []byte) error {
             return err
          }
          add(m, num, val.Message)
-      case protowire.VarintType:
-         var val uint64
-         val, vLen = protowire.ConsumeVarint(data)
-         add(m, num, Varint(val))
       }
       if err := protowire.ParseError(vLen); err != nil {
          return err
