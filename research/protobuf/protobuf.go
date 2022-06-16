@@ -5,93 +5,109 @@ import (
    "bytes"
    "encoding/binary"
    "errors"
+   "fmt"
    "google.golang.org/protobuf/encoding/protowire"
    "io"
    "sort"
+   "strings"
 )
+
+type getError struct {
+   src Encoder
+   Number
+   dst Encoder
+}
+
+func (g getError) Error() string {
+   b := new(strings.Builder)
+   fmt.Fprintf(b, "cannot unmarshal %T", g.src)
+   fmt.Fprintf(b, " into field %v", g.Number)
+   fmt.Fprintf(b, " of type %T", g.dst)
+   return b.String()
+}
+
+func (m Message) GetString(num Number) (string, error) {
+   src := m[num]
+   dst, ok := src.(Bytes)
+   if !ok {
+      return "", getError{src, num, dst}
+   }
+   return string(dst.Raw), nil
+}
+
+func (m Message) Get(num Number) Message {
+   switch value := m[num].(type) {
+   case Bytes:
+      return value.Message
+   case Message:
+      return value
+   }
+   return nil
+}
+
+func consumeBytes(buf *bufio.Reader) ([]byte, error) {
+   n, err := binary.ReadUvarint(buf)
+   if err != nil {
+      return nil, err
+   }
+   limit := io.LimitedReader{R: buf}
+   limit.N = int64(n)
+   return io.ReadAll(&limit)
+}
 
 func readMessage(buf *bufio.Reader) (Message, error) {
    mes := make(Message)
    for {
       num, typ, err := consumeTag(buf)
-      if err != nil {
+      if err == io.EOF {
+         return mes, nil
+      } else if err != nil {
          return nil, err
       }
       switch typ {
       case protowire.VarintType:
-         val, err := consumeVarint(buf)
+         val, err := binary.ReadUvarint(buf)
          if err != nil {
             return nil, err
          }
          add(mes, num, Varint(val))
-      case protowire.Fixed64Type:
-         val, err := consumeFixed64(buf)
-         if err != nil {
-            return nil, err
-         }
-         add(mes, num, Fixed64(val))
       case protowire.Fixed32Type:
-         val, err := consumeFixed32(buf)
+         var val Fixed32
+         err := binary.Read(buf, binary.LittleEndian, &val)
          if err != nil {
             return nil, err
          }
-         add(mes, num, Fixed32(val))
+         add(mes, num, val)
+      case protowire.Fixed64Type:
+         var val Fixed64
+         err := binary.Read(buf, binary.LittleEndian, &val)
+         if err != nil {
+            return nil, err
+         }
+         add(mes, num, val)
       case protowire.BytesType:
          var val Bytes
          val.Raw, err = consumeBytes(buf)
          if err != nil {
             return nil, err
          }
-         val.Message, err = readMessage(bufio.NewReader(bytes.NewReader(val.Raw)))
-         if err != nil {
-            val.Message = nil
-         }
+         rd := bytes.NewReader(val.Raw)
+         val.Message, _ = readMessage(bufio.NewReader(rd))
          add(mes, num, val)
       }
    }
-   return mes, nil
 }
 
-func consumeBytes(r *bufio.Reader) ([]byte, error) {
-   m, err := consumeVarint(r)
-   if err != nil {
-      return nil, err
-   }
-   return io.ReadAll(io.LimitReader(r, int64(m)))
-}
-
-func consumeFixed32(r io.Reader) (uint32, error) {
-   var v uint32
-   err := binary.Read(r, binary.LittleEndian, &v)
-   if err != nil {
-      return 0, err
-   }
-   return v, nil
-}
-
-func consumeFixed64(r io.Reader) (uint64, error) {
-   var v uint64
-   err := binary.Read(r, binary.LittleEndian, &v)
-   if err != nil {
-      return 0, err
-   }
-   return v, nil
-}
-
-func consumeTag(r io.ByteReader) (protowire.Number, protowire.Type, error) {
-   v, err := consumeVarint(r)
+func consumeTag(buf io.ByteReader) (protowire.Number, protowire.Type, error) {
+   tag, err := binary.ReadUvarint(buf)
    if err != nil {
       return 0, 0, err
    }
-   num, typ := protowire.DecodeTag(v)
+   num, typ := protowire.DecodeTag(tag)
    if num < protowire.MinValidNumber {
       return 0, 0, errors.New("invalid field number")
    }
    return num, typ, nil
-}
-
-func consumeVarint(r io.ByteReader) (uint64, error) {
-   return binary.ReadUvarint(r)
 }
 
 func (e Encoders[T]) encode(num Number) ([]byte, error) {

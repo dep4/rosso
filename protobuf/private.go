@@ -6,6 +6,12 @@ import (
    "strings"
 )
 
+type getError struct {
+   src Encoder
+   Number
+   dst Encoder
+}
+
 func (g getError) Error() string {
    b := new(strings.Builder)
    fmt.Fprintf(b, "cannot unmarshal %T", g.src)
@@ -69,8 +75,3 @@ func add[T Encoder](mes Message, num Number, val T) {
    }
 }
 
-type getError struct {
-   src Encoder
-   Number
-   dst Encoder
-}
