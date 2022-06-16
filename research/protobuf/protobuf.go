@@ -2,12 +2,55 @@ package protobuf
 
 import (
    "bufio"
+   "bytes"
    "encoding/binary"
    "errors"
    "google.golang.org/protobuf/encoding/protowire"
    "io"
    "sort"
 )
+
+func readMessage(buf *bufio.Reader) (Message, error) {
+   mes := make(Message)
+   for {
+      num, typ, err := consumeTag(buf)
+      if err != nil {
+         return nil, err
+      }
+      switch typ {
+      case protowire.VarintType:
+         val, err := consumeVarint(buf)
+         if err != nil {
+            return nil, err
+         }
+         add(mes, num, Varint(val))
+      case protowire.Fixed64Type:
+         val, err := consumeFixed64(buf)
+         if err != nil {
+            return nil, err
+         }
+         add(mes, num, Fixed64(val))
+      case protowire.Fixed32Type:
+         val, err := consumeFixed32(buf)
+         if err != nil {
+            return nil, err
+         }
+         add(mes, num, Fixed32(val))
+      case protowire.BytesType:
+         var val Bytes
+         val.Raw, err = consumeBytes(buf)
+         if err != nil {
+            return nil, err
+         }
+         val.Message, err = readMessage(bufio.NewReader(bytes.NewReader(val.Raw)))
+         if err != nil {
+            val.Message = nil
+         }
+         add(mes, num, val)
+      }
+   }
+   return mes, nil
+}
 
 func consumeBytes(r *bufio.Reader) ([]byte, error) {
    m, err := consumeVarint(r)
@@ -49,57 +92,6 @@ func consumeTag(r io.ByteReader) (protowire.Number, protowire.Type, error) {
 
 func consumeVarint(r io.ByteReader) (uint64, error) {
    return binary.ReadUvarint(r)
-}
-func (m Message) UnmarshalBinary(data []byte) error {
-   if len(data) == 0 {
-      return io.ErrUnexpectedEOF
-   }
-   for len(data) >= 1 {
-      num, typ, tLen := protowire.ConsumeTag(data)
-      err := protowire.ParseError(tLen)
-      if err != nil {
-         return err
-      }
-      data = data[tLen:]
-      var vLen int
-      switch typ {
-      case protowire.VarintType:
-         var val uint64
-         val, vLen = protowire.ConsumeVarint(data)
-         add(m, num, Varint(val))
-      case protowire.Fixed64Type:
-         var val uint64
-         val, vLen = protowire.ConsumeFixed64(data)
-         add(m, num, Fixed64(val))
-      case protowire.Fixed32Type:
-         var val uint32
-         val, vLen = protowire.ConsumeFixed32(data)
-         add(m, num, Fixed32(val))
-      case protowire.BytesType:
-         var val Bytes
-         val.Message = make(Message)
-         val.Raw, vLen = protowire.ConsumeBytes(data)
-         err := val.Message.UnmarshalBinary(val.Raw)
-         if err != nil {
-            val.Message = nil
-         }
-         add(m, num, val)
-      case protowire.StartGroupType:
-         var val Bytes
-         val.Message = make(Message)
-         val.Raw, vLen = protowire.ConsumeGroup(num, data)
-         err := val.Message.UnmarshalBinary(val.Raw)
-         if err != nil {
-            return err
-         }
-         add(m, num, val.Message)
-      }
-      if err := protowire.ParseError(vLen); err != nil {
-         return err
-      }
-      data = data[vLen:]
-   }
-   return nil
 }
 
 func (e Encoders[T]) encode(num Number) ([]byte, error) {
