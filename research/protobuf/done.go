@@ -1,11 +1,55 @@
 package protobuf
 
 import (
+   "bufio"
+   "encoding/binary"
+   "errors"
    "google.golang.org/protobuf/encoding/protowire"
    "io"
    "sort"
 )
 
+func consumeBytes(r *bufio.Reader) ([]byte, error) {
+   m, err := consumeVarint(r)
+   if err != nil {
+      return nil, err
+   }
+   return io.ReadAll(io.LimitReader(r, int64(m)))
+}
+
+func consumeFixed32(r io.Reader) (uint32, error) {
+   var v uint32
+   err := binary.Read(r, binary.LittleEndian, &v)
+   if err != nil {
+      return 0, err
+   }
+   return v, nil
+}
+
+func consumeFixed64(r io.Reader) (uint64, error) {
+   var v uint64
+   err := binary.Read(r, binary.LittleEndian, &v)
+   if err != nil {
+      return 0, err
+   }
+   return v, nil
+}
+
+func consumeTag(r io.ByteReader) (protowire.Number, protowire.Type, error) {
+   v, err := consumeVarint(r)
+   if err != nil {
+      return 0, 0, err
+   }
+   num, typ := protowire.DecodeTag(v)
+   if num < protowire.MinValidNumber {
+      return 0, 0, errors.New("invalid field number")
+   }
+   return num, typ, nil
+}
+
+func consumeVarint(r io.ByteReader) (uint64, error) {
+   return binary.ReadUvarint(r)
+}
 func (m Message) UnmarshalBinary(data []byte) error {
    if len(data) == 0 {
       return io.ErrUnexpectedEOF
@@ -23,11 +67,14 @@ func (m Message) UnmarshalBinary(data []byte) error {
          var val uint64
          val, vLen = protowire.ConsumeVarint(data)
          add(m, num, Varint(val))
-      // FIXME
       case protowire.Fixed64Type:
          var val uint64
          val, vLen = protowire.ConsumeFixed64(data)
          add(m, num, Fixed64(val))
+      case protowire.Fixed32Type:
+         var val uint32
+         val, vLen = protowire.ConsumeFixed32(data)
+         add(m, num, Fixed32(val))
       case protowire.BytesType:
          var val Bytes
          val.Message = make(Message)
@@ -37,10 +84,6 @@ func (m Message) UnmarshalBinary(data []byte) error {
             val.Message = nil
          }
          add(m, num, val)
-      case protowire.Fixed32Type:
-         var val uint32
-         val, vLen = protowire.ConsumeFixed32(data)
-         add(m, num, Fixed32(val))
       case protowire.StartGroupType:
          var val Bytes
          val.Message = make(Message)
