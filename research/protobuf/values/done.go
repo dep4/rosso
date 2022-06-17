@@ -2,17 +2,28 @@ package protobuf
 
 import (
    "google.golang.org/protobuf/encoding/protowire"
-   "io"
    "sort"
 )
 
-type Number = protowire.Number
+type Encoder interface {
+   encode([]byte, Number) []byte
+   valueType() string
+}
 
 type SliceVarint []uint64
 
 type SliceFixed64 []uint64
 
 type SliceFixed32 []uint32
+
+type SliceBytes []struct {
+   Message map[Number]Encoder
+   Raw []byte
+}
+
+type SliceMessage []map[Number]Encoder
+
+type Number = protowire.Number
 
 func (SliceBytes) valueType() string { return "SliceBytes" }
 
@@ -23,11 +34,6 @@ func (SliceFixed64) valueType() string { return "SliceFixed64" }
 func (SliceVarint) valueType() string { return "SliceVarint" }
 
 func (SliceMessage) valueType() string { return "SliceMessage" }
-
-type Encoder interface {
-   encode([]byte, Number) []byte
-   valueType() string
-}
 
 func (s SliceVarint) encode(buf []byte, num Number) []byte {
    for _, val := range s {
@@ -53,11 +59,6 @@ func (s SliceFixed32) encode(buf []byte, num Number) []byte {
    return buf
 }
 
-type SliceBytes []struct {
-   Message map[Number]Encoder
-   Raw []byte
-}
-
 func (s SliceBytes) encode(buf []byte, num Number) []byte {
    for _, val := range s {
       buf = protowire.AppendTag(buf, num, protowire.BytesType)
@@ -65,8 +66,6 @@ func (s SliceBytes) encode(buf []byte, num Number) []byte {
    }
    return buf
 }
-
-type SliceMessage []map[Number]Encoder
 
 func (s SliceMessage) encode(buf []byte, num Number) []byte {
    for _, mes := range s {

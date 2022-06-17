@@ -93,7 +93,7 @@ func (r Raw) MarshalText() ([]byte, error) {
 }
 
 type Bytes struct {
-   Raw Raw // Do not embed to keep MarshalText scoped to this field
+   Raw Raw
    Message
 }
 
