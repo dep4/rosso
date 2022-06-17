@@ -2,12 +2,139 @@ package protobuf
 
 import (
    "bufio"
+   "bytes"
+   "encoding/base64"
+   "encoding/binary"
    "errors"
+   "github.com/89z/format"
    "google.golang.org/protobuf/encoding/protowire"
    "io"
    "sort"
    "strconv"
 )
+
+func consumeBytes(buf *bufio.Reader) (Bytes, error) {
+   var (
+      limit io.LimitedReader
+      val Bytes
+   )
+   n, err := binary.ReadUvarint(buf)
+   if err != nil {
+      return val, err
+   }
+   limit.N = int64(n)
+   limit.R = buf
+   val.Raw, err = io.ReadAll(&limit)
+   if err != nil {
+      return val, err
+   }
+   val.Message, _ = Decode(bufio.NewReader(bytes.NewReader(val.Raw)))
+   return val, nil
+}
+
+func consumeFixed32(buf io.Reader) (Fixed32, error) {
+   var val Fixed32
+   err := binary.Read(buf, binary.LittleEndian, &val)
+   if err != nil {
+      return 0, err
+   }
+   return val, nil
+}
+
+func consumeFixed64(buf io.Reader) (Fixed64, error) {
+   var val Fixed64
+   err := binary.Read(buf, binary.LittleEndian, &val)
+   if err != nil {
+      return 0, err
+   }
+   return val, nil
+}
+
+func consumeVarint(buf io.ByteReader) (Varint, error) {
+   val, err := binary.ReadUvarint(buf)
+   if err != nil {
+      return 0, err
+   }
+   return Varint(val), nil
+}
+
+func consumeTag(buf io.ByteReader) (Number, protowire.Type, error) {
+   tag, err := binary.ReadUvarint(buf)
+   if err != nil {
+      return 0, 0, err
+   }
+   num, typ := protowire.DecodeTag(tag)
+   if num < protowire.MinValidNumber {
+      return 0, 0, errors.New("invalid field number")
+   }
+   return num, typ, nil
+}
+func Decode(buf *bufio.Reader) (Message, error) {
+   mes := make(Message)
+   for {
+      num, typ, err := consumeTag(buf)
+      if err == io.EOF {
+         return mes, nil
+      } else if err != nil {
+         return nil, err
+      }
+      var val Encoder
+      switch typ {
+      case protowire.VarintType: // 0
+         val, err = consumeVarint(buf)
+      case protowire.Fixed64Type: // 1
+         val, err = consumeFixed64(buf)
+      case protowire.Fixed32Type: // 5
+         val, err = consumeFixed32(buf)
+      case protowire.EndGroupType: // 4
+         // break would only escape switch
+         return mes, nil
+      case protowire.StartGroupType: // 3
+         val, err = Decode(buf)
+      case protowire.BytesType: // 2
+         val, err = consumeBytes(buf)
+      default:
+         return nil, errors.New("cannot parse reserved wire type")
+      }
+      if err != nil {
+         return nil, err
+      }
+      add(mes, num, val)
+   }
+}
+
+func (r Raw) String() string {
+   if format.IsString(r) {
+      return string(r)
+   }
+   return base64.StdEncoding.EncodeToString(r)
+}
+
+func (r Raw) MarshalText() ([]byte, error) {
+   text := r.String()
+   return []byte(text), nil
+}
+
+func (m Message) MarshalBinary() ([]byte, error) {
+   var (
+      nums []Number
+      vals []byte
+   )
+   for num := range m {
+      nums = append(nums, num)
+   }
+   sort.Slice(nums, func(a, b int) bool {
+      return nums[a] < nums[b]
+   })
+   for _, num := range nums {
+      val, err := m[num].encode(num)
+      if err != nil {
+         return nil, err
+      }
+      vals = append(vals, val...)
+   }
+   return vals, nil
+}
 
 func add[T Encoder](mes Message, num Number, val T) error {
    switch value := mes[num].(type) {
@@ -120,27 +247,6 @@ func (m Message) GetVarint(num Number) (uint64, error) {
    return uint64(out), nil
 }
 
-func (m Message) MarshalBinary() ([]byte, error) {
-   var (
-      nums []Number
-      vals []byte
-   )
-   for num := range m {
-      nums = append(nums, num)
-   }
-   sort.Slice(nums, func(a, b int) bool {
-      return nums[a] < nums[b]
-   })
-   for _, num := range nums {
-      val, err := m[num].encode(num)
-      if err != nil {
-         return nil, err
-      }
-      vals = append(vals, val...)
-   }
-   return vals, nil
-}
-
 func (m Message) encode(num Number) ([]byte, error) {
    tag := protowire.AppendTag(nil, num, protowire.BytesType)
    val, err := m.MarshalBinary()
@@ -183,39 +289,4 @@ func (t typeError) Error() string {
    b = append(b, ", not "...)
    b = append(b, t.out.valueType()...)
    return string(b)
-}
-
-func Decode(r io.Reader) (Message, error) {
-   buf := bufio.NewReader(r)
-   mes := make(Message)
-   for {
-      num, typ, err := consumeTag(buf)
-      if err == io.EOF {
-         return mes, nil
-      } else if err != nil {
-         return nil, err
-      }
-      var val Encoder
-      switch typ {
-      case protowire.VarintType: // 0
-         val, err = consumeVarint(buf)
-      case protowire.Fixed64Type: // 1
-         val, err = consumeFixed64(buf)
-      case protowire.BytesType: // 2
-         val, err = consumeBytes(buf)
-      case protowire.StartGroupType: // 3
-         val, err = Decode(buf)
-      case protowire.EndGroupType: // 4
-         // break would only escape switch
-         return mes, nil
-      case protowire.Fixed32Type: // 5
-         val, err = consumeFixed32(buf)
-      default:
-         return nil, errors.New("cannot parse reserved wire type")
-      }
-      if err != nil {
-         return nil, err
-      }
-      add(mes, num, val)
-   }
 }
