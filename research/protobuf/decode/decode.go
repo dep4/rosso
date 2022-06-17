@@ -69,6 +69,7 @@ func consumeTag(buf io.ByteReader) (Number, protowire.Type, error) {
    }
    return num, typ, nil
 }
+
 func Decode(buf *bufio.Reader) (Message, error) {
    mes := make(Message)
    for {
@@ -160,13 +161,6 @@ func (b Bytes) encode(num Number) ([]byte, error) {
    return protowire.AppendBytes(tag, b.Raw), nil
 }
 
-func (Bytes) valueType() string { return "Bytes" }
-
-type Encoder interface {
-   encode(Number) ([]byte, error)
-   valueType() string
-}
-
 type Encoders[T Encoder] []T
 
 func (e Encoders[T]) encode(num Number) ([]byte, error) {
@@ -181,11 +175,6 @@ func (e Encoders[T]) encode(num Number) ([]byte, error) {
    return vals, nil
 }
 
-func (Encoders[T]) valueType() string {
-   var value T
-   return "[]" + value.valueType()
-}
-
 type Fixed32 uint32
 
 func (f Fixed32) encode(num Number) ([]byte, error) {
@@ -193,16 +182,12 @@ func (f Fixed32) encode(num Number) ([]byte, error) {
    return protowire.AppendFixed32(tag, uint32(f)), nil
 }
 
-func (Fixed32) valueType() string { return "Fixed32" }
-
 type Fixed64 uint64
 
 func (f Fixed64) encode(num Number) ([]byte, error) {
    tag := protowire.AppendTag(nil, num, protowire.Fixed64Type)
    return protowire.AppendFixed64(tag, uint64(f)), nil
 }
-
-func (Fixed64) valueType() string { return "Fixed64" }
 
 type Message map[Number]Encoder
 
@@ -256,8 +241,6 @@ func (m Message) encode(num Number) ([]byte, error) {
    return protowire.AppendBytes(tag, val), nil
 }
 
-func (Message) valueType() string { return "Message" }
-
 // we need this, so we can avoid importing
 // google.golang.org/protobuf/encoding/protowire
 // in other modules
@@ -271,6 +254,24 @@ func (v Varint) encode(num Number) ([]byte, error) {
    tag := protowire.AppendTag(nil, num, protowire.VarintType)
    return protowire.AppendVarint(tag, uint64(v)), nil
 }
+
+func (Bytes) valueType() string { return "Bytes" }
+
+type Encoder interface {
+   encode(Number) ([]byte, error)
+   valueType() string
+}
+
+func (Encoders[T]) valueType() string {
+   var value T
+   return "[]" + value.valueType()
+}
+
+func (Fixed32) valueType() string { return "Fixed32" }
+
+func (Fixed64) valueType() string { return "Fixed64" }
+
+func (Message) valueType() string { return "Message" }
 
 func (Varint) valueType() string { return "Varint" }
 

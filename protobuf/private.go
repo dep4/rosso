@@ -1,24 +1,8 @@
 package protobuf
 
 import (
-   "fmt"
    "google.golang.org/protobuf/encoding/protowire"
-   "strings"
 )
-
-type getError struct {
-   src Encoder
-   Number
-   dst Encoder
-}
-
-func (g getError) Error() string {
-   b := new(strings.Builder)
-   fmt.Fprintf(b, "cannot unmarshal %T", g.src)
-   fmt.Fprintf(b, " into field %v", g.Number)
-   fmt.Fprintf(b, " of type %T", g.dst)
-   return b.String()
-}
 
 func (e Encoders[T]) encode(num Number) ([]byte, error) {
    var vals []byte
