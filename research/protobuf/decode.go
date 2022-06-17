@@ -2,6 +2,7 @@ package protobuf
 
 import (
    "bufio"
+   "bytes"
    "encoding/binary"
    "errors"
    "google.golang.org/protobuf/encoding/protowire"
@@ -10,31 +11,76 @@ import (
    "strconv"
 )
 
-func consumeBytes(buf *bufio.Reader) ([]byte, error) {
-   n, err := binary.ReadUvarint(buf)
-   if err != nil {
-      return nil, err
+func add[T Encoder](mes Message, num Number, val T) error {
+   switch value := mes[num].(type) {
+   case nil:
+      mes[num] = val
+   case T:
+      mes[num] = Encoders[T]{value, val}
+   case Encoders[T]:
+      mes[num] = append(value, val)
+   default:
+      return getError{num, value, val}
    }
-   var limit io.LimitedReader
-   limit.N = int64(n)
-   limit.R = buf
-   return io.ReadAll(&limit)
+   return nil
 }
 
-func consumeTag(buf io.ByteReader) (Number, protowire.Type, error) {
-   tag, err := binary.ReadUvarint(buf)
-   if err != nil {
-      return 0, 0, err
+func Decode(r io.Reader) (Message, error) {
+   buf := bufio.NewReader(r)
+   mes := make(Message)
+   for {
+      num, typ, err := consumeTag(buf)
+      if err == io.EOF {
+         return mes, nil
+      } else if err != nil {
+         return nil, err
+      }
+      switch typ {
+      case protowire.EndGroupType:
+         // break would only escape switch
+         return mes, nil
+      case protowire.VarintType:
+         val, err := binary.ReadUvarint(buf)
+         if err != nil {
+            return nil, err
+         }
+         add(mes, num, Varint(val))
+      case protowire.Fixed64Type:
+         var val Fixed64
+         err := binary.Read(buf, binary.LittleEndian, &val)
+         if err != nil {
+            return nil, err
+         }
+         add(mes, num, val)
+      case protowire.Fixed32Type:
+         var val Fixed32
+         err := binary.Read(buf, binary.LittleEndian, &val)
+         if err != nil {
+            return nil, err
+         }
+         add(mes, num, val)
+      case protowire.BytesType:
+         var val Bytes
+         val.Raw, err = consumeBytes(buf)
+         if err != nil {
+            return nil, err
+         }
+         val.Message, _ = Decode(bytes.NewReader(val.Raw))
+         add(mes, num, val)
+      case protowire.StartGroupType:
+         val, err := Decode(buf)
+         if err != nil {
+            return nil, err
+         }
+         add(mes, num, val)
+      default:
+         return nil, errors.New("cannot parse reserved wire type")
+      }
    }
-   num, typ := protowire.DecodeTag(tag)
-   if num < protowire.MinValidNumber {
-      return 0, 0, errors.New("invalid field number")
-   }
-   return num, typ, nil
 }
 
 type Bytes struct {
-   Raw Raw // Do not embed to keep MarshalText scoped to this field
+   Raw Raw
    Message
 }
 
@@ -46,8 +92,8 @@ func (b Bytes) encode(num Number) ([]byte, error) {
 func (Bytes) valueType() string { return "Bytes" }
 
 type Encoder interface {
-   valueType() string
    encode(Number) ([]byte, error)
+   valueType() string
 }
 
 type Encoders[T Encoder] []T
@@ -162,6 +208,9 @@ func (m Message) encode(num Number) ([]byte, error) {
 
 func (Message) valueType() string { return "Message" }
 
+// we need this, so we can avoid importing
+// google.golang.org/protobuf/encoding/protowire
+// in other modules
 type Number = protowire.Number
 
 type Raw []byte
