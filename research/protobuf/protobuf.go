@@ -11,18 +11,6 @@ import (
    "strconv"
 )
 
-func consumeTag(buf io.ByteReader) (protowire.Number, protowire.Type, error) {
-   tag, err := binary.ReadUvarint(buf)
-   if err != nil {
-      return 0, 0, err
-   }
-   num, typ := protowire.DecodeTag(tag)
-   if num < protowire.MinValidNumber {
-      return 0, 0, errors.New("invalid field number")
-   }
-   return num, typ, nil
-}
-
 func (m Message) GetMessages(num Number) []Message {
    var mes []Message
    switch value := m[num].(type) {
@@ -65,17 +53,6 @@ type getError struct {
    Number
    in Encoder
    out Encoder
-}
-
-func consumeBytes(buf *bufio.Reader) ([]byte, error) {
-   n, err := binary.ReadUvarint(buf)
-   if err != nil {
-      return nil, err
-   }
-   var limit io.LimitedReader
-   limit.N = int64(n)
-   limit.R = buf
-   return io.ReadAll(&limit)
 }
 
 func (m Message) GetString(num Number) (string, error) {
@@ -207,6 +184,29 @@ func (e Encoders[T]) encode(num Number) ([]byte, error) {
    return vals, nil
 }
 
+func consumeTag(buf io.ByteReader) (protowire.Number, protowire.Type, error) {
+   tag, err := binary.ReadUvarint(buf)
+   if err != nil {
+      return 0, 0, err
+   }
+   num, typ := protowire.DecodeTag(tag)
+   if num < protowire.MinValidNumber {
+      return 0, 0, errors.New("invalid field number")
+   }
+   return num, typ, nil
+}
+
+func consumeBytes(buf *bufio.Reader) ([]byte, error) {
+   n, err := binary.ReadUvarint(buf)
+   if err != nil {
+      return nil, err
+   }
+   var limit io.LimitedReader
+   limit.N = int64(n)
+   limit.R = buf
+   return io.ReadAll(&limit)
+}
+
 func Decode(r io.Reader) (Message, error) {
    buf := bufio.NewReader(r)
    mes := make(Message)
@@ -246,9 +246,9 @@ func Decode(r io.Reader) (Message, error) {
             return nil, err
          }
          add(mes, num, Varint(val))
-      default:
-         // StartGroupType
-         // panic: protowire.Type(3)
+      case protowire.StartGroupType:
+         // ConsumeGroup calls ConsumeTag, which we can get by just doing
+         // nothing.
       }
    }
 }
