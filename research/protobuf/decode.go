@@ -2,8 +2,6 @@ package protobuf
 
 import (
    "bufio"
-   "bytes"
-   "encoding/binary"
    "errors"
    "google.golang.org/protobuf/encoding/protowire"
    "io"
@@ -20,63 +18,9 @@ func add[T Encoder](mes Message, num Number, val T) error {
    case Encoders[T]:
       mes[num] = append(value, val)
    default:
-      return getError{num, value, val}
+      return typeError{num, value, val}
    }
    return nil
-}
-
-func Decode(r io.Reader) (Message, error) {
-   buf := bufio.NewReader(r)
-   mes := make(Message)
-   for {
-      num, typ, err := consumeTag(buf)
-      if err == io.EOF {
-         return mes, nil
-      } else if err != nil {
-         return nil, err
-      }
-      switch typ {
-      case protowire.EndGroupType:
-         // break would only escape switch
-         return mes, nil
-      case protowire.VarintType:
-         val, err := binary.ReadUvarint(buf)
-         if err != nil {
-            return nil, err
-         }
-         add(mes, num, Varint(val))
-      case protowire.Fixed64Type:
-         var val Fixed64
-         err := binary.Read(buf, binary.LittleEndian, &val)
-         if err != nil {
-            return nil, err
-         }
-         add(mes, num, val)
-      case protowire.Fixed32Type:
-         var val Fixed32
-         err := binary.Read(buf, binary.LittleEndian, &val)
-         if err != nil {
-            return nil, err
-         }
-         add(mes, num, val)
-      case protowire.BytesType:
-         var val Bytes
-         val.Raw, err = consumeBytes(buf)
-         if err != nil {
-            return nil, err
-         }
-         val.Message, _ = Decode(bytes.NewReader(val.Raw))
-         add(mes, num, val)
-      case protowire.StartGroupType:
-         val, err := Decode(buf)
-         if err != nil {
-            return nil, err
-         }
-         add(mes, num, val)
-      default:
-         return nil, errors.New("cannot parse reserved wire type")
-      }
-   }
 }
 
 type Bytes struct {
@@ -162,7 +106,7 @@ func (m Message) GetString(num Number) (string, error) {
    in := m[num]
    out, ok := in.(Bytes)
    if !ok {
-      return "", getError{num, in, out}
+      return "", typeError{num, in, out}
    }
    return string(out.Raw), nil
 }
@@ -171,7 +115,7 @@ func (m Message) GetVarint(num Number) (uint64, error) {
    in := m[num]
    out, ok := in.(Varint)
    if !ok {
-      return 0, getError{num, in, out}
+      return 0, typeError{num, in, out}
    }
    return uint64(out), nil
 }
@@ -224,19 +168,54 @@ func (v Varint) encode(num Number) ([]byte, error) {
 
 func (Varint) valueType() string { return "Varint" }
 
-type getError struct {
+type typeError struct {
    Number
    in Encoder
    out Encoder
 }
 
-func (g getError) Error() string {
+func (t typeError) Error() string {
    var b []byte
    b = append(b, "field "...)
-   b = strconv.AppendInt(b, int64(g.Number), 10)
+   b = strconv.AppendInt(b, int64(t.Number), 10)
    b = append(b, " is "...)
-   b = append(b, g.in.valueType()...)
+   b = append(b, t.in.valueType()...)
    b = append(b, ", not "...)
-   b = append(b, g.out.valueType()...)
+   b = append(b, t.out.valueType()...)
    return string(b)
+}
+
+func Decode(r io.Reader) (Message, error) {
+   buf := bufio.NewReader(r)
+   mes := make(Message)
+   for {
+      num, typ, err := consumeTag(buf)
+      if err == io.EOF {
+         return mes, nil
+      } else if err != nil {
+         return nil, err
+      }
+      var val Encoder
+      switch typ {
+      case protowire.VarintType: // 0
+         val, err = consumeVarint(buf)
+      case protowire.Fixed64Type: // 1
+         val, err = consumeFixed64(buf)
+      case protowire.BytesType: // 2
+         val, err = consumeBytes(buf)
+      case protowire.StartGroupType: // 3
+         val, err = Decode(buf)
+      case protowire.EndGroupType: // 4
+         // break would only escape switch
+         return mes, nil
+      case protowire.Fixed32Type: // 5
+         val, err = consumeFixed32(buf)
+      default:
+         return nil, errors.New("cannot parse reserved wire type")
+      }
+      if err != nil {
+         return nil, err
+      }
+      add(mes, num, val)
+   }
 }
