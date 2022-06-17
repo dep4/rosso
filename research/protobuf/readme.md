@@ -1,9 +1,44 @@
 # ProtoBuf
 
-Are groups still used? Here is the newest APK:
+Where does type get checked? Start with:
 
 ~~~
-{"2022-06-14 00:00:00 +0000 UTC",0,"com.pinterest"},
+DecodeTag
 ~~~
 
-lets check the response.
+Then:
+
+~~~
+ConsumeTag
+~~~
+
+Then:
+
+~~~
+ConsumeField
+~~~
+
+Then:
+
+~~~
+ConsumeFieldValue
+~~~
+
+Then:
+
+~~~
+consumeFieldValueD
+~~~
+
+Then:
+
+~~~
+errCodeReserved
+~~~
+
+Then:
+
+~~~
+errReserved
+errReserved    = errors.New("cannot parse reserved wire type")
+~~~
