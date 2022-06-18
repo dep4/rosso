@@ -4,6 +4,7 @@ import (
    "google.golang.org/protobuf/encoding/protowire"
    "io"
    "sort"
+   "strconv"
 )
 
 type Encoder interface {
@@ -16,11 +17,6 @@ type SliceVarint []uint64
 type SliceFixed64 []uint64
 
 type SliceFixed32 []uint32
-
-type SliceBytes []struct {
-   Message Message
-   Raw []byte
-}
 
 type Number = protowire.Number
 
@@ -59,29 +55,28 @@ func (s SliceBytes) encode(buf []byte, num Number) []byte {
 func (s SliceMessage) encode(buf []byte, num Number) []byte {
    for _, mes := range s {
       buf = protowire.AppendTag(buf, num, protowire.BytesType)
-      buf = protowire.AppendBytes(buf, Marshal(mes))
+      buf = protowire.AppendBytes(buf, mes.MarshalBinary())
    }
    return buf
 }
 
-func (m Message) MarshalBinary() ([]byte, error) {
+// FIXME should return error
+func (m Message) MarshalBinary() []byte {
    var (
       nums []Number
       bufs []byte
    )
-   for num := range mes {
+   for num := range m {
       nums = append(nums, num)
    }
    sort.Slice(nums, func(a, b int) bool {
       return nums[a] < nums[b]
    })
    for _, num := range nums {
-      bufs = mes[num].encode(bufs, num)
+      bufs = m[num].encode(bufs, num)
    }
-   return bufs, nil
+   return bufs
 }
-
-type SliceMessage []Message
 
 func (SliceBytes) valueType() string { return "SliceBytes" }
 
@@ -110,19 +105,6 @@ func (t typeError) Error() string {
    return string(b)
 }
 
-type Message map[Number]Encoder
-
-func (m Message) varint(num Number, val uint64) error {
-   if in := m[num]; in == nil {
-      m[num] = SliceVarint{val}
-   } else if out, ok := in.(SliceVarint); ok {
-      m[num] = append(out, val)
-   } else {
-      return typeError{num, in, out}
-   }
-   return nil
-}
-
 func Unmarshal(buf []byte) (Message, error) {
    if len(buf) == 0 {
       return nil, io.ErrUnexpectedEOF
@@ -135,37 +117,30 @@ func Unmarshal(buf []byte) (Message, error) {
          return nil, err
       }
       buf = buf[tLen:]
-      var vLen int
       switch typ {
       case protowire.VarintType:
-         var val uint64
-         val, vLen = protowire.ConsumeVarint(buf)
-         err := varint(mes, num, val)
-         if err != nil {
-            return nil, err
-         }
-      case protowire.Fixed32Type:
-         var val uint32
-         val, vLen = protowire.ConsumeFixed32(buf)
-         mes[num] = append(mes[num], Fixed32(val))
+         buf, err = mes.consumeVarint(num, buf)
       case protowire.Fixed64Type:
-         var val uint64
-         val, vLen = protowire.ConsumeFixed64(buf)
-         mes[num] = append(mes[num], Fixed64(val))
+         buf, err = mes.consumeFixed64(num, buf)
+      case protowire.Fixed32Type:
+         buf, err = mes.consumeFixed32(num, buf)
       case protowire.BytesType:
-         var val Bytes
-         val.Message = make(Message)
-         val.Raw, vLen = protowire.ConsumeBytes(buf)
-         err := val.Message.UnmarshalBinary(val.Raw)
-         if err != nil {
-            val.Message = nil
-         }
-         mes[num] = append(mes[num], val)
+         buf, err = mes.consumeBytes(num, buf)
       }
-      if err := protowire.ParseError(vLen); err != nil {
+      if err != nil {
          return nil, err
       }
-      buf = buf[vLen:]
    }
    return mes, nil
 }
+
+type Message map[Number]Encoder
+
+type SliceMessage []Message
+
+type Bytes struct {
+   Raw []byte
+   Message Message
+}
+
+type SliceBytes []Bytes
