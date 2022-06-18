@@ -4,6 +4,21 @@ import (
    "google.golang.org/protobuf/encoding/protowire"
 )
 
+func (m Message) consumeVarint(num Number, b []byte) ([]byte, error) {
+   val, vLen := protowire.ConsumeVarint(b)
+   if err := protowire.ParseError(vLen); err != nil {
+      return nil, err
+   }
+   if in := m[num]; in == nil {
+      m[num] = SliceVarint{val}
+   } else if out, ok := in.(SliceVarint); ok {
+      m[num] = append(out, val)
+   } else {
+      return nil, typeError{num, in, out}
+   }
+   return b[vLen:], nil
+}
+
 func (m Message) consumeBytes(num Number, b []byte) ([]byte, error) {
    /*
    var val Bytes
@@ -55,21 +70,6 @@ func (m Message) consumeFixed64(num Number, b []byte) ([]byte, error) {
    if in := m[num]; in == nil {
       m[num] = SliceFixed64{val}
    } else if out, ok := in.(SliceFixed64); ok {
-      m[num] = append(out, val)
-   } else {
-      return nil, typeError{num, in, out}
-   }
-   return b[vLen:], nil
-}
-
-func (m Message) consumeVarint(num Number, b []byte) ([]byte, error) {
-   val, vLen := protowire.ConsumeVarint(b)
-   if err := protowire.ParseError(vLen); err != nil {
-      return nil, err
-   }
-   if in := m[num]; in == nil {
-      m[num] = SliceVarint{val}
-   } else if out, ok := in.(SliceVarint); ok {
       m[num] = append(out, val)
    } else {
       return nil, typeError{num, in, out}
