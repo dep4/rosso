@@ -12,55 +12,9 @@ type Encoder interface {
    valueType() string
 }
 
-type SliceVarint []uint64
+type Message map[Number]Encoder
 
-type SliceFixed64 []uint64
-
-type SliceFixed32 []uint32
-
-type Number = protowire.Number
-
-func (s SliceVarint) encode(b []byte, num Number) []byte {
-   for _, val := range s {
-      b = protowire.AppendTag(b, num, protowire.VarintType)
-      b = protowire.AppendVarint(b, val)
-   }
-   return b
-}
-
-func (s SliceFixed64) encode(b []byte, num Number) []byte {
-   for _, val := range s {
-      b = protowire.AppendTag(b, num, protowire.Fixed64Type)
-      b = protowire.AppendFixed64(b, val)
-   }
-   return b
-}
-
-func (s SliceFixed32) encode(b []byte, num Number) []byte {
-   for _, val := range s {
-      b = protowire.AppendTag(b, num, protowire.Fixed32Type)
-      b = protowire.AppendFixed32(b, val)
-   }
-   return b
-}
-
-func (s SliceBytes) encode(b []byte, num Number) []byte {
-   for _, val := range s {
-      b = protowire.AppendTag(b, num, protowire.BytesType)
-      b = protowire.AppendBytes(b, val.Raw)
-   }
-   return b
-}
-
-func (s SliceMessage) encode(b []byte, num Number) []byte {
-   for _, mes := range s {
-      b = protowire.AppendTag(b, num, protowire.BytesType)
-      b = protowire.AppendBytes(b, mes.MarshalBinary())
-   }
-   return b
-}
-
-func (m Message) MarshalBinary() []byte {
+func (m Message) Marshal() []byte {
    var (
       nums []Number
       bufs []byte
@@ -77,55 +31,88 @@ func (m Message) MarshalBinary() []byte {
    return bufs
 }
 
+func (m Message) consumeBytes(num Number, buf []byte) ([]byte, error) {
+   vals, err := get[SliceBytes](m, num)
+   if err != nil {
+      return nil, err
+   }
+   var (
+      val Bytes
+      vLen int
+   )
+   val.Raw, vLen = protowire.ConsumeBytes(buf)
+   if err := protowire.ParseError(vLen); err != nil {
+      return nil, err
+   }
+   val.Message, err = Unmarshal(val.Raw)
+   if err != nil {
+      return nil, err
+   }
+   m[num] = append(vals, val)
+   return buf[vLen:], nil
+}
+
+type Number = protowire.Number
+
 func (SliceBytes) valueType() string { return "SliceBytes" }
+
+func (s SliceBytes) encode(buf []byte, num Number) []byte {
+   for _, val := range s {
+      buf = protowire.AppendTag(buf, num, protowire.BytesType)
+      buf = protowire.AppendBytes(buf, val.Raw)
+   }
+   return buf
+}
+
+type SliceFixed32 []uint32
+
+func (s SliceFixed32) encode(buf []byte, num Number) []byte {
+   for _, val := range s {
+      buf = protowire.AppendTag(buf, num, protowire.Fixed32Type)
+      buf = protowire.AppendFixed32(buf, val)
+   }
+   return buf
+}
 
 func (SliceFixed32) valueType() string { return "SliceFixed32" }
 
+type SliceFixed64 []uint64
+
+func (s SliceFixed64) encode(buf []byte, num Number) []byte {
+   for _, val := range s {
+      buf = protowire.AppendTag(buf, num, protowire.Fixed64Type)
+      buf = protowire.AppendFixed64(buf, val)
+   }
+   return buf
+}
+
 func (SliceFixed64) valueType() string { return "SliceFixed64" }
 
-func (SliceVarint) valueType() string { return "SliceVarint" }
+func (s SliceMessage) encode(buf []byte, num Number) []byte {
+   for _, mes := range s {
+      buf = protowire.AppendTag(buf, num, protowire.BytesType)
+      buf = protowire.AppendBytes(buf, mes.Marshal())
+   }
+   return buf
+}
 
 func (SliceMessage) valueType() string { return "SliceMessage" }
 
-func Unmarshal(b []byte) (Message, error) {
-   if len(b) == 0 {
-      return nil, io.ErrUnexpectedEOF
+type SliceVarint []uint64
+
+func (s SliceVarint) encode(buf []byte, num Number) []byte {
+   for _, val := range s {
+      buf = protowire.AppendTag(buf, num, protowire.VarintType)
+      buf = protowire.AppendVarint(buf, val)
    }
-   mes := make(Message)
-   for len(b) >= 1 {
-      num, typ, tLen := protowire.ConsumeTag(b)
-      err := protowire.ParseError(tLen)
-      if err != nil {
-         return nil, err
-      }
-      b = b[tLen:]
-      switch typ {
-      case protowire.VarintType:
-         b, err = mes.consumeVarint(num, b)
-      case protowire.Fixed64Type:
-         b, err = mes.consumeFixed64(num, b)
-      case protowire.Fixed32Type:
-         b, err = mes.consumeFixed32(num, b)
-      case protowire.BytesType:
-         b, err = mes.consumeBytes(num, b)
-      }
-      if err != nil {
-         return nil, err
-      }
-   }
-   return mes, nil
+   return buf
 }
 
-type Message map[Number]Encoder
+func (SliceVarint) valueType() string { return "SliceVarint" }
+
+////////////////////////////
 
 type SliceMessage []Message
-
-type Bytes struct {
-   Raw []byte
-   Message Message
-}
-
-type SliceBytes []Bytes
 
 func (t typeError) Error() string {
    var b []byte
@@ -156,71 +143,77 @@ func get[T Encoder](mes Message, num Number) (T, error) {
    return out, typeError{num, in, out}
 }
 
-func (m Message) consumeVarint(num Number, b []byte) ([]byte, error) {
+func (m Message) consumeVarint(num Number, buf []byte) ([]byte, error) {
    vals, err := get[SliceVarint](m, num)
    if err != nil {
       return nil, err
    }
-   val, vLen := protowire.ConsumeVarint(b)
+   val, vLen := protowire.ConsumeVarint(buf)
    if err := protowire.ParseError(vLen); err != nil {
       return nil, err
    }
    m[num] = append(vals, val)
-   return b[vLen:], nil
+   return buf[vLen:], nil
 }
 
-func (m Message) consumeFixed64(num Number, b []byte) ([]byte, error) {
+func (m Message) consumeFixed64(num Number, buf []byte) ([]byte, error) {
    vals, err := get[SliceFixed64](m, num)
    if err != nil {
       return nil, err
    }
-   val, vLen := protowire.ConsumeFixed64(b)
+   val, vLen := protowire.ConsumeFixed64(buf)
    if err := protowire.ParseError(vLen); err != nil {
       return nil, err
    }
    m[num] = append(vals, val)
-   return b[vLen:], nil
+   return buf[vLen:], nil
 }
 
-func (m Message) consumeFixed32(num Number, b []byte) ([]byte, error) {
+func (m Message) consumeFixed32(num Number, buf []byte) ([]byte, error) {
    vals, err := get[SliceFixed32](m, num)
    if err != nil {
       return nil, err
    }
-   val, vLen := protowire.ConsumeFixed32(b)
+   val, vLen := protowire.ConsumeFixed32(buf)
    if err := protowire.ParseError(vLen); err != nil {
       return nil, err
    }
    m[num] = append(vals, val)
-   return b[vLen:], nil
+   return buf[vLen:], nil
 }
 
-/////////////////////////////////////////////////////////////////////////////
+type SliceBytes []Bytes
 
-func (m Message) consumeBytes(num Number, b []byte) ([]byte, error) {
-   /*
-   var val Bytes
-   val.Message = make(Message)
-   val.Raw, vLen = protowire.ConsumeBytes(b)
-   if err := protowire.ParseError(vLen); err != nil {
-      return nil, err
+type Bytes struct {
+   Raw []byte
+   Message Message
+}
+
+func Unmarshal(buf []byte) (Message, error) {
+   if len(buf) == 0 {
+      return nil, io.ErrUnexpectedEOF
    }
-   err := val.Message.UnmarshalBinary(val.Raw)
-   if err != nil {
-      val.Message = nil
+   mes := make(Message)
+   for len(buf) >= 1 {
+      num, typ, tLen := protowire.ConsumeTag(buf)
+      err := protowire.ParseError(tLen)
+      if err != nil {
+         return nil, err
+      }
+      buf = buf[tLen:]
+      switch typ {
+      case protowire.VarintType:
+         buf, err = mes.consumeVarint(num, buf)
+      case protowire.Fixed64Type:
+         buf, err = mes.consumeFixed64(num, buf)
+      case protowire.Fixed32Type:
+         buf, err = mes.consumeFixed32(num, buf)
+      case protowire.BytesType:
+         buf, err = mes.consumeBytes(num, buf)
+      }
+      if err != nil {
+         return nil, err
+      }
    }
-   mes[num] = append(mes[num], val)
-   */
-   val, vLen := protowire.ConsumeBytes(b)
-   if err := protowire.ParseError(vLen); err != nil {
-      return nil, err
-   }
-   if in := m[num]; in == nil {
-      m[num] = SliceBytes{Bytes{Raw: val}}
-   } else if out, ok := in.(SliceBytes); ok {
-      m[num] = append(out, Bytes{Raw: val})
-   } else {
-      return nil, typeError{num, in, out}
-   }
-   return b[vLen:], nil
+   return mes, nil
 }
