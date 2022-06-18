@@ -23,20 +23,17 @@ func (b Bytes) encode(num Number) ([]byte, error) {
 
 func (f Fixed32) encode(num Number) ([]byte, error) {
    tag := protowire.AppendTag(nil, num, protowire.Fixed32Type)
-   val := uint32(f)
-   return protowire.AppendFixed32(tag, val), nil
+   return protowire.AppendFixed32(tag, uint32(f)), nil
 }
 
 func (f Fixed64) encode(num Number) ([]byte, error) {
    tag := protowire.AppendTag(nil, num, protowire.Fixed64Type)
-   val := uint64(f)
-   return protowire.AppendFixed64(tag, val), nil
+   return protowire.AppendFixed64(tag, uint64(f)), nil
 }
 
 func (v Varint) encode(num Number) ([]byte, error) {
    tag := protowire.AppendTag(nil, num, protowire.VarintType)
-   val := uint64(v)
-   return protowire.AppendVarint(tag, val), nil
+   return protowire.AppendVarint(tag, uint64(v)), nil
 }
 
 func (m Message) encode(num Number) ([]byte, error) {
@@ -58,4 +55,3 @@ func add[T Encoder](mes Message, num Number, val T) {
       mes[num] = append(value, val)
    }
 }
-
