@@ -7,12 +7,13 @@ import (
 type Message map[protowire.Number]Token
 
 type Token struct {
-   Wire protowire.Type
+   Type protowire.Type
    Value []Value
 }
 
 type Value struct {
-   Integer uint64
+   Int32 uint32
+   Int64 uint64
    Bytes []byte
    Message Message
 }
