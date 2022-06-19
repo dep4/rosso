@@ -6,7 +6,7 @@ import (
    "testing"
 )
 
-func TestCheckin(t *testing.T) {
+func Test_Checkin(t *testing.T) {
    data, err := os.ReadFile("details.txt")
    if err != nil {
       t.Fatal(err)

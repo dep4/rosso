@@ -48,13 +48,13 @@ func (r Represent) Media(base *url.URL) ([]*url.URL, error) {
       addrs []*url.URL
       start int
    )
-   if r.SegmentTemplate.StartNumber != nil {
-      start = *r.SegmentTemplate.StartNumber
+   if r.SegmentTemplate.Start_Number != nil {
+      start = *r.SegmentTemplate.Start_Number
    }
    for _, seg := range r.SegmentTemplate.SegmentTimeline.S {
       for seg.T = start; seg.R >= 0; seg.R-- {
          ref := r.id(r.SegmentTemplate.Media)
-         if r.SegmentTemplate.StartNumber != nil {
+         if r.SegmentTemplate.Start_Number != nil {
             ref = seg.number(ref)
             seg.T++
             start++
@@ -83,7 +83,7 @@ type Template struct {
    SegmentTimeline struct {
       S []Segment
    }
-   StartNumber *int `xml:"startNumber,attr"`
+   Start_Number *int `xml:"startNumber,attr"`
 }
 
 type Segment struct {
@@ -160,7 +160,7 @@ func Audio(a Adaptation, r Represent) bool {
    return true
 }
 
-type AdaptationFunc func(Adaptation, Represent) bool
+type Represent_Func func(Adaptation, Represent) bool
 
 type Media struct {
    Period struct {
@@ -168,7 +168,7 @@ type Media struct {
    }
 }
 
-func (m Media) Represents(fn AdaptationFunc) Represents {
+func (m Media) Represents(fn Represent_Func) Represents {
    var reps Represents
    for _, ada := range m.Period.AdaptationSet {
       for _, rep := range ada.Representation {

@@ -114,7 +114,7 @@ type Scanner struct {
    scanner.Scanner
 }
 
-func NewScanner(body io.Reader) Scanner {
+func New_Scanner(body io.Reader) Scanner {
    var scan Scanner
    scan.line.Init(body)
    scan.line.IsIdentRune = func(r rune, i int) bool {
@@ -252,7 +252,7 @@ func (s Streams) Codecs(val string) Streams {
    return out
 }
 
-func (s Streams) GetBandwidth(val int64) *Stream {
+func (s Streams) Get_Bandwidth(val int64) *Stream {
    distance := func(s *Stream) int64 {
       if s.Bandwidth > val {
          return s.Bandwidth - val

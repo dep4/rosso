@@ -14,7 +14,7 @@ import (
 )
 
 // mimesniff.spec.whatwg.org#binary-data-byte
-func IsString(buf []byte) bool {
+func Is_String(buf []byte) bool {
    for _, b := range buf {
       if b <= 0x08 {
          return false
@@ -50,21 +50,21 @@ func Label[T Number](value T, unit ...string) string {
    return strconv.FormatFloat(val, 'f', i, 64) + symbol
 }
 
-func LabelNumber[T Number](value T) string {
+func Label_Number[T Number](value T) string {
    return Label(value, "", " K", " M", " B", " T")
 }
 
-func LabelRate[T Number](value T) string {
+func Label_Rate[T Number](value T) string {
    return Label(value, " B/s", " kB/s", " MB/s", " GB/s", " TB/s")
 }
 
-func LabelSize[T Number](value T) string {
+func Label_Size[T Number](value T) string {
    return Label(value, " B", " kB", " MB", " GB", " TB")
 }
 
-type LogLevel int
+type Log_Level int
 
-func (l LogLevel) Dump(req *http.Request) error {
+func (l Log_Level) Dump(req *http.Request) error {
    switch l {
    case 0:
       os.Stderr.WriteString(req.Method)
@@ -76,7 +76,7 @@ func (l LogLevel) Dump(req *http.Request) error {
       if err != nil {
          return err
       }
-      if !IsString(buf) {
+      if !Is_String(buf) {
          buf = strconv.AppendQuote(nil, string(buf))
       }
       if !bytes.HasSuffix(buf, []byte{'\n'}) {
@@ -91,45 +91,45 @@ type Number interface {
    float64 | int | int64 | ~uint64
 }
 
-func ProgressBytes(dst io.Writer, bytes int64) *Progress {
+func Progress_Bytes(dst io.Writer, bytes int64) *Progress {
    return &Progress{Writer: dst, bytes: bytes}
 }
 
-func ProgressChunks(dst io.Writer, chunks int) *Progress {
+func Progress_Chunks(dst io.Writer, chunks int) *Progress {
    return &Progress{Writer: dst, chunks: chunks}
 }
 
-func (p *Progress) AddChunk(bytes int64) {
-   p.bytesRead += bytes
-   p.chunksRead += 1
-   p.bytes = int64(p.chunks) * p.bytesRead / p.chunksRead
+func (p *Progress) Add_Chunk(bytes int64) {
+   p.bytes_read += bytes
+   p.chunks_read += 1
+   p.bytes = int64(p.chunks) * p.bytes_read / p.chunks_read
 }
 
 func (p *Progress) Write(buf []byte) (int, error) {
    if p.time.IsZero() {
       p.time = time.Now()
-      p.timeLap = time.Now()
+      p.time_lap = time.Now()
    }
-   since := time.Since(p.timeLap)
+   since := time.Since(p.time_lap)
    if since >= time.Second {
       os.Stderr.WriteString(p.String())
       os.Stderr.WriteString("\n")
-      p.timeLap = p.timeLap.Add(since)
+      p.time_lap = p.time_lap.Add(since)
    }
    write, err := p.Writer.Write(buf)
-   p.bytesWritten += write
+   p.bytes_written += write
    return write, err
 }
 
 type Progress struct {
    io.Writer
    bytes int64
-   bytesRead int64
-   bytesWritten int
+   bytes_read int64
+   bytes_written int
    chunks int
-   chunksRead int64
+   chunks_read int64
    time time.Time
-   timeLap time.Time
+   time_lap time.Time
 }
 
 func (p Progress) String() string {
@@ -140,14 +140,14 @@ func (p Progress) String() string {
       }
       return strconv.FormatFloat(ratio, 'f', 1, 64) + "%"
    }
-   ratio := percent(p.bytesWritten, p.bytes)
-   rate := float64(p.bytesWritten) / time.Since(p.time).Seconds()
+   ratio := percent(p.bytes_written, p.bytes)
+   rate := float64(p.bytes_written) / time.Since(p.time).Seconds()
    var buf strings.Builder
    buf.WriteString(ratio)
    buf.WriteByte('\t')
-   buf.WriteString(LabelSize(p.bytesWritten))
+   buf.WriteString(Label_Size(p.bytes_written))
    buf.WriteByte('\t')
-   buf.WriteString(LabelRate(rate))
+   buf.WriteString(Label_Rate(rate))
    return buf.String()
 }
 

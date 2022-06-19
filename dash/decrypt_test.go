@@ -7,7 +7,7 @@ import (
    "testing"
 )
 
-const rawKey = "6b1f79ba70956a37fe716997b8d211ae"
+const raw_key = "6b1f79ba70956a37fe716997b8d211ae"
 
 var segments = []string{
    "segment0.m4f",
@@ -22,7 +22,7 @@ var segments = []string{
    "segment9.m4f",
 }
 
-func TestDecrypt(t *testing.T) {
+func Test_Decrypt(t *testing.T) {
    dec, err := os.Create("ignore/dec.mp4")
    if err != nil {
       t.Fatal(err)
@@ -33,10 +33,10 @@ func TestDecrypt(t *testing.T) {
       t.Fatal(err)
    }
    defer init0.Close()
-   if err := DecryptInit(init0, dec); err != nil {
+   if err := Decrypt_Init(init0, dec); err != nil {
       t.Fatal(err)
    }
-   key, err := hex.DecodeString(rawKey)
+   key, err := hex.DecodeString(raw_key)
    if err != nil {
       t.Fatal(err)
    }

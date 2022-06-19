@@ -8,7 +8,7 @@ import (
    "strconv"
 )
 
-func roundTrip(req *http.Request, redirect bool) (*http.Response, error) {
+func round_trip(req *http.Request, redirect bool) (*http.Response, error) {
    if redirect {
       return new(http.Client).Do(req)
    }
@@ -16,7 +16,7 @@ func roundTrip(req *http.Request, redirect bool) (*http.Response, error) {
 }
 
 func write(req *http.Request, redirect bool, file *os.File) error {
-   res, err := roundTrip(req, redirect)
+   res, err := round_trip(req, redirect)
    if err != nil {
       return err
    }
@@ -26,7 +26,7 @@ func write(req *http.Request, redirect bool, file *os.File) error {
       if err != nil {
          return err
       }
-      if format.IsString(buf) {
+      if format.Is_String(buf) {
          file.Write(buf)
       } else {
          quote := strconv.Quote(string(buf))
