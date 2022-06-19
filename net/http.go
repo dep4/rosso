@@ -12,30 +12,30 @@ import (
    "text/template"
 )
 
-func WriteRequest(req *http.Request, w io.Writer) error {
-   var request requestTemplate
+func Write_Request(req *http.Request, w io.Writer) error {
+   var req_temp request_template
    if req.Body != nil && req.Method != "GET" {
       buf, err := io.ReadAll(req.Body)
       if err != nil {
          return err
       }
       req.Body = io.NopCloser(bytes.NewReader(buf))
-      request.Body_IO = "io.NopCloser(body)"
+      req_temp.Body_IO = "io.NopCloser(body)"
       if bytes.IndexByte(buf, '`') >= 0 {
-         request.Var_Body = fmt.Sprintf("%q", buf)
+         req_temp.Var_Body = fmt.Sprintf("%q", buf)
       } else {
-         request.Var_Body = fmt.Sprintf("`%s`", buf)
+         req_temp.Var_Body = fmt.Sprintf("`%s`", buf)
       }
    } else {
-      request.Body_IO = "io.ReadCloser(nil)"
+      req_temp.Body_IO = "io.ReadCloser(nil)"
    }
-   request.Query = req.URL.Query()
-   request.Request = req
+   req_temp.Query = req.URL.Query()
+   req_temp.Request = req
    temp, err := new(template.Template).Parse(format)
    if err != nil {
       return err
    }
-   return temp.Execute(w, request)
+   return temp.Execute(w, req_temp)
 }
 
 const format = `package main
@@ -82,16 +82,16 @@ func main() {
 var body = strings.NewReader({{ .Var_Body }})
 `
 
-type requestTemplate struct {
+type request_template struct {
    *http.Request
    Body_IO string
    Query url.Values
    Var_Body string
 }
 
-func ReadRequest(src io.Reader) (*http.Request, error) {
+func Read_Request(in io.Reader) (*http.Request, error) {
    var req http.Request
-   text := textproto.NewReader(bufio.NewReader(src))
+   text := textproto.NewReader(bufio.NewReader(in))
    // .Method
    sMethodPath, err := text.ReadLine()
    if err != nil {

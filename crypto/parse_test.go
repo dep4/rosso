@@ -10,7 +10,7 @@ import (
    "time"
 )
 
-const androidHandshake =
+const android_handshake =
    "16030100bb010000b703034420d198e7852decbc117dc7f90550b98f2d643c954bf3361d" +
    "daf127ff921b04000024c02bc02ccca9c02fc030cca8009e009fc009c00ac013c0140033" +
    "0039009c009d002f00350100006aff0100010000000022002000001d636c69656e747365" +
@@ -18,7 +18,7 @@ const androidHandshake =
    "010603050105030401040303010303020102030010000b000908687474702f312e31000b" +
    "00020100000a000400020017"
 
-const curlHandshake =
+const cURL_handshake =
    "1603010200010001fc03033356ee099c006213ecb9f7493ef981dd513761eae27eff36a1" +
    "77ebd353fc207520fa9ef53871b81af022e38d46ca9268be95889d6e964db818768ec86a" +
    "68c7216f003e130213031301c02cc030009fcca9cca8ccaac02bc02f009ec024c028006b" +
@@ -36,13 +36,13 @@ const curlHandshake =
    "00000000000000000000000000"
 
 var hellos = []string{
-   AndroidAPI24,
-   AndroidAPI25,
-   AndroidAPI26,
-   AndroidAPI29,
+   Android_API_24,
+   Android_API_25,
+   Android_API_26,
+   Android_API_29,
 }
 
-func TestParseJA3(t *testing.T) {
+func Test_Parse_JA3(t *testing.T) {
    val := url.Values{
       "Email": {email},
       "Passwd": {password},
@@ -50,7 +50,7 @@ func TestParseJA3(t *testing.T) {
       "droidguard_results": {""},
    }.Encode()
    for _, hello := range hellos {
-      spec, err := ParseJA3(hello)
+      spec, err := Parse_JA3(hello)
       if err != nil {
          t.Fatal(err)
       }
@@ -72,18 +72,18 @@ func TestParseJA3(t *testing.T) {
    }
 }
 
-func TestParseTLS(t *testing.T) {
-   hands := []string{androidHandshake, curlHandshake}
+func Test_Parse_TLS(t *testing.T) {
+   hands := []string{android_handshake, cURL_handshake}
    for _, hand := range hands {
       data, err := hex.DecodeString(hand)
       if err != nil {
          t.Fatal(err)
       }
-      hello, err := ParseTLS(data)
+      hello, err := Parse_TLS(data)
       if err != nil {
          t.Fatal(err)
       }
-      ja3, err := FormatJA3(hello)
+      ja3, err := Format_JA3(hello)
       if err != nil {
          t.Fatal(err)
       }

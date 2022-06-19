@@ -5,7 +5,7 @@ import (
    "encoding/xml"
 )
 
-func newDecoder(data []byte) *xml.Decoder {
+func decoder(data []byte) *xml.Decoder {
    dec := xml.NewDecoder(bytes.NewReader(data))
    dec.AutoClose = xml.HTMLAutoClose
    dec.Strict = false
@@ -19,12 +19,12 @@ type Scanner struct {
 
 func (s Scanner) Decode(val any) error {
    data := append(s.Sep, s.Data...)
-   dec := newDecoder(data)
+   dec := decoder(data)
    for {
       _, err := dec.Token()
       if err != nil {
          high := dec.InputOffset()
-         return newDecoder(data[:high]).Decode(val)
+         return decoder(data[:high]).Decode(val)
       }
    }
 }

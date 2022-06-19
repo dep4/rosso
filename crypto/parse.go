@@ -6,7 +6,7 @@ import (
    "strings"
 )
 
-func ParseJA3(str string) (*tls.ClientHelloSpec, error) {
+func Parse_JA3(str string) (*tls.ClientHelloSpec, error) {
    var (
       extensions string
       info tls.ClientHelloInfo

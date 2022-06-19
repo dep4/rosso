@@ -24,7 +24,7 @@ func Test_Block(t *testing.T) {
    if err := res.Body.Close(); err != nil {
       t.Fatal(err)
    }
-   key, err := getKey(seg.RawKey)
+   key, err := get_key(seg.RawKey)
    if err != nil {
       t.Fatal(err)
    }
@@ -55,7 +55,7 @@ func Test_Block(t *testing.T) {
    }
 }
 
-func getKey(s string) ([]byte, error) {
+func get_key(s string) ([]byte, error) {
    res, err := http.Get(s)
    if err != nil {
       return nil, err
@@ -67,7 +67,7 @@ func getKey(s string) ([]byte, error) {
    return io.ReadAll(res.Body)
 }
 
-func TestSegment(t *testing.T) {
+func Test_Segment(t *testing.T) {
    file, err := os.Open("ignore/apple-segment.m3u8")
    if err != nil {
       t.Fatal(err)

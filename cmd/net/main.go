@@ -34,7 +34,7 @@ func main() {
          panic(err)
       }
       defer src.Close()
-      req, err := net.ReadRequest(src)
+      req, err := net.Read_Request(src)
       if err != nil {
          panic(err)
       }
@@ -46,7 +46,7 @@ func main() {
          }
       }
       if golang {
-         err := net.WriteRequest(req, dst)
+         err := net.Write_Request(req, dst)
          if err != nil {
             panic(err)
          }

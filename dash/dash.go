@@ -11,12 +11,12 @@ type Protection struct {
 }
 
 type Represent struct {
-   ID string `xml:"id,attr"` // RepresentationID
+   ID string `xml:"id,attr"`
    Width int64 `xml:"width,attr"`
    Height int64 `xml:"height,attr"`
    Bandwidth int64 `xml:"bandwidth,attr"` // handle duplicate height
    Codecs string `xml:"codecs,attr"` // handle missing height
-   MimeType string `xml:"mimeType,attr"`
+   MIME_Type string `xml:"mimeType,attr"`
    ContentProtection *Protection
    SegmentTemplate *Template
 }
@@ -119,13 +119,13 @@ func (r Represents) Represent(bandwidth int64) *Represent {
 }
 
 func Video(a Adaptation, r Represent) bool {
-   return r.MimeType == "video/mp4"
+   return r.MIME_Type == "video/mp4"
 }
 
 type Adaptation struct {
    ContentProtection *Protection
    Lang string `xml:"lang,attr"`
-   MimeType string `xml:"mimeType,attr"`
+   MIME_Type string `xml:"mimeType,attr"`
    Representation Represents
    Role *struct {
       Value string `xml:"value,attr"`
@@ -151,7 +151,7 @@ func Audio(a Adaptation, r Represent) bool {
    if !strings.HasPrefix(a.Lang, "en") {
       return false
    }
-   if r.MimeType != "audio/mp4" {
+   if r.MIME_Type != "audio/mp4" {
       return false
    }
    if a.Role != nil && a.Role.Value != "main" {
@@ -172,8 +172,8 @@ func (m Media) Represents(fn AdaptationFunc) Represents {
    var reps Represents
    for _, ada := range m.Period.AdaptationSet {
       for _, rep := range ada.Representation {
-         if rep.MimeType == "" {
-            rep.MimeType = ada.MimeType
+         if rep.MIME_Type == "" {
+            rep.MIME_Type = ada.MIME_Type
          }
          if rep.SegmentTemplate == nil {
             rep.SegmentTemplate = ada.SegmentTemplate
