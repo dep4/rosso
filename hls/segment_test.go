@@ -17,14 +17,14 @@ func Test_Block(t *testing.T) {
    if res.StatusCode != http.StatusOK {
       t.Fatal(res.Status)
    }
-   seg, err := NewScanner(res.Body).Segment()
+   seg, err := New_Scanner(res.Body).Segment()
    if err != nil {
       t.Fatal(err)
    }
    if err := res.Body.Close(); err != nil {
       t.Fatal(err)
    }
-   key, err := get_key(seg.RawKey)
+   key, err := get_key(seg.Raw_Key)
    if err != nil {
       t.Fatal(err)
    }
@@ -33,7 +33,7 @@ func Test_Block(t *testing.T) {
       t.Fatal(err)
    }
    defer file.Close()
-   block, err := NewBlock(key)
+   block, err := New_Block(key)
    if err != nil {
       t.Fatal(err)
    }
@@ -46,7 +46,7 @@ func Test_Block(t *testing.T) {
       if res.StatusCode != http.StatusOK {
          t.Fatal(res.Status)
       }
-      if _, err := file.ReadFrom(block.ModeKey(res.Body)); err != nil {
+      if _, err := file.ReadFrom(block.Mode_Key(res.Body)); err != nil {
          t.Fatal(err)
       }
       if err := res.Body.Close(); err != nil {
@@ -73,14 +73,14 @@ func Test_Segment(t *testing.T) {
       t.Fatal(err)
    }
    defer file.Close()
-   seg, err := NewScanner(file).Segment()
+   seg, err := New_Scanner(file).Segment()
    if err != nil {
       t.Fatal(err)
    }
    for _, pro := range seg.Protected {
       fmt.Println(pro)
    }
-   fmt.Println(seg.RawKey)
+   fmt.Println(seg.Raw_Key)
 }
 
 var raw_ivs = []string{
@@ -89,7 +89,7 @@ var raw_ivs = []string{
    "0x00000000000000000000000000000001",
 }
 
-func TestHex(t *testing.T) {
+func Test_Hex(t *testing.T) {
    for _, raw_iv := range raw_ivs {
       iv, err := Segment{Raw_IV: raw_iv}.IV()
       if err != nil {

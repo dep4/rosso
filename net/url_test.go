@@ -5,23 +5,23 @@ import (
    "testing"
 )
 
-type valueTest struct {
+type value_test struct {
    in string
    out int64
 }
 
-var tests = []valueTest{
+var tests = []value_test{
    {"ignore/eol.txt", 446},
    {"ignore/noeol.txt", 679},
 }
 
-func TestValues(t *testing.T) {
+func Test_Values(t *testing.T) {
    for _, test := range tests {
       file, err := os.Open(test.in)
       if err != nil {
          t.Fatal(err)
       }
-      val := NewValues()
+      val := New_Values()
       num, err := val.ReadFrom(file)
       if err != nil {
          t.Fatal(err)

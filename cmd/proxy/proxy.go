@@ -9,7 +9,7 @@ import (
    "strconv"
 )
 
-func (s spyConn) Read(buf []byte) (int, error) {
+func (s spy_conn) Read(buf []byte) (int, error) {
    num, err := s.Conn.Read(buf)
    if hello, err := crypto.Parse_TLS(buf[:num]); err == nil {
       ja3, err := crypto.Format_JA3(hello)
@@ -36,7 +36,7 @@ func main() {
    }
 }
 
-type spyConn struct {
+type spy_conn struct {
    net.Conn
 }
 
@@ -44,11 +44,11 @@ func root(w http.ResponseWriter, r *http.Request) error {
    if r.Method == http.MethodConnect {
       hijacker, ok := w.(http.Hijacker)
       if ok {
-         clientConn, _, err := hijacker.Hijack()
+         client_conn, _, err := hijacker.Hijack()
          if err != nil {
             return err
          }
-         defer clientConn.Close()
+         defer client_conn.Close()
          dst, err := net.Dial("tcp", r.URL.Host)
          if err != nil {
             return err
@@ -57,10 +57,10 @@ func root(w http.ResponseWriter, r *http.Request) error {
          buf := []byte("HTTP/1.1 ")
          buf = strconv.AppendInt(buf, http.StatusOK, 10)
          buf = append(buf, "\n\n"...)
-         if _, err := clientConn.Write(buf); err != nil {
+         if _, err := client_conn.Write(buf); err != nil {
             return err
          }
-         src := spyConn{clientConn}
+         src := spy_conn{client_conn}
          if _, err := io.Copy(dst, src); err != nil {
             return err
          }

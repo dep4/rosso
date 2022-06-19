@@ -13,7 +13,7 @@ var tests = []string{
    "mpd/roku.mpd",
 }
 
-func TestRepresent(t *testing.T) {
+func Test_Represent(t *testing.T) {
    for _, test := range tests {
       file, err := os.Open(test)
       if err != nil {
