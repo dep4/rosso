@@ -11,8 +11,8 @@ import (
 
 func (s spyConn) Read(buf []byte) (int, error) {
    num, err := s.Conn.Read(buf)
-   if hello, err := crypto.ParseTLS(buf[:num]); err == nil {
-      ja3, err := crypto.FormatJA3(hello)
+   if hello, err := crypto.Parse_TLS(buf[:num]); err == nil {
+      ja3, err := crypto.Format_JA3(hello)
       if err == nil {
          fmt.Printf("%q\n", buf[:num])
          fmt.Print("\t", ja3, "\n")

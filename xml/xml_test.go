@@ -6,7 +6,7 @@ import (
    "testing"
 )
 
-func TestXML(t *testing.T) {
+func Test_Scanner(t *testing.T) {
    var (
       err error
       scan Scanner

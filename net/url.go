@@ -11,7 +11,7 @@ type Values struct {
    url.Values
 }
 
-func NewValues() Values {
+func New_Values() Values {
    var val Values
    val.Values = make(url.Values)
    return val

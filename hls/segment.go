@@ -26,12 +26,12 @@ func (s Scanner) Segment() (*Segment, error) {
             case "IV":
                s.Scan()
                s.Scan()
-               seg.RawIV = s.TokenText()
+               seg.Raw_IV = s.TokenText()
             case "URI":
                s.Scan()
                s.Scan()
                var err error
-               seg.RawKey, err = strconv.Unquote(s.TokenText())
+               seg.Raw_Key, err = strconv.Unquote(s.TokenText())
                if err != nil {
                   return nil, err
                }
@@ -51,15 +51,15 @@ func (s Scanner) Segment() (*Segment, error) {
 }
 
 func (s Segment) IV() ([]byte, error) {
-   up := strings.ToUpper(s.RawIV)
+   up := strings.ToUpper(s.Raw_IV)
    return hex.DecodeString(strings.TrimPrefix(up, "0X"))
 }
 
 type Segment struct {
    Clear []string
    Protected []string
-   RawIV string
-   RawKey string
+   Raw_IV string
+   Raw_Key string
 }
 
 type Block struct {

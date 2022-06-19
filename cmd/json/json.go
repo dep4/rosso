@@ -6,22 +6,22 @@ import (
    "os"
 )
 
-func doJSON(input, output string) error {
-   src, err := os.Open(input)
+func do_json(input, output string) error {
+   in, err := os.Open(input)
    if err != nil {
       return err
    }
-   defer src.Close()
-   dst, err := os.Create(output)
+   defer in.Close()
+   out, err := os.Create(output)
    if err != nil {
-      dst = os.Stdout
+      out = os.Stdout
    }
-   defer dst.Close()
+   defer out.Close()
    var value any
-   if err := json.NewDecoder(src).Decode(&value); err != nil {
+   if err := json.NewDecoder(in).Decode(&value); err != nil {
       return err
    }
-   enc := json.NewEncoder(dst)
+   enc := json.NewEncoder(out)
    enc.SetEscapeHTML(false)
    enc.SetIndent("", " ")
    return enc.Encode(value)
@@ -36,7 +36,7 @@ func main() {
    flag.StringVar(&output, "o", "", "output file")
    flag.Parse()
    if input != "" {
-      err := doJSON(input, output)
+      err := do_json(input, output)
       if err != nil {
          panic(err)
       }

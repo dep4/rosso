@@ -9,7 +9,7 @@ import (
    "testing"
 )
 
-func TestHTTP(t *testing.T) {
+func Test_Block(t *testing.T) {
    res, err := http.Get("https://cbsios-vh.akamaihd.net/i/temp_hd_gallery_video/CBS_Production_Outlet_VMS/video_robot/CBS_Production_Entertainment/2012/09/12/41581439/CBS_MELROSE_PLACE_001_SD_prores_78930_,503,4628,3128,2228,1628,848,000.mp4.csmil/index_0_av.m3u8?null=0&id=AgBItRcmF8YMPETJp2Idb%2ff8kST9HgI7mEbBnb7XI96bqUv7h7HvAzf5egQq8EdGCZGfDgozAsOiGw%3d%3d&hdntl=exp=1655249604~acl=%2fi%2ftemp_hd_gallery_video%2fCBS_Production_Outlet_VMS%2fvideo_robot%2fCBS_Production_Entertainment%2f2012%2f09%2f12%2f41581439%2fCBS_MELROSE_PLACE_001_SD_prores_78930_*~data=hdntl~hmac=9e7582fede5fb810be51146b848d2df4e675ed8d78d39931da3273f5880dcfa2")
    if err != nil {
       t.Fatal(err)
@@ -83,15 +83,15 @@ func TestSegment(t *testing.T) {
    fmt.Println(seg.RawKey)
 }
 
-var rawIVs = []string{
+var raw_ivs = []string{
    "00000000000000000000000000000001",
    "0X00000000000000000000000000000001",
    "0x00000000000000000000000000000001",
 }
 
 func TestHex(t *testing.T) {
-   for _, rawIV := range rawIVs {
-      iv, err := Segment{RawIV: rawIV}.IV()
+   for _, raw_iv := range raw_ivs {
+      iv, err := Segment{Raw_IV: raw_iv}.IV()
       if err != nil {
          t.Fatal(err)
       }

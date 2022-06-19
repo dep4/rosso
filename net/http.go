@@ -20,14 +20,14 @@ func WriteRequest(req *http.Request, w io.Writer) error {
          return err
       }
       req.Body = io.NopCloser(bytes.NewReader(buf))
-      request.BodyIO = "io.NopCloser(body)"
+      request.Body_IO = "io.NopCloser(body)"
       if bytes.IndexByte(buf, '`') >= 0 {
-         request.VarBody = fmt.Sprintf("%q", buf)
+         request.Var_Body = fmt.Sprintf("%q", buf)
       } else {
-         request.VarBody = fmt.Sprintf("`%s`", buf)
+         request.Var_Body = fmt.Sprintf("`%s`", buf)
       }
    } else {
-      request.BodyIO = "io.ReadCloser(nil)"
+      request.Body_IO = "io.ReadCloser(nil)"
    }
    request.Query = req.URL.Query()
    request.Request = req
@@ -51,7 +51,7 @@ import (
 
 func main() {
    var req http.Request
-   req.Body = {{ .BodyIO }}
+   req.Body = {{ .Body_IO }}
    req.Header = make(http.Header)
    {{ range $key, $val := .Header -}}
       req.Header[{{ printf "%q" $key }}] = {{ printf "%#v" $val }}
@@ -79,14 +79,14 @@ func main() {
    os.Stdout.Write(buf)
 }
 
-var body = strings.NewReader({{ .VarBody }})
+var body = strings.NewReader({{ .Var_Body }})
 `
 
 type requestTemplate struct {
    *http.Request
-   BodyIO string
+   Body_IO string
    Query url.Values
-   VarBody string
+   Var_Body string
 }
 
 func ReadRequest(src io.Reader) (*http.Request, error) {

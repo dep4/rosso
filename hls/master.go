@@ -11,16 +11,16 @@ import (
 type Medium struct {
    Type string
    Name string
-   GroupID string
-   RawURI string
+   Group_ID string
+   Raw_URI string
 }
 
 type Stream struct {
    Resolution string
    Bandwidth int64 // handle duplicate resolution
-   VideoRange string // handle duplicate bandwidth
-   RawCodecs string // handle missing resolution
-   RawURI string
+   Video_Range string // handle duplicate bandwidth
+   Raw_Codecs string // handle missing resolution
+   Raw_URI string
 }
 
 const (
@@ -35,9 +35,9 @@ type Master struct {
 
 type Media []Medium
 
-func (m Media) GetGroupID(val string) *Medium {
+func (m Media) Get_Group_ID(val string) *Medium {
    for _, medium := range m {
-      if medium.GroupID == val {
+      if medium.Group_ID == val {
          return &medium
       }
    }
@@ -45,7 +45,7 @@ func (m Media) GetGroupID(val string) *Medium {
 }
 
 // English
-func (m Media) GetName(val string) *Medium {
+func (m Media) Get_Name(val string) *Medium {
    for _, medium := range m {
       if medium.Name == val {
          return &medium
@@ -55,10 +55,10 @@ func (m Media) GetName(val string) *Medium {
 }
 
 // stereo
-func (m Media) GroupID(val string) Media {
+func (m Media) Group_ID(val string) Media {
    var out Media
    for _, medium := range m {
-      if strings.Contains(medium.GroupID, val) {
+      if strings.Contains(medium.Group_ID, val) {
          out = append(out, medium)
       }
    }
@@ -80,7 +80,7 @@ func (m Media) Name(val string) Media {
 func (m Media) URI(val string) Media {
    var out Media
    for _, medium := range m {
-      if strings.Contains(medium.RawURI, val) {
+      if strings.Contains(medium.Raw_URI, val) {
          out = append(out, medium)
       }
    }
@@ -105,7 +105,7 @@ func (m Medium) String() string {
    buf.WriteString(" Name:")
    buf.WriteString(m.Name)
    buf.WriteString(" ID:")
-   buf.WriteString(m.GroupID)
+   buf.WriteString(m.Group_ID)
    return buf.String()
 }
 
@@ -158,7 +158,7 @@ func (s Scanner) Master() (*Master, error) {
             case "GROUP-ID":
                s.Scan()
                s.Scan()
-               med.GroupID, err = strconv.Unquote(s.TokenText())
+               med.Group_ID, err = strconv.Unquote(s.TokenText())
             case "TYPE":
                s.Scan()
                s.Scan()
@@ -170,7 +170,7 @@ func (s Scanner) Master() (*Master, error) {
             case "URI":
                s.Scan()
                s.Scan()
-               med.RawURI, err = strconv.Unquote(s.TokenText())
+               med.Raw_URI, err = strconv.Unquote(s.TokenText())
             }
             if err != nil {
                return nil, err
@@ -192,18 +192,18 @@ func (s Scanner) Master() (*Master, error) {
             case "CODECS":
                s.Scan()
                s.Scan()
-               str.RawCodecs, err = strconv.Unquote(s.TokenText())
+               str.Raw_Codecs, err = strconv.Unquote(s.TokenText())
             case "VIDEO-RANGE":
                s.Scan()
                s.Scan()
-               str.VideoRange = s.TokenText()
+               str.Video_Range = s.TokenText()
             }
             if err != nil {
                return nil, err
             }
          }
          s.line.Scan()
-         str.RawURI = s.line.TokenText()
+         str.Raw_URI = s.line.TokenText()
          mas.Streams = append(mas.Streams, str)
       }
    }
@@ -211,7 +211,7 @@ func (s Scanner) Master() (*Master, error) {
 }
 
 func (s Stream) Codecs() string {
-   codecs := strings.Split(s.RawCodecs, ",")
+   codecs := strings.Split(s.Raw_Codecs, ",")
    for i, codec := range codecs {
       before, _, found := strings.Cut(codec, ".")
       if found {
@@ -231,8 +231,8 @@ func (s Stream) String() string {
    buf = append(buf, "Bandwidth:"...)
    buf = strconv.AppendInt(buf, s.Bandwidth, 10)
    buf = append(buf, " Range:"...)
-   buf = append(buf, s.VideoRange...)
-   if s.RawCodecs != "" {
+   buf = append(buf, s.Video_Range...)
+   if s.Raw_Codecs != "" {
       buf = append(buf, " Codecs:"...)
       buf = append(buf, s.Codecs()...)
    }
@@ -245,7 +245,7 @@ type Streams []Stream
 func (s Streams) Codecs(val string) Streams {
    var out Streams
    for _, stream := range s {
-      if strings.Contains(stream.RawCodecs, val) {
+      if strings.Contains(stream.Raw_Codecs, val) {
          out = append(out, stream)
       }
    }
@@ -272,7 +272,7 @@ func (s Streams) GetBandwidth(val int64) *Stream {
 func (s Streams) URI(val string) Streams {
    var out Streams
    for _, stream := range s {
-      if strings.Contains(stream.RawURI, val) {
+      if strings.Contains(stream.Raw_URI, val) {
          out = append(out, stream)
       }
    }
@@ -280,10 +280,10 @@ func (s Streams) URI(val string) Streams {
 }
 
 // PQ
-func (s Streams) VideoRange(val string) Streams {
+func (s Streams) Video_Range(val string) Streams {
    var out Streams
    for _, stream := range s {
-      if stream.VideoRange == val {
+      if stream.Video_Range == val {
          out = append(out, stream)
       }
    }
