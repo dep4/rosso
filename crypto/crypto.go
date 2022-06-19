@@ -38,8 +38,6 @@ const Android_API_32 = Android_API_29
 func Parse_TLS(buf []byte) (*tls.ClientHelloSpec, error) {
    // unsupported extension 0x16
    printer := tls.Fingerprinter{AllowBluntMimicry: true}
-   // FingerprintClientHello does bounds checking, so we dont need to worry
-   // about it in this function.
    spec, err := printer.FingerprintClientHello(buf)
    if err != nil {
       return nil, err

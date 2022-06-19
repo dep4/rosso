@@ -38,10 +38,10 @@ func (m Message) consume_bytes(num Number, buf []byte) ([]byte, error) {
    }
    var (
       val Bytes
-      v_len int
+      length int
    )
-   val.Raw, v_len = protowire.ConsumeBytes(buf)
-   if err := protowire.ParseError(v_len); err != nil {
+   val.Raw, length = protowire.ConsumeBytes(buf)
+   if err := protowire.ParseError(length); err != nil {
       return nil, err
    }
    val.Message, err = Unmarshal(val.Raw)
@@ -49,7 +49,7 @@ func (m Message) consume_bytes(num Number, buf []byte) ([]byte, error) {
       return nil, err
    }
    m[num] = append(vals, val)
-   return buf[v_len:], nil
+   return buf[length:], nil
 }
 
 type Number = protowire.Number
@@ -146,12 +146,12 @@ func (m Message) consume_varint(num Number, buf []byte) ([]byte, error) {
    if err != nil {
       return nil, err
    }
-   val, v_len := protowire.ConsumeVarint(buf)
-   if err := protowire.ParseError(v_len); err != nil {
+   val, length := protowire.ConsumeVarint(buf)
+   if err := protowire.ParseError(length); err != nil {
       return nil, err
    }
    m[num] = append(vals, val)
-   return buf[v_len:], nil
+   return buf[length:], nil
 }
 
 func (m Message) consume_fixed64(num Number, buf []byte) ([]byte, error) {
@@ -159,12 +159,12 @@ func (m Message) consume_fixed64(num Number, buf []byte) ([]byte, error) {
    if err != nil {
       return nil, err
    }
-   val, v_len := protowire.ConsumeFixed64(buf)
-   if err := protowire.ParseError(v_len); err != nil {
+   val, length := protowire.ConsumeFixed64(buf)
+   if err := protowire.ParseError(length); err != nil {
       return nil, err
    }
    m[num] = append(vals, val)
-   return buf[v_len:], nil
+   return buf[length:], nil
 }
 
 func (m Message) consume_fixed32(num Number, buf []byte) ([]byte, error) {
@@ -172,12 +172,12 @@ func (m Message) consume_fixed32(num Number, buf []byte) ([]byte, error) {
    if err != nil {
       return nil, err
    }
-   val, v_len := protowire.ConsumeFixed32(buf)
-   if err := protowire.ParseError(v_len); err != nil {
+   val, length := protowire.ConsumeFixed32(buf)
+   if err := protowire.ParseError(length); err != nil {
       return nil, err
    }
    m[num] = append(vals, val)
-   return buf[v_len:], nil
+   return buf[length:], nil
 }
 
 type Slice_Bytes []Bytes
@@ -193,12 +193,12 @@ func Unmarshal(buf []byte) (Message, error) {
    }
    mes := make(Message)
    for len(buf) >= 1 {
-      num, typ, t_len := protowire.ConsumeTag(buf)
-      err := protowire.ParseError(t_len)
+      num, typ, length := protowire.ConsumeTag(buf)
+      err := protowire.ParseError(length)
       if err != nil {
          return nil, err
       }
-      buf = buf[t_len:]
+      buf = buf[length:]
       switch typ {
       case protowire.VarintType:
          buf, err = mes.consume_varint(num, buf)

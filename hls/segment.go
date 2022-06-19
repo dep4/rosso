@@ -67,7 +67,7 @@ type Block struct {
    key []byte
 }
 
-func NewBlock(key []byte) (*Block, error) {
+func New_Block(key []byte) (*Block, error) {
    block, err := aes.NewCipher(key)
    if err != nil {
       return nil, err
@@ -75,25 +75,25 @@ func NewBlock(key []byte) (*Block, error) {
    return &Block{block, key}, nil
 }
 
-func (b Block) Mode(r io.Reader, iv []byte) *BlockMode {
-   var mode BlockMode
+func (b Block) Mode(r io.Reader, iv []byte) *Block_Mode {
+   var mode Block_Mode
    mode.BlockMode = cipher.NewCBCDecrypter(b.Block, iv)
    mode.reader = r
    return &mode
 }
 
-func (b Block) ModeKey(r io.Reader) *BlockMode {
+func (b Block) Mode_Key(r io.Reader) *Block_Mode {
    return b.Mode(r, b.key)
 }
 
-type BlockMode struct {
+type Block_Mode struct {
    cipher.BlockMode
    reader io.Reader
    cipher []byte
    plain []byte
 }
 
-func (b BlockMode) lenMessage(err error) int {
+func (b Block_Mode) len_message(err error) int {
    num := len(b.plain)
    pad := b.plain[num-1]
    if err == nil {
@@ -102,22 +102,22 @@ func (b BlockMode) lenMessage(err error) int {
    return num - int(pad)
 }
 
-func (b BlockMode) lenPlain() int {
+func (b Block_Mode) len_plain() int {
    num := len(b.cipher)
    return num - num % 16
 }
 
-func (b *BlockMode) Read(p []byte) (int, error) {
+func (b *Block_Mode) Read(p []byte) (int, error) {
    // ciphertext length
    num, err := b.reader.Read(p)
    b.cipher = append(b.cipher, p[:num]...)
    // plaintext length
-   num = b.lenPlain()
+   num = b.len_plain()
    b.CryptBlocks(b.cipher, b.cipher[:num])
    b.plain = append(b.plain, b.cipher[:num]...)
    b.cipher = b.cipher[num:]
    // message length
-   num = b.lenMessage(err)
+   num = b.len_message(err)
    // output length
    num = copy(p, b.plain[:num])
    b.plain = b.plain[num:]

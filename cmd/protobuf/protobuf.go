@@ -2,11 +2,30 @@ package main
 
 import (
    "encoding/json"
+   "flag"
    "github.com/89z/format/protobuf"
    "os"
 )
 
-func doProtoBuf(input, output string) error {
+func main() {
+   // f
+   var input string
+   flag.StringVar(&input, "f", "", "input file")
+   // o
+   var output string
+   flag.StringVar(&output, "o", "", "output file")
+   flag.Parse()
+   if input != "" {
+      err := do_protobuf(input, output)
+      if err != nil {
+         panic(err)
+      }
+   } else {
+      flag.Usage()
+   }
+}
+
+func do_protobuf(input, output string) error {
    data, err := os.ReadFile(input)
    if err != nil {
       return err

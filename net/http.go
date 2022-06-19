@@ -93,17 +93,14 @@ func Read_Request(in io.Reader) (*http.Request, error) {
    var req http.Request
    text := textproto.NewReader(bufio.NewReader(in))
    // .Method
-   sMethodPath, err := text.ReadLine()
+   raw_method_path, err := text.ReadLine()
    if err != nil {
       return nil, err
    }
-   methodPath := strings.Fields(sMethodPath)
-   if len(methodPath) != 3 {
-      return nil, textproto.ProtocolError(sMethodPath)
-   }
-   req.Method = methodPath[0]
+   method_path := strings.Fields(raw_method_path)
+   req.Method = method_path[0]
    // .URL
-   addr, err := url.Parse(methodPath[1])
+   addr, err := url.Parse(method_path[1])
    if err != nil {
       return nil, err
    }
@@ -120,13 +117,13 @@ func Read_Request(in io.Reader) (*http.Request, error) {
    req.Header = http.Header(head)
    // .Body
    buf := new(bytes.Buffer)
-   bLen, err := text.R.WriteTo(buf)
+   length, err := text.R.WriteTo(buf)
    if err != nil {
       return nil, err
    }
-   if bLen >= 1 {
+   if length >= 1 {
       req.Body = io.NopCloser(buf)
    }
-   req.ContentLength = bLen
+   req.ContentLength = length
    return &req, nil
 }

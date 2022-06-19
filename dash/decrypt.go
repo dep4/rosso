@@ -49,8 +49,8 @@ func Decrypt(dst io.Writer, src io.Reader, key []byte) error {
 }
 
 // Need for Mozilla Firefox and VLC media player
-func DecryptInit(dst io.Writer, src io.Reader) error {
-   file, err := mp4.DecodeFile(src)
+func Decrypt_Init(out io.Writer, in io.Reader) error {
+   file, err := mp4.DecodeFile(in)
    if err != nil {
       return err
    }
@@ -67,5 +67,5 @@ func DecryptInit(dst io.Writer, src io.Reader) error {
          }
       }
    }
-   return file.Init.Encode(dst)
+   return file.Init.Encode(out)
 }

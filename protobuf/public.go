@@ -31,23 +31,22 @@ func (m Message) MarshalBinary() ([]byte, error) {
    return vals, nil
 }
 
-func (m Message) UnmarshalBinary(data []byte) error {
-   if len(data) == 0 {
+func (m Message) UnmarshalBinary(buf []byte) error {
+   if len(buf) == 0 {
       return io.ErrUnexpectedEOF
    }
-   for len(data) >= 1 {
-      num, typ, tLen := protowire.ConsumeTag(data)
-      err := protowire.ParseError(tLen)
+   for len(buf) >= 1 {
+      num, typ, length := protowire.ConsumeTag(buf)
+      err := protowire.ParseError(length)
       if err != nil {
          return err
       }
-      data = data[tLen:]
-      var vLen int
+      buf = buf[length:]
       switch typ {
       case protowire.BytesType:
          var val Bytes
          val.Message = make(Message)
-         val.Raw, vLen = protowire.ConsumeBytes(data)
+         val.Raw, length = protowire.ConsumeBytes(buf)
          err := val.Message.UnmarshalBinary(val.Raw)
          if err != nil {
             val.Message = nil
@@ -55,36 +54,36 @@ func (m Message) UnmarshalBinary(data []byte) error {
          add(m, num, val)
       case protowire.Fixed32Type:
          var val uint32
-         val, vLen = protowire.ConsumeFixed32(data)
+         val, length = protowire.ConsumeFixed32(buf)
          add(m, num, Fixed32(val))
       case protowire.Fixed64Type:
          var val uint64
-         val, vLen = protowire.ConsumeFixed64(data)
+         val, length = protowire.ConsumeFixed64(buf)
          add(m, num, Fixed64(val))
       case protowire.VarintType:
          var val uint64
-         val, vLen = protowire.ConsumeVarint(data)
+         val, length = protowire.ConsumeVarint(buf)
          add(m, num, Varint(val))
       case protowire.StartGroupType:
          var val Bytes
          val.Message = make(Message)
-         val.Raw, vLen = protowire.ConsumeGroup(num, data)
+         val.Raw, length = protowire.ConsumeGroup(num, buf)
          err := val.Message.UnmarshalBinary(val.Raw)
          if err != nil {
             return err
          }
          add(m, num, val.Message)
       }
-      if err := protowire.ParseError(vLen); err != nil {
+      if err := protowire.ParseError(length); err != nil {
          return err
       }
-      data = data[vLen:]
+      buf = buf[length:]
    }
    return nil
 }
 
 func (r Raw) MarshalText() ([]byte, error) {
-   if format.IsString(r) {
+   if format.Is_String(r) {
       return r, nil
    }
    buf := new(bytes.Buffer)
@@ -111,7 +110,7 @@ func (m Message) Add(num Number, val Message) {
    add(m, num, val)
 }
 
-func (m Message) AddString(num Number, val string) {
+func (m Message) Add_String(num Number, val string) {
    add(m, num, String(val))
 }
 
@@ -127,38 +126,38 @@ func (m Message) Get(num Number) Message {
    return nil
 }
 
-func (m Message) GetBytes(num Number) ([]byte, error) {
+func (m Message) Get_Bytes(num Number) ([]byte, error) {
    in := m[num]
    out, ok := in.(Bytes)
    if !ok {
-      return nil, typeError{num, in, out}
+      return nil, type_error{num, in, out}
    }
    return out.Raw, nil
 }
 
-func (m Message) GetFixed64(num Number) (uint64, error) {
+func (m Message) Get_Fixed64(num Number) (uint64, error) {
    in := m[num]
    out, ok := in.(Fixed64)
    if !ok {
-      return 0, typeError{num, in, out}
+      return 0, type_error{num, in, out}
    }
    return uint64(out), nil
 }
 
-func (m Message) GetString(num Number) (string, error) {
+func (m Message) Get_String(num Number) (string, error) {
    in := m[num]
    out, ok := in.(Bytes)
    if !ok {
-      return "", typeError{num, in, out}
+      return "", type_error{num, in, out}
    }
    return string(out.Raw), nil
 }
 
-func (m Message) GetVarint(num Number) (uint64, error) {
+func (m Message) Get_Varint(num Number) (uint64, error) {
    in := m[num]
    out, ok := in.(Varint)
    if !ok {
-      return 0, typeError{num, in, out}
+      return 0, type_error{num, in, out}
    }
    return uint64(out), nil
 }
@@ -171,7 +170,7 @@ type Varint uint64
 
 type Message map[Number]Encoder
 
-func (m Message) GetMessages(num Number) []Message {
+func (m Message) Get_Messages(num Number) []Message {
    var mes []Message
    switch value := m[num].(type) {
    case Bytes:
@@ -186,39 +185,39 @@ func (m Message) GetMessages(num Number) []Message {
 
 type Encoders[T Encoder] []T
 
-func (Bytes) valueType() string { return "Bytes" }
+func (Bytes) get_type() string { return "Bytes" }
 
 type Encoder interface {
    encode(Number) ([]byte, error)
-   valueType() string
+   get_type() string
 }
 
-func (Encoders[T]) valueType() string {
+func (Encoders[T]) get_type() string {
    var value T
-   return "[]" + value.valueType()
+   return "[]" + value.get_type()
 }
 
-func (Fixed32) valueType() string { return "Fixed32" }
+func (Fixed32) get_type() string { return "Fixed32" }
 
-func (Fixed64) valueType() string { return "Fixed64" }
+func (Fixed64) get_type() string { return "Fixed64" }
 
-func (Message) valueType() string { return "Message" }
+func (Message) get_type() string { return "Message" }
 
-func (Varint) valueType() string { return "Varint" }
+func (Varint) get_type() string { return "Varint" }
 
-type typeError struct {
+type type_error struct {
    Number
    in Encoder
    out Encoder
 }
 
-func (t typeError) Error() string {
+func (t type_error) Error() string {
    var b []byte
    b = append(b, "field "...)
    b = strconv.AppendInt(b, int64(t.Number), 10)
    b = append(b, " is "...)
-   b = append(b, t.in.valueType()...)
+   b = append(b, t.in.get_type()...)
    b = append(b, ", not "...)
-   b = append(b, t.out.valueType()...)
+   b = append(b, t.out.get_type()...)
    return string(b)
 }

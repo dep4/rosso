@@ -6,13 +6,13 @@ import (
    "testing"
 )
 
-func TestStreams(t *testing.T) {
+func Test_Streams(t *testing.T) {
    file, err := os.Open("ignore/apple-master.m3u8")
    if err != nil {
       t.Fatal(err)
    }
    defer file.Close()
-   master, err := NewScanner(file).Master()
+   master, err := New_Scanner(file).Master()
    if err != nil {
       t.Fatal(err)
    }
@@ -21,13 +21,13 @@ func TestStreams(t *testing.T) {
    }
 }
 
-func TestMedia(t *testing.T) {
+func Test_Media(t *testing.T) {
    file, err := os.Open("ignore/apple-master.m3u8")
    if err != nil {
       t.Fatal(err)
    }
    defer file.Close()
-   master, err := NewScanner(file).Master()
+   master, err := New_Scanner(file).Master()
    if err != nil {
       t.Fatal(err)
    }
