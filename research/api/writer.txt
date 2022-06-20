@@ -1,100 +1,49 @@
 108:pkg image/gif, func Encode(io.Writer, image.Image, *Options) error
 109:pkg image/gif, func EncodeAll(io.Writer, *GIF) error
-10:pkg compress/zlib, method (*Writer) Reset(io.Writer)
-13:pkg archive/tar, func NewWriter(io.Writer) *Writer
 197:pkg bytes, method (*Buffer) WriteTo(io.Writer) (int64, error)
-210:pkg net/http/cgi, type Handler struct, Stderr io.Writer
 211:pkg net, method (*Buffers) WriteTo(io.Writer) (int64, error)
 218:pkg compress/flate, func NewWriter(io.Writer, int) (*Writer, error)
 219:pkg compress/flate, func NewWriterDict(io.Writer, int, []uint8) (*Writer, error)
-2221:pkg encoding/ascii85, func NewEncoder(io.Writer) io.WriteCloser
-2250:pkg encoding/base32, func NewEncoder(*Encoding, io.Writer) io.WriteCloser
-2264:pkg encoding/base64, func NewEncoder(*Encoding, io.Writer) io.WriteCloser
 2288:pkg encoding/binary, func Write(io.Writer, ByteOrder, interface{}) error
-22:pkg log, method (*Logger) Writer() io.Writer
-2300:pkg encoding/csv, func NewWriter(io.Writer) *Writer
-2326:pkg encoding/gob, func NewEncoder(io.Writer) *Encoder
-2346:pkg encoding/hex, func Dumper(io.Writer) io.WriteCloser
-2359:pkg encoding/json, func NewEncoder(io.Writer) *Encoder
 2402:pkg encoding/pem, func Encode(io.Writer, *Block) error
-2410:pkg encoding/xml, func Escape(io.Writer, []uint8)
-2414:pkg encoding/xml, func NewEncoder(io.Writer) *Encoder
-244:pkg compress/gzip, func NewWriter(io.Writer) *Writer
 245:pkg compress/gzip, func NewWriterLevel(io.Writer, int) (*Writer, error)
-2555:pkg flag, method (*FlagSet) SetOutput(io.Writer)
 2579:pkg fmt, func Fprint(io.Writer, ...interface{}) (int, error)
 2580:pkg fmt, func Fprintf(io.Writer, string, ...interface{}) (int, error)
 2581:pkg fmt, func Fprintln(io.Writer, ...interface{}) (int, error)
 2633:pkg go/ast, func Fprint(io.Writer, *token.FileSet, interface{}, FieldFilter) error
 2636:pkg strings, method (*Reader) WriteTo(io.Writer) (int64, error)
-265:pkg compress/lzw, func NewWriter(io.Writer, Order, int) io.WriteCloser
-273:pkg compress/zlib, func NewWriter(io.Writer) *Writer
 274:pkg compress/zlib, func NewWriterLevel(io.Writer, int) (*Writer, error)
 275:pkg compress/zlib, func NewWriterLevelDict(io.Writer, int, []uint8) (*Writer, error)
 29:pkg bufio, method (*Reader) WriteTo(io.Writer) (int64, error)
-30254:pkg testing/iotest, func NewWriteLogger(string, io.Writer) io.Writer
-30257:pkg testing/iotest, func TruncateWriter(io.Writer, int64) io.Writer
-30327:pkg text/tabwriter, func NewWriter(io.Writer, int, int, int, uint8, uint) *Writer
-30329:pkg text/tabwriter, method (*Writer) Init(io.Writer, int, int, int, uint8, uint) *Writer
-30332:pkg text/template, func HTMLEscape(io.Writer, []uint8)
-30335:pkg text/template, func JSEscape(io.Writer, []uint8)
 30346:pkg text/template, method (*Template) Execute(io.Writer, interface{}) error
 30347:pkg text/template, method (*Template) ExecuteTemplate(io.Writer, string, interface{}) error
-3099:pkg go/doc, func ToHTML(io.Writer, string, map[string]string)
-3100:pkg go/doc, func ToText(io.Writer, string, string, string, int)
 3154:pkg go/printer, func Fprint(io.Writer, *token.FileSet, interface{}) error
 3155:pkg go/printer, method (*Config) Fprint(io.Writer, *token.FileSet, interface{}) error
 3164:pkg go/scanner, func PrintError(io.Writer, error)
-3368:pkg html/template, func HTMLEscape(io.Writer, []uint8)
-3371:pkg html/template, func JSEscape(io.Writer, []uint8)
 3383:pkg html/template, method (*Template) Execute(io.Writer, interface{}) error
 3384:pkg html/template, method (*Template) ExecuteTemplate(io.Writer, string, interface{}) error
 356:pkg image/png, method (*Encoder) Encode(io.Writer, image.Image) error
-365:pkg crypto/cipher, type StreamWriter struct, W io.Writer
 3693:pkg image/jpeg, func Encode(io.Writer, image.Image, *Options) error
 3705:pkg image/png, func Encode(io.Writer, image.Image) error
 3715:pkg index/suffixarray, method (*Index) Write(io.Writer) error
 37:pkg bufio, method (ReadWriter) WriteTo(io.Writer) (int64, error)
-3806:pkg io/ioutil, var Discard io.Writer
-3817:pkg log, func New(io.Writer, string, int) *Logger
-3826:pkg log, func SetOutput(io.Writer)
 3:pkg archive/zip, method (*Writer) CreateRaw(*FileHeader) (io.Writer, error)
-4324:pkg mime/multipart, func NewWriter(io.Writer) *Writer
 4335:pkg mime/multipart, method (*Writer) CreateFormField(string) (io.Writer, error)
 4336:pkg mime/multipart, method (*Writer) CreateFormFile(string, string) (io.Writer, error)
 4337:pkg mime/multipart, method (*Writer) CreatePart(textproto.MIMEHeader) (io.Writer, error)
-45:pkg archive/zip, func NewWriter(io.Writer) *Writer
 4721:pkg net/http, method (*Request) Write(io.Writer) error
 4722:pkg net/http, method (*Request) WriteProxy(io.Writer) error
 4726:pkg net/http, method (*Response) Write(io.Writer) error
 4742:pkg net/http, method (Header) Write(io.Writer) error
 4743:pkg net/http, method (Header) WriteSubset(io.Writer, map[string]bool) error
 47:pkg bytes, method (*Reader) WriteTo(io.Writer) (int64, error)
-4895:pkg net/http/httputil, func NewChunkedWriter(io.Writer) io.WriteCloser
-48:pkg crypto/tls, type Config struct, KeyLogWriter io.Writer
 4:pkg archive/zip, type Compressor func(io.Writer) (io.WriteCloser, error)
-5027:pkg net/textproto, func NewWriter(*bufio.Writer) *Writer
-5083:pkg net/textproto, type Writer struct, W *bufio.Writer
-5302:pkg os/exec, type Cmd struct, Stderr io.Writer
-5304:pkg os/exec, type Cmd struct, Stdout io.Writer
-55:pkg log, func Writer() io.Writer
-568:pkg encoding/hex, func NewEncoder(io.Writer) io.Writer
 5749:pkg runtime/pprof, func StartCPUProfile(io.Writer) error
 5751:pkg runtime/pprof, func WriteHeapProfile(io.Writer) error
 5756:pkg runtime/pprof, method (*Profile) WriteTo(io.Writer, int) error
-575:pkg flag, method (*FlagSet) Output() io.Writer
-585:pkg go/types, method (*Scope) WriteTo(io.Writer, int, bool)
 5875:pkg strings, method (*Replacer) WriteString(io.Writer, string) (int, error)
 60:pkg archive/zip, method (*Writer) Create(string) (io.Writer, error)
 61:pkg archive/zip, method (*Writer) CreateHeader(*FileHeader) (io.Writer, error)
-767:pkg log, method (*Logger) SetOutput(io.Writer)
-7:pkg bufio, method (*Writer) Reset(io.Writer)
-854:pkg mime/quotedprintable, func NewWriter(io.Writer) *Writer
 857:pkg encoding/xml, func EscapeText(io.Writer, []uint8) error
 883:pkg runtime/trace, func Start(io.Writer) error
-8:pkg compress/flate, method (*Writer) Reset(io.Writer)
-8:pkg compress/lzw, method (*Writer) Reset(io.Writer, Order, int)
 901:pkg go/format, func Node(io.Writer, *token.FileSet, interface{}) error
-90:pkg bufio, func NewWriter(io.Writer) *Writer
-91:pkg bufio, func NewWriterSize(io.Writer, int) *Writer
-9:pkg compress/gzip, method (*Writer) Reset(io.Writer)
