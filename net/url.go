@@ -7,57 +7,44 @@ import (
    "strings"
 )
 
-type Values struct {
-   url.Values
-}
-
-func New_Values() Values {
-   var val Values
-   val.Values = make(url.Values)
-   return val
-}
-
-func (v Values) ReadFrom(r io.Reader) (int64, error) {
+func Decode(r io.Reader) (url.Values, error) {
+   vals := make(url.Values)
    buf := bufio.NewReader(r)
-   var num int
    for {
       key, err := buf.ReadString('=')
       if err == io.EOF {
          break
       } else if err != nil {
-         return 0, err
+         return nil, err
       }
       val, err := buf.ReadString('\n')
-      num += len(key) + len(val)
       key = strings.TrimSuffix(key, "=")
       val = strings.TrimSuffix(val, "\n")
-      v.Set(key, val)
+      vals.Add(key, val)
       if err == io.EOF {
          break
       } else if err != nil {
-         return 0, err
+         return nil, err
       }
    }
-   return int64(num), nil
+   return vals, nil
 }
 
-func (v Values) WriteTo(w io.Writer) (int64, error) {
-   var ns int64
-   write := func(ss ...string) error {
-      for _, s := range ss {
-         n, err := io.WriteString(w, s)
-         if err != nil {
-            return err
-         }
-         ns += int64(n)
+func Encode(w io.Writer, vals url.Values) error {
+   for key := range vals {
+      val := vals.Get(key)
+      if _, err := io.WriteString(w, key); err != nil {
+         return err
       }
-      return nil
-   }
-   for key := range v.Values {
-      err := write(key, "=", v.Get(key), "\n")
-      if err != nil {
-         return 0, err
+      if _, err := io.WriteString(w, "="); err != nil {
+         return err
+      }
+      if _, err := io.WriteString(w, val); err != nil {
+         return err
+      }
+      if _, err := io.WriteString(w, "\n"); err != nil {
+         return err
       }
    }
-   return ns, nil
+   return nil
 }

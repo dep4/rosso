@@ -5,34 +5,25 @@ import (
    "testing"
 )
 
-type value_test struct {
-   in string
-   out int64
-}
-
-var tests = []value_test{
-   {"ignore/eol.txt", 446},
-   {"ignore/noeol.txt", 679},
+var tests = []string{
+   "ignore/eol.txt",
+   "ignore/noeol.txt",
 }
 
 func Test_Values(t *testing.T) {
    for _, test := range tests {
-      file, err := os.Open(test.in)
+      file, err := os.Open(test)
       if err != nil {
          t.Fatal(err)
       }
-      val := New_Values()
-      num, err := val.ReadFrom(file)
+      val, err := Decode(file)
       if err != nil {
          t.Fatal(err)
-      }
-      if num != test.out {
-         t.Fatal(num)
       }
       if err := file.Close(); err != nil {
          t.Fatal(err)
       }
-      if _, err := val.WriteTo(os.Stdout); err != nil {
+      if err := Encode(os.Stdout, val); err != nil {
          t.Fatal(err)
       }
    }
