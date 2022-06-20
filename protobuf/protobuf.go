@@ -10,10 +10,71 @@ import (
    "strconv"
 )
 
-func (m Message) MarshalBinary() ([]byte, error) {
+func Unmarshal(buf []byte) (Message, error) {
+   if len(buf) == 0 {
+      return nil, io.ErrUnexpectedEOF
+   }
+   mes := make(Message)
+   for len(buf) >= 1 {
+      num, typ, t_len := protowire.ConsumeTag(buf)
+      err := protowire.ParseError(t_len)
+      if err != nil {
+         return nil, err
+      }
+      buf = buf[t_len:]
+      // until we have exhaustive switch, we need an extra variable here
+      var v_len int
+      switch typ {
+      case protowire.BytesType:
+         var val Bytes
+         val.Raw, v_len = protowire.ConsumeBytes(buf)
+         val.Message, _ = Unmarshal(val.Raw)
+         add(mes, num, val)
+      case protowire.Fixed32Type:
+         var val uint32
+         val, v_len = protowire.ConsumeFixed32(buf)
+         add(mes, num, Fixed32(val))
+      case protowire.Fixed64Type:
+         var val uint64
+         val, v_len = protowire.ConsumeFixed64(buf)
+         add(mes, num, Fixed64(val))
+      case protowire.VarintType:
+         var val uint64
+         val, v_len = protowire.ConsumeVarint(buf)
+         add(mes, num, Varint(val))
+      case protowire.StartGroupType:
+         var val Bytes
+         val.Raw, v_len = protowire.ConsumeGroup(num, buf)
+         val.Message, err = Unmarshal(val.Raw)
+         if err != nil {
+            return nil, err
+         }
+         add(mes, num, val.Message)
+      }
+      if err := protowire.ParseError(v_len); err != nil {
+         return nil, err
+      }
+      buf = buf[v_len:]
+   }
+   return mes, nil
+}
+
+func (e Encoders[T]) encode(buf []byte, num Number) []byte {
+   for _, encoder := range e {
+      buf = encoder.encode(buf, num)
+   }
+   return buf
+}
+
+func (m Message) encode(buf []byte, num Number) []byte {
+   buf = protowire.AppendTag(buf, num, protowire.BytesType)
+   return protowire.AppendBytes(buf, m.Marshal())
+}
+
+func (m Message) Marshal() []byte {
    var (
       nums []Number
-      vals []byte
+      buf []byte
    )
    for num := range m {
       nums = append(nums, num)
@@ -22,64 +83,34 @@ func (m Message) MarshalBinary() ([]byte, error) {
       return nums[a] < nums[b]
    })
    for _, num := range nums {
-      val, err := m[num].encode(num)
-      if err != nil {
-         return nil, err
-      }
-      vals = append(vals, val...)
+      buf = m[num].encode(buf, num)
    }
-   return vals, nil
+   return buf
 }
 
-func (m Message) UnmarshalBinary(buf []byte) error {
-   if len(buf) == 0 {
-      return io.ErrUnexpectedEOF
-   }
-   for len(buf) >= 1 {
-      num, typ, length := protowire.ConsumeTag(buf)
-      err := protowire.ParseError(length)
-      if err != nil {
-         return err
-      }
-      buf = buf[length:]
-      switch typ {
-      case protowire.BytesType:
-         var val Bytes
-         val.Message = make(Message)
-         val.Raw, length = protowire.ConsumeBytes(buf)
-         err := val.Message.UnmarshalBinary(val.Raw)
-         if err != nil {
-            val.Message = nil
-         }
-         add(m, num, val)
-      case protowire.Fixed32Type:
-         var val uint32
-         val, length = protowire.ConsumeFixed32(buf)
-         add(m, num, Fixed32(val))
-      case protowire.Fixed64Type:
-         var val uint64
-         val, length = protowire.ConsumeFixed64(buf)
-         add(m, num, Fixed64(val))
-      case protowire.VarintType:
-         var val uint64
-         val, length = protowire.ConsumeVarint(buf)
-         add(m, num, Varint(val))
-      case protowire.StartGroupType:
-         var val Bytes
-         val.Message = make(Message)
-         val.Raw, length = protowire.ConsumeGroup(num, buf)
-         err := val.Message.UnmarshalBinary(val.Raw)
-         if err != nil {
-            return err
-         }
-         add(m, num, val.Message)
-      }
-      if err := protowire.ParseError(length); err != nil {
-         return err
-      }
-      buf = buf[length:]
-   }
-   return nil
+func (v Varint) encode(buf []byte, num Number) []byte {
+   buf = protowire.AppendTag(buf, num, protowire.VarintType)
+   return protowire.AppendVarint(buf, uint64(v))
+}
+
+func (f Fixed64) encode(buf []byte, num Number) []byte {
+   buf = protowire.AppendTag(buf, num, protowire.Fixed64Type)
+   return protowire.AppendFixed64(buf, uint64(f))
+}
+
+func (f Fixed32) encode(buf []byte, num Number) []byte {
+   buf = protowire.AppendTag(buf, num, protowire.Fixed32Type)
+   return protowire.AppendFixed32(buf, uint32(f))
+}
+
+func (b Bytes) encode(buf []byte, num Number) []byte {
+   buf = protowire.AppendTag(buf, num, protowire.BytesType)
+   return protowire.AppendBytes(buf, b.Raw)
+}
+
+type Encoder interface {
+   encode([]byte, Number) []byte
+   get_type() string
 }
 
 func (r Raw) MarshalText() ([]byte, error) {
@@ -187,11 +218,6 @@ type Encoders[T Encoder] []T
 
 func (Bytes) get_type() string { return "Bytes" }
 
-type Encoder interface {
-   encode(Number) ([]byte, error)
-   get_type() string
-}
-
 func (Encoders[T]) get_type() string {
    var value T
    return "[]" + value.get_type()
@@ -220,4 +246,15 @@ func (t type_error) Error() string {
    b = append(b, ", not "...)
    b = append(b, t.out.get_type()...)
    return string(b)
+}
+
+func add[T Encoder](mes Message, num Number, val T) {
+   switch value := mes[num].(type) {
+   case nil:
+      mes[num] = val
+   case T:
+      mes[num] = Encoders[T]{value, val}
+   case Encoders[T]:
+      mes[num] = append(value, val)
+   }
 }

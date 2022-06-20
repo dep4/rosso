@@ -30,8 +30,8 @@ func do_protobuf(input, output string) error {
    if err != nil {
       return err
    }
-   mes := make(protobuf.Message)
-   if err := mes.UnmarshalBinary(data); err != nil {
+   mes, err := protobuf.Unmarshal(data)
+   if err != nil {
       return err
    }
    file, err := os.Create(output)
