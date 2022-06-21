@@ -8,6 +8,47 @@ import (
    "sort"
 )
 
+func (m Message) Messages(num Number) []Message {
+   var mes []Message
+   switch out := m[num].(type) {
+   case Raw:
+      mes = append(mes, out.Message)
+   case Slice[Raw]:
+      for _, raw := range out {
+         mes = append(mes, raw.Message)
+      }
+   }
+   return mes
+}
+
+func (m Message) String(num Number) (string, error) {
+   in := m[num]
+   out, ok := in.(Raw)
+   if !ok {
+      return "", type_error{num, in, out}
+   }
+   return out.String, nil
+}
+
+func (m Message) Varint(num Number) (uint64, error) {
+   in := m[num]
+   out, ok := in.(Varint)
+   if !ok {
+      return 0, type_error{num, in, out}
+   }
+   return uint64(out), nil
+}
+
+func (m Message) Message(num Number) Message {
+   switch out := m[num].(type) {
+   case Message:
+      return out
+   case Raw:
+      return out.Message
+   }
+   return nil
+}
+
 type Message map[Number]Encoder
 
 func Unmarshal(buf []byte) (Message, error) {
@@ -31,8 +72,10 @@ func Unmarshal(buf []byte) (Message, error) {
          buf, err = mes.consume_fixed32(num, buf)
       case protowire.BytesType:
          buf, err = mes.consume_raw(num, buf)
+      /*
       case protowire.StartGroupType:
       case protowire.EndGroupType:
+      */
       default:
          return nil, errors.New("cannot parse reserved wire type")
       }
