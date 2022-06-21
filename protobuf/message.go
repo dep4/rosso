@@ -8,6 +8,34 @@ import (
    "sort"
 )
 
+func (m Message) Bytes(num Number) ([]byte, error) {
+   in := m[num]
+   out, ok := in.(Raw)
+   if !ok {
+      return nil, type_error{num, in, out}
+   }
+   return out.Bytes, nil
+}
+
+func (m Message) Fixed64(num Number) (uint64, error) {
+   in := m[num]
+   out, ok := in.(Fixed64)
+   if !ok {
+      return 0, type_error{num, in, out}
+   }
+   return uint64(out), nil
+}
+
+func (m Message) Message(num Number) Message {
+   switch out := m[num].(type) {
+   case Message:
+      return out
+   case Raw:
+      return out.Message
+   }
+   return nil
+}
+
 func (m Message) Messages(num Number) []Message {
    var mes []Message
    switch out := m[num].(type) {
@@ -37,16 +65,6 @@ func (m Message) Varint(num Number) (uint64, error) {
       return 0, type_error{num, in, out}
    }
    return uint64(out), nil
-}
-
-func (m Message) Message(num Number) Message {
-   switch out := m[num].(type) {
-   case Message:
-      return out
-   case Raw:
-      return out.Message
-   }
-   return nil
 }
 
 type Message map[Number]Encoder

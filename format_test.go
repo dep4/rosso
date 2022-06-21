@@ -15,7 +15,7 @@ func Test_String(t *testing.T) {
       []byte{0xE0, '<'},
    }
    for _, test := range tests {
-      ok := Is_String(test)
+      ok := String(test)
       fmt.Println(ok)
    }
 }
