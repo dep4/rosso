@@ -59,13 +59,6 @@ func Unmarshal(buf []byte) (Message, error) {
    return mes, nil
 }
 
-func (e Encoders[T]) encode(buf []byte, num Number) []byte {
-   for _, encoder := range e {
-      buf = encoder.encode(buf, num)
-   }
-   return buf
-}
-
 func (m Message) encode(buf []byte, num Number) []byte {
    buf = protowire.AppendTag(buf, num, protowire.BytesType)
    return protowire.AppendBytes(buf, m.Marshal())
@@ -206,7 +199,7 @@ func (m Message) Get_Messages(num Number) []Message {
    switch value := m[num].(type) {
    case Bytes:
       return []Message{value.Message}
-   case Encoders[Bytes]:
+   case Slice[Bytes]:
       for _, val := range value {
          mes = append(mes, val.Message)
       }
@@ -214,14 +207,7 @@ func (m Message) Get_Messages(num Number) []Message {
    return mes
 }
 
-type Encoders[T Encoder] []T
-
 func (Bytes) get_type() string { return "Bytes" }
-
-func (Encoders[T]) get_type() string {
-   var value T
-   return "[]" + value.get_type()
-}
 
 func (Fixed32) get_type() string { return "Fixed32" }
 
@@ -253,8 +239,22 @@ func add[T Encoder](mes Message, num Number, val T) {
    case nil:
       mes[num] = val
    case T:
-      mes[num] = Encoders[T]{value, val}
-   case Encoders[T]:
+      mes[num] = Slice[T]{value, val}
+   case Slice[T]:
       mes[num] = append(value, val)
    }
+}
+
+func (s Slice[T]) encode(buf []byte, num Number) []byte {
+   for _, encoder := range s {
+      buf = encoder.encode(buf, num)
+   }
+   return buf
+}
+
+type Slice[T Encoder] []T
+
+func (Slice[T]) get_type() string {
+   var value T
+   return "[]" + value.get_type()
 }
