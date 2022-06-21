@@ -107,7 +107,7 @@ type Encoder interface {
 }
 
 func (r Raw) MarshalText() ([]byte, error) {
-   if format.Is_String(r) {
+   if format.String(r) {
       return r, nil
    }
    buf := new(bytes.Buffer)

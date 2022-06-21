@@ -26,7 +26,7 @@ func write(req *http.Request, redirect bool, file *os.File) error {
       if err != nil {
          return err
       }
-      if format.Is_String(buf) {
+      if format.String(buf) {
          file.Write(buf)
       } else {
          quote := strconv.Quote(string(buf))

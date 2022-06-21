@@ -13,6 +13,25 @@ import (
    "unicode/utf8"
 )
 
+// mimesniff.spec.whatwg.org#binary-data-byte
+func String(buf []byte) bool {
+   for _, b := range buf {
+      if b <= 0x08 {
+         return false
+      }
+      if b == 0x0B {
+         return false
+      }
+      if b >= 0x0E && b <= 0x1A {
+         return false
+      }
+      if b >= 0x1C && b <= 0x1F {
+         return false
+      }
+   }
+   return utf8.Valid(buf)
+}
+
 // this needs to work with flag.IntVar
 type Log struct {
    Level int
@@ -30,7 +49,7 @@ func (l Log) Dump(req *http.Request) error {
       if err != nil {
          return err
       }
-      if !Is_String(buf) {
+      if !String(buf) {
          buf = strconv.AppendQuote(nil, string(buf))
       }
       if !bytes.HasSuffix(buf, []byte{'\n'}) {
@@ -113,25 +132,6 @@ func Create(name string) (*os.File, error) {
       return nil, err
    }
    return os.Create(name)
-}
-
-// mimesniff.spec.whatwg.org#binary-data-byte
-func Is_String(buf []byte) bool {
-   for _, b := range buf {
-      if b <= 0x08 {
-         return false
-      }
-      if b == 0x0B {
-         return false
-      }
-      if b >= 0x0E && b <= 0x1A {
-         return false
-      }
-      if b >= 0x1C && b <= 0x1F {
-         return false
-      }
-   }
-   return utf8.Valid(buf)
 }
 
 func Label[T Number](value T, unit ...string) string {
