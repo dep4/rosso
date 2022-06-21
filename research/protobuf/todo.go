@@ -4,7 +4,6 @@ import (
    "google.golang.org/protobuf/encoding/protowire"
    "io"
    "sort"
-   "strconv"
 )
 
 func (m Message) consume_fixed32(num Number, buf []byte) ([]byte, error) {
@@ -41,31 +40,6 @@ func (m Message) consume_varint(num Number, buf []byte) ([]byte, error) {
       return nil, err
    }
    return buf[length:], nil
-}
-
-type Slice[T Encoder] []T
-
-func (Slice[T]) get_type() string {
-   var value T
-   return "[]" + value.get_type()
-}
-
-func (s Slice[T]) encode(buf []byte, num Number) []byte {
-   for _, encoder := range s {
-      buf = encoder.encode(buf, num)
-   }
-   return buf
-}
-
-func (t type_error) Error() string {
-   var b []byte
-   b = append(b, "field "...)
-   b = strconv.AppendInt(b, int64(t.Number), 10)
-   b = append(b, " is "...)
-   b = append(b, t.in.get_type()...)
-   b = append(b, ", not "...)
-   b = append(b, t.out.get_type()...)
-   return string(b)
 }
 
 func (m Message) Marshal() []byte {
