@@ -90,10 +90,6 @@ func Unmarshal(buf []byte) (Message, error) {
          buf, err = mes.consume_fixed32(num, buf)
       case protowire.BytesType:
          buf, err = mes.consume_raw(num, buf)
-      /*
-      case protowire.StartGroupType:
-      case protowire.EndGroupType:
-      */
       default:
          return nil, errors.New("cannot parse reserved wire type")
       }

@@ -2,8 +2,28 @@ package protobuf
 
 import (
    "google.golang.org/protobuf/encoding/protowire"
+   "sort"
    "strconv"
 )
+
+type Message map[Number]Encoder
+
+func (m Message) Marshal() []byte {
+   var (
+      nums []Number
+      bufs []byte
+   )
+   for num := range m {
+      nums = append(nums, num)
+   }
+   sort.Slice(nums, func(a, b int) bool {
+      return nums[a] < nums[b]
+   })
+   for _, num := range nums {
+      bufs = m[num].encode(bufs, num)
+   }
+   return bufs
+}
 
 func (m Message) Add(num Number, val Encoder) error {
    return add(m, num, val)
@@ -24,52 +44,12 @@ func add[T Encoder](mes Message, num Number, val T) error {
    return nil
 }
 
-type Bytes []byte
-
-func (b Bytes) encode(buf []byte, num Number) []byte {
-   buf = protowire.AppendTag(buf, num, protowire.BytesType)
-   return protowire.AppendBytes(buf, b)
-}
-
-func (Bytes) get_type() string { return "Bytes" }
-
 type Encoder interface {
    encode([]byte, Number) []byte
    get_type() string
 }
 
-type Fixed32 uint32
-
-func (f Fixed32) encode(buf []byte, num Number) []byte {
-   buf = protowire.AppendTag(buf, num, protowire.Fixed32Type)
-   return protowire.AppendFixed32(buf, uint32(f))
-}
-
-func (Fixed32) get_type() string { return "Fixed32" }
-
-type Fixed64 uint64
-
-func (f Fixed64) encode(buf []byte, num Number) []byte {
-   buf = protowire.AppendTag(buf, num, protowire.Fixed64Type)
-   return protowire.AppendFixed64(buf, uint64(f))
-}
-
-func (Fixed64) get_type() string { return "Fixed64" }
-
 type Number = protowire.Number
-
-type Raw struct {
-   Bytes []byte
-   String string
-   Message map[Number]Encoder
-}
-
-func (r Raw) encode(buf []byte, num Number) []byte {
-   buf = protowire.AppendTag(buf, num, protowire.BytesType)
-   return protowire.AppendBytes(buf, r.Bytes)
-}
-
-func (Raw) get_type() string { return "Raw" }
 
 type Slice[T Encoder] []T
 
@@ -84,15 +64,6 @@ func (Slice[T]) get_type() string {
    var value T
    return "[]" + value.get_type()
 }
-
-type String string
-
-func (s String) encode(buf []byte, num Number) []byte {
-   buf = protowire.AppendTag(buf, num, protowire.BytesType)
-   return protowire.AppendString(buf, string(s))
-}
-
-func (String) get_type() string { return "String" }
 
 type Varint uint64
 
