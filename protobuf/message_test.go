@@ -7,6 +7,35 @@ import (
 )
 
 func Test_Add(t *testing.T) {
+   checkin := Message{
+      4: Message{ // checkin
+         1: Message{ // build
+            10: Varint(29), // sdkVersion
+         },
+      },
+      14: Varint(3), // version
+      18: Message{ // deviceConfiguration
+         1: Varint(999), // touchScreen
+         2: Varint(999),
+         3: Varint(999),
+         4: Varint(999),
+         5: Varint(999),
+         6: Varint(999),
+         7: Varint(999),
+         8: Varint(999),
+         9: Slice[String]{
+            "org.apache.http.legacy",
+            "android.test.runner",
+            "global-miui11-empty.jar",
+         },
+         11: String("nativePlatform"),
+         15: Slice[String]{
+            "GL_OES_compressed_ETC1_RGB8_texture",
+            "GL_KHR_texture_compression_astc_ldr",
+         },
+         26: Slice[Message]{},
+      },
+   }
    androids := []string{
       "android.hardware.bluetooth",
       "android.hardware.bluetooth_le",
@@ -31,9 +60,10 @@ func Test_Add(t *testing.T) {
       "android.software.device_admin",
       "android.software.midi",
    }
-   checkin := make(Message)
-   for range androids {
-      err := checkin.Add(1, Varint(2))
+   for _, android := range androids {
+      err := Add(checkin.Message(18), 26, Message{
+         1: String(android),
+      })
       if err != nil {
          t.Fatal(err)
       }
