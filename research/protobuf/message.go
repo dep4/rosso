@@ -41,8 +41,22 @@ func Unmarshal(buf []byte) (Message, error) {
    return mes, nil
 }
 
-func (m Message) Add_Fixed32(num Number, val uint32) error {
-   rvalue := Fixed32(val)
+func (m Message) Add(num Number, value Message) error {
+   switch lvalue := m[num].(type) {
+   case nil:
+      m[num] = value
+   case Message:
+      m[num] = Slice[Message]{lvalue, value}
+   case Slice[Message]:
+      m[num] = append(lvalue, value)
+   default:
+      return type_error{num, lvalue, value}
+   }
+   return nil
+}
+
+func (m Message) Add_Fixed32(num Number, value uint32) error {
+   rvalue := Fixed32(value)
    switch lvalue := m[num].(type) {
    case nil:
       m[num] = rvalue
@@ -56,8 +70,8 @@ func (m Message) Add_Fixed32(num Number, val uint32) error {
    return nil
 }
 
-func (m Message) Add_Fixed64(num Number, val uint64) error {
-   rvalue := Fixed64(val)
+func (m Message) Add_Fixed64(num Number, value uint64) error {
+   rvalue := Fixed64(value)
    switch lvalue := m[num].(type) {
    case nil:
       m[num] = rvalue
@@ -71,8 +85,8 @@ func (m Message) Add_Fixed64(num Number, val uint64) error {
    return nil
 }
 
-func (m Message) Add_String(num Number, val string) error {
-   rvalue := String(val)
+func (m Message) Add_String(num Number, value string) error {
+   rvalue := String(value)
    switch lvalue := m[num].(type) {
    case nil:
       m[num] = rvalue
@@ -86,8 +100,8 @@ func (m Message) Add_String(num Number, val string) error {
    return nil
 }
 
-func (m Message) Add_Varint(num Number, val uint64) error {
-   rvalue := Varint(val)
+func (m Message) Add_Varint(num Number, value uint64) error {
+   rvalue := Varint(value)
    switch lvalue := m[num].(type) {
    case nil:
       m[num] = rvalue
