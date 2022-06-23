@@ -3,13 +3,10 @@ package protobuf
 import (
    "bufio"
    "bytes"
-   "encoding/base64"
    "encoding/binary"
    "errors"
-   "github.com/89z/format"
    "google.golang.org/protobuf/encoding/protowire"
    "io"
-   "sort"
    "strconv"
 )
 
@@ -87,11 +84,6 @@ func Decode(buf *bufio.Reader) (Message, error) {
          val, err = consumeFixed64(buf)
       case protowire.Fixed32Type: // 5
          val, err = consumeFixed32(buf)
-      case protowire.EndGroupType: // 4
-         // break would only escape switch
-         return mes, nil
-      case protowire.StartGroupType: // 3
-         val, err = Decode(buf)
       case protowire.BytesType: // 2
          val, err = consumeBytes(buf)
       default:
@@ -102,39 +94,6 @@ func Decode(buf *bufio.Reader) (Message, error) {
       }
       add(mes, num, val)
    }
-}
-
-func (r Raw) String() string {
-   if format.IsString(r) {
-      return string(r)
-   }
-   return base64.StdEncoding.EncodeToString(r)
-}
-
-func (r Raw) MarshalText() ([]byte, error) {
-   text := r.String()
-   return []byte(text), nil
-}
-
-func (m Message) MarshalBinary() ([]byte, error) {
-   var (
-      nums []Number
-      vals []byte
-   )
-   for num := range m {
-      nums = append(nums, num)
-   }
-   sort.Slice(nums, func(a, b int) bool {
-      return nums[a] < nums[b]
-   })
-   for _, num := range nums {
-      val, err := m[num].encode(num)
-      if err != nil {
-         return nil, err
-      }
-      vals = append(vals, val...)
-   }
-   return vals, nil
 }
 
 func add[T Encoder](mes Message, num Number, val T) error {
@@ -156,90 +115,13 @@ type Bytes struct {
    Message
 }
 
-func (b Bytes) encode(num Number) ([]byte, error) {
-   tag := protowire.AppendTag(nil, num, protowire.BytesType)
-   return protowire.AppendBytes(tag, b.Raw), nil
-}
-
 type Encoders[T Encoder] []T
-
-func (e Encoders[T]) encode(num Number) ([]byte, error) {
-   var vals []byte
-   for _, encoder := range e {
-      val, err := encoder.encode(num)
-      if err != nil {
-         return nil, err
-      }
-      vals = append(vals, val...)
-   }
-   return vals, nil
-}
 
 type Fixed32 uint32
 
-func (f Fixed32) encode(num Number) ([]byte, error) {
-   tag := protowire.AppendTag(nil, num, protowire.Fixed32Type)
-   return protowire.AppendFixed32(tag, uint32(f)), nil
-}
-
 type Fixed64 uint64
 
-func (f Fixed64) encode(num Number) ([]byte, error) {
-   tag := protowire.AppendTag(nil, num, protowire.Fixed64Type)
-   return protowire.AppendFixed64(tag, uint64(f)), nil
-}
-
 type Message map[Number]Encoder
-
-func (m Message) Get(num Number) Message {
-   switch value := m[num].(type) {
-   case Bytes:
-      return value.Message
-   case Message:
-      return value
-   }
-   return nil
-}
-
-func (m Message) GetMessages(num Number) []Message {
-   var mes []Message
-   switch value := m[num].(type) {
-   case Bytes:
-      return []Message{value.Message}
-   case Encoders[Bytes]:
-      for _, val := range value {
-         mes = append(mes, val.Message)
-      }
-   }
-   return mes
-}
-
-func (m Message) GetString(num Number) (string, error) {
-   in := m[num]
-   out, ok := in.(Bytes)
-   if !ok {
-      return "", typeError{num, in, out}
-   }
-   return string(out.Raw), nil
-}
-
-func (m Message) GetVarint(num Number) (uint64, error) {
-   in := m[num]
-   out, ok := in.(Varint)
-   if !ok {
-      return 0, typeError{num, in, out}
-   }
-   return uint64(out), nil
-}
-
-func (m Message) encode(num Number) ([]byte, error) {
-   tag := protowire.AppendTag(nil, num, protowire.BytesType)
-   val, err := m.MarshalBinary()
-   if err != nil {
-      return nil, err
-   }
-   return protowire.AppendBytes(tag, val), nil
-}
 
 // we need this, so we can avoid importing
 // google.golang.org/protobuf/encoding/protowire
@@ -250,15 +132,9 @@ type Raw []byte
 
 type Varint uint64
 
-func (v Varint) encode(num Number) ([]byte, error) {
-   tag := protowire.AppendTag(nil, num, protowire.VarintType)
-   return protowire.AppendVarint(tag, uint64(v)), nil
-}
-
 func (Bytes) valueType() string { return "Bytes" }
 
 type Encoder interface {
-   encode(Number) ([]byte, error)
    valueType() string
 }
 
