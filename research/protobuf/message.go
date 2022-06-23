@@ -3,8 +3,9 @@ package protobuf
 import (
    "errors"
    "github.com/89z/format"
-   "io"
    "google.golang.org/protobuf/encoding/protowire"
+   "io"
+   "sort"
 )
 
 type Message map[Number]Encoder
@@ -149,8 +150,25 @@ func (m Message) Get_Varint(num Number) (uint64, error) {
    return uint64(rvalue), nil
 }
 
-func (m Message) consume_fixed32(num Number, b []byte) ([]byte, error) {
-   val, length := protowire.ConsumeFixed32(b)
+func (m Message) Marshal() []byte {
+   var (
+      nums []Number
+      bufs []byte
+   )
+   for num := range m {
+      nums = append(nums, num)
+   }
+   sort.Slice(nums, func(a, b int) bool {
+      return nums[a] < nums[b]
+   })
+   for _, num := range nums {
+      bufs = m[num].encode(bufs, num)
+   }
+   return bufs
+}
+
+func (m Message) consume_fixed32(num Number, buf []byte) ([]byte, error) {
+   val, length := protowire.ConsumeFixed32(buf)
    err := protowire.ParseError(length)
    if err != nil {
       return nil, err
@@ -158,11 +176,11 @@ func (m Message) consume_fixed32(num Number, b []byte) ([]byte, error) {
    if err := m.Add_Fixed32(num, val); err != nil {
       return nil, err
    }
-   return b[length:], nil
+   return buf[length:], nil
 }
 
-func (m Message) consume_fixed64(num Number, b []byte) ([]byte, error) {
-   val, length := protowire.ConsumeFixed64(b)
+func (m Message) consume_fixed64(num Number, buf []byte) ([]byte, error) {
+   val, length := protowire.ConsumeFixed64(buf)
    err := protowire.ParseError(length)
    if err != nil {
       return nil, err
@@ -170,15 +188,15 @@ func (m Message) consume_fixed64(num Number, b []byte) ([]byte, error) {
    if err := m.Add_Fixed64(num, val); err != nil {
       return nil, err
    }
-   return b[length:], nil
+   return buf[length:], nil
 }
 
-func (m Message) consume_raw(num Number, b []byte) ([]byte, error) {
+func (m Message) consume_raw(num Number, buf []byte) ([]byte, error) {
    var (
       length int
       rvalue Raw
    )
-   rvalue.Bytes, length = protowire.ConsumeBytes(b)
+   rvalue.Bytes, length = protowire.ConsumeBytes(buf)
    err := protowire.ParseError(length)
    if err != nil {
       return nil, err
@@ -197,11 +215,11 @@ func (m Message) consume_raw(num Number, b []byte) ([]byte, error) {
    default:
       return nil, type_error{num, lvalue, rvalue}
    }
-   return b[length:], nil
+   return buf[length:], nil
 }
 
-func (m Message) consume_varint(num Number, b []byte) ([]byte, error) {
-   val, length := protowire.ConsumeVarint(b)
+func (m Message) consume_varint(num Number, buf []byte) ([]byte, error) {
+   val, length := protowire.ConsumeVarint(buf)
    err := protowire.ParseError(length)
    if err != nil {
       return nil, err
@@ -209,7 +227,12 @@ func (m Message) consume_varint(num Number, b []byte) ([]byte, error) {
    if err := m.Add_Varint(num, val); err != nil {
       return nil, err
    }
-   return b[length:], nil
+   return buf[length:], nil
+}
+
+func (m Message) encode(buf []byte, num Number) []byte {
+   buf = protowire.AppendTag(buf, num, protowire.BytesType)
+   return protowire.AppendBytes(buf, m.Marshal())
 }
 
 func (Message) get_type() string { return "Message" }
