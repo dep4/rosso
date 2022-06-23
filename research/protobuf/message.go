@@ -11,73 +11,48 @@ import (
 type Raw struct {
    Bytes []byte
    String string
-   Message map[Number]Encoder
+   Message map[Number]bravo
 }
 
-func (Raw) get_type() string { return "Raw" }
-
-func add[T Encoder](m Message, num Number, rvalue T) error {
-   switch lvalue := m[num].(type) {
-   case nil:
-      m[num] = rvalue
-   case T:
-      m[num] = Slice[T]{lvalue, rvalue}
-   case Slice[T]:
-      m[num] = append(lvalue, rvalue)
-   default:
-      return type_error{num, lvalue, rvalue}
-   }
-   return nil
-}
+func (Raw) alfa() string { return "Raw" }
 
 type Bytes []byte
 
-func (Bytes) get_type() string { return "Bytes" }
-
-type Encoder interface {
-   get_type() string
-}
+func (Bytes) alfa() string { return "Bytes" }
 
 type Fixed32 uint32
 
-func (Fixed32) get_type() string { return "Fixed32" }
+func (Fixed32) alfa() string { return "Fixed32" }
 
 type Fixed64 uint64
 
-func (Fixed64) get_type() string { return "Fixed64" }
+func (Fixed64) alfa() string { return "Fixed64" }
 
 type Number = protowire.Number
 
-type Slice[T Encoder] []T
+type alfa interface {
+   alfa() string
+}
 
-func (Slice[T]) get_type() string {
-   var value T
-   return "[]" + value.get_type()
+type bravo interface {
+   bravo() string
 }
 
 type String string
 
-func (String) get_type() string { return "String" }
+func (String) alfa() string { return "String" }
 
 type Varint uint64
 
-func (Varint) get_type() string { return "Varint" }
+func (Varint) alfa() string { return "Varint" }
 
 type type_error struct {
    Number
-   lvalue Encoder
-   rvalue Encoder
+   lvalue bravo
+   rvalue bravo
 }
 
-func (t type_error) Error() string {
-   var buf strings.Builder
-   buf.WriteString("lvalue ")
-   buf.WriteString(t.lvalue.get_type())
-   buf.WriteString(" rvalue ")
-   buf.WriteString(t.rvalue.get_type())
-   return buf.String()
-}
-type Message map[Number]Encoder
+type Message map[Number]bravo
 
 func Unmarshal(buf []byte) (Message, error) {
    if len(buf) == 0 {
@@ -110,18 +85,6 @@ func Unmarshal(buf []byte) (Message, error) {
    return mes, nil
 }
 
-func (m Message) Add_Fixed32(num Number, v uint32) error {
-   return add(m, num, Fixed32(v))
-}
-
-func (m Message) Add_Fixed64(num Number, v uint64) error {
-   return add(m, num, Fixed64(v))
-}
-
-func (m Message) Add_Varint(num Number, v uint64) error {
-   return add(m, num, Varint(v))
-}
-
 func (m Message) Bytes(num Number) ([]byte, error) {
    lvalue := m[num]
    rvalue, ok := lvalue.(Raw)
@@ -138,29 +101,6 @@ func (m Message) Fixed64(num Number) (uint64, error) {
       return 0, type_error{num, lvalue, rvalue}
    }
    return uint64(rvalue), nil
-}
-
-func (m Message) Message(num Number) Message {
-   switch rvalue := m[num].(type) {
-   case Message:
-      return rvalue
-   case Raw:
-      return rvalue.Message
-   }
-   return nil
-}
-
-func (m Message) Messages(num Number) []Message {
-   var mes []Message
-   switch rvalue := m[num].(type) {
-   case Raw:
-      mes = append(mes, rvalue.Message)
-   case Slice[Raw]:
-      for _, raw := range rvalue {
-         mes = append(mes, raw.Message)
-      }
-   }
-   return mes
 }
 
 func (m Message) String(num Number) (string, error) {
@@ -205,26 +145,6 @@ func (m Message) consume_fixed64(num Number, b []byte) ([]byte, error) {
    return b[length:], nil
 }
 
-func (m Message) consume_raw(num Number, b []byte) ([]byte, error) {
-   var (
-      length int
-      val Raw
-   )
-   val.Bytes, length = protowire.ConsumeBytes(b)
-   err := protowire.ParseError(length)
-   if err != nil {
-      return nil, err
-   }
-   if format.String(val.Bytes) {
-      val.String = string(val.Bytes)
-   }
-   val.Message, _ = Unmarshal(val.Bytes)
-   if err := add(m, num, val); err != nil {
-      return nil, err
-   }
-   return b[length:], nil
-}
-
 func (m Message) consume_varint(num Number, b []byte) ([]byte, error) {
    val, length := protowire.ConsumeVarint(b)
    err := protowire.ParseError(length)
@@ -237,4 +157,117 @@ func (m Message) consume_varint(num Number, b []byte) ([]byte, error) {
    return b[length:], nil
 }
 
-func (Message) get_type() string { return "Message" }
+func (Message) alfa() string { return "Message" }
+
+type Slice[T alfa] []T
+
+func (Slice[T]) bravo() string {
+   var value T
+   return "[]" + value.alfa()
+}
+
+func (t type_error) Error() string {
+   var buf strings.Builder
+   buf.WriteString("lvalue ")
+   buf.WriteString(t.lvalue.bravo())
+   buf.WriteString(" rvalue ")
+   buf.WriteString(t.rvalue.bravo())
+   return buf.String()
+}
+
+////////////////////////////////////////////////////
+
+func (m Message) Message(num Number) Message {
+   switch rvalue := m[num].(type) {
+   case Message:
+      return rvalue
+   case Raw:
+      return rvalue.Message
+   }
+   return nil
+}
+
+func (m Message) Messages(num Number) []Message {
+   var mes []Message
+   switch rvalue := m[num].(type) {
+   case Raw:
+      mes = append(mes, rvalue.Message)
+   case Slice[Raw]:
+      for _, raw := range rvalue {
+         mes = append(mes, raw.Message)
+      }
+   }
+   return mes
+}
+
+func (m Message) Add_Varint(num Number, val uint64) error {
+   rvalue := Varint(val)
+   switch lvalue := m[num].(type) {
+   case nil:
+      m[num] = rvalue
+   case Varint:
+      m[num] = Slice[Varint]{lvalue, rvalue}
+   case Slice[Varint]:
+      m[num] = append(lvalue, rvalue)
+   default:
+      return type_error{num, lvalue, rvalue}
+   }
+   return nil
+}
+
+func (m Message) Add_Fixed32(num Number, val uint32) error {
+   rvalue := Fixed32(val)
+   switch lvalue := m[num].(type) {
+   case nil:
+      m[num] = rvalue
+   case Fixed32:
+      m[num] = Slice[Fixed32]{lvalue, rvalue}
+   case Slice[Fixed32]:
+      m[num] = append(lvalue, rvalue)
+   default:
+      return type_error{num, lvalue, rvalue}
+   }
+   return nil
+}
+
+func (m Message) Add_Fixed64(num Number, val uint64) error {
+   rvalue := Fixed64(val)
+   switch lvalue := m[num].(type) {
+   case nil:
+      m[num] = rvalue
+   case Fixed64:
+      m[num] = Slice[Fixed64]{lvalue, rvalue}
+   case Slice[Fixed64]:
+      m[num] = append(lvalue, rvalue)
+   default:
+      return type_error{num, lvalue, rvalue}
+   }
+   return nil
+}
+
+func (m Message) consume_raw(num Number, b []byte) ([]byte, error) {
+   var (
+      length int
+      rvalue Raw
+   )
+   rvalue.Bytes, length = protowire.ConsumeBytes(b)
+   err := protowire.ParseError(length)
+   if err != nil {
+      return nil, err
+   }
+   if format.String(rvalue.Bytes) {
+      rvalue.String = string(rvalue.Bytes)
+   }
+   rvalue.Message, _ = Unmarshal(rvalue.Bytes)
+   switch lvalue := m[num].(type) {
+   case nil:
+      m[num] = rvalue
+   case Raw:
+      m[num] = Slice[Raw]{lvalue, rvalue}
+   case Slice[Raw]:
+      m[num] = append(lvalue, rvalue)
+   default:
+      return nil, type_error{num, lvalue, rvalue}
+   }
+   return b[length:], nil
+}
