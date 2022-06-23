@@ -6,16 +6,16 @@ import (
 )
 
 func Add[T Encoded](mes Message, num Number, val T) error {
-   in := mes[num]
-   switch out := in.(type) {
+   lvalue := mes[num]
+   switch rvalue := lvalue.(type) {
    case nil:
       mes[num] = Encoder(val)
    case T:
-      mes[num] = Slice[T]{out, val}
+      mes[num] = Slice[T]{rvalue, val}
    case Slice[T]:
-      mes[num] = append(out, val)
+      mes[num] = append(rvalue, val)
    default:
-      return type_error{num, in, out}
+      return type_error{num, lvalue, rvalue}
    }
    return nil
 }
@@ -87,8 +87,8 @@ func (Varint) get_type() string { return "Varint" }
 
 type type_error struct {
    Number
-   in Encoder
-   out Encoder
+   lvalue Encoder
+   rvalue Encoder
 }
 
 func (t type_error) Error() string {
@@ -96,9 +96,9 @@ func (t type_error) Error() string {
    b = append(b, "field "...)
    b = strconv.AppendInt(b, int64(t.Number), 10)
    b = append(b, " is "...)
-   b = append(b, t.in.get_type()...)
+   b = append(b, t.lvalue.get_type()...)
    b = append(b, ", not "...)
-   b = append(b, t.out.get_type()...)
+   b = append(b, t.rvalue.get_type()...)
    return string(b)
 }
 

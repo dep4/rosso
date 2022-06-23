@@ -8,65 +8,6 @@ import (
    "sort"
 )
 
-func (m Message) Bytes(num Number) ([]byte, error) {
-   in := m[num]
-   out, ok := in.(Raw)
-   if !ok {
-      return nil, type_error{num, in, out}
-   }
-   return out.Bytes, nil
-}
-
-func (m Message) Fixed64(num Number) (uint64, error) {
-   in := m[num]
-   out, ok := in.(Fixed64)
-   if !ok {
-      return 0, type_error{num, in, out}
-   }
-   return uint64(out), nil
-}
-
-func (m Message) Message(num Number) Message {
-   switch out := m[num].(type) {
-   case Message:
-      return out
-   case Raw:
-      return out.Message
-   }
-   return nil
-}
-
-func (m Message) Messages(num Number) []Message {
-   var mes []Message
-   switch out := m[num].(type) {
-   case Raw:
-      mes = append(mes, out.Message)
-   case Slice[Raw]:
-      for _, raw := range out {
-         mes = append(mes, raw.Message)
-      }
-   }
-   return mes
-}
-
-func (m Message) String(num Number) (string, error) {
-   in := m[num]
-   out, ok := in.(Raw)
-   if !ok {
-      return "", type_error{num, in, out}
-   }
-   return out.String, nil
-}
-
-func (m Message) Varint(num Number) (uint64, error) {
-   in := m[num]
-   out, ok := in.(Varint)
-   if !ok {
-      return 0, type_error{num, in, out}
-   }
-   return uint64(out), nil
-}
-
 type Message map[Number]Encoder
 
 func Unmarshal(buf []byte) (Message, error) {
@@ -100,6 +41,24 @@ func Unmarshal(buf []byte) (Message, error) {
    return mes, nil
 }
 
+func (m Message) Bytes(num Number) ([]byte, error) {
+   lvalue := m[num]
+   rvalue, ok := lvalue.(Raw)
+   if !ok {
+      return nil, type_error{num, lvalue, rvalue}
+   }
+   return rvalue.Bytes, nil
+}
+
+func (m Message) Fixed64(num Number) (uint64, error) {
+   lvalue := m[num]
+   rvalue, ok := lvalue.(Fixed64)
+   if !ok {
+      return 0, type_error{num, lvalue, rvalue}
+   }
+   return uint64(rvalue), nil
+}
+
 func (m Message) Marshal() []byte {
    var (
       nums []Number
@@ -115,6 +74,47 @@ func (m Message) Marshal() []byte {
       bufs = m[num].encode(bufs, num)
    }
    return bufs
+}
+
+func (m Message) Message(num Number) Message {
+   switch rvalue := m[num].(type) {
+   case Message:
+      return rvalue
+   case Raw:
+      return rvalue.Message
+   }
+   return nil
+}
+
+func (m Message) Messages(num Number) []Message {
+   var mes []Message
+   switch rvalue := m[num].(type) {
+   case Raw:
+      mes = append(mes, rvalue.Message)
+   case Slice[Raw]:
+      for _, raw := range rvalue {
+         mes = append(mes, raw.Message)
+      }
+   }
+   return mes
+}
+
+func (m Message) String(num Number) (string, error) {
+   lvalue := m[num]
+   rvalue, ok := lvalue.(Raw)
+   if !ok {
+      return "", type_error{num, lvalue, rvalue}
+   }
+   return rvalue.String, nil
+}
+
+func (m Message) Varint(num Number) (uint64, error) {
+   lvalue := m[num]
+   rvalue, ok := lvalue.(Varint)
+   if !ok {
+      return 0, type_error{num, lvalue, rvalue}
+   }
+   return uint64(rvalue), nil
 }
 
 func (m Message) consume_fixed32(num Number, buf []byte) ([]byte, error) {

@@ -5,16 +5,22 @@ import (
    "strings"
 )
 
-func add[T Encoder](mes Message, num Number, value T) error {
-   switch values := mes[num].(type) {
+type Raw struct {
+   Bytes []byte
+   String string
+   Message map[Number]Encoder
+}
+
+func add[T Encoder](m Message, num Number, rvalue T) error {
+   switch lvalue := m[num].(type) {
    case nil:
-      mes[num] = value
+      m[num] = rvalue
    case T:
-      mes[num] = Slice[T]{values, value}
+      m[num] = Slice[T]{lvalue, rvalue}
    case Slice[T]:
-      mes[num] = append(values, value)
+      m[num] = append(lvalue, rvalue)
    default:
-      return type_error{values, value}
+      return type_error{num, lvalue, rvalue}
    }
    return nil
 }
@@ -53,15 +59,16 @@ type Varint uint64
 func (Varint) get_type() string { return "Varint" }
 
 type type_error struct {
-   values Encoder
-   value Encoder
+   Number
+   lvalue Encoder
+   rvalue Encoder
 }
 
 func (t type_error) Error() string {
    var buf strings.Builder
-   buf.WriteString("values ")
-   buf.WriteString(t.values.get_type())
-   buf.WriteString(" value ")
-   buf.WriteString(t.value.get_type())
+   buf.WriteString("lvalue ")
+   buf.WriteString(t.lvalue.get_type())
+   buf.WriteString(" rvalue ")
+   buf.WriteString(t.rvalue.get_type())
    return buf.String()
 }

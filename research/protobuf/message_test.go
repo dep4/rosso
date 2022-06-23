@@ -6,11 +6,11 @@ import (
 )
 
 func Test_ProtoBuf(t *testing.T) {
-   mes := make(message)
-   fmt.Println(mes.add_varint(1, 2))
-   fmt.Println(mes.add_string(1, "three"))
-   fmt.Println(mes.add_varint(1, 4))
-   fmt.Println(mes.add_string(1, "five"))
-   fmt.Println(mes.add_varint(1, 6))
+   mes := make(Message)
+   fmt.Println(mes.Add_Varint(1, 2))
+   fmt.Println(mes.Add_String(1, "three"))
+   fmt.Println(mes.Add_Varint(1, 4))
+   fmt.Println(mes.Add_String(1, "five"))
+   fmt.Println(mes.Add_Varint(1, 6))
    fmt.Println(mes)
 }
