@@ -26,11 +26,10 @@ func Decrypt(dst io.Writer, src io.Reader, key []byte) error {
                if len(traf.Senc.SubSamples) > i {
                   sub = traf.Senc.SubSamples[i]
                }
-               dec, err := mp4.DecryptSampleCenc(sample.Data, key, iv, sub)
+               err := mp4.DecryptSampleCenc(sample.Data, key, iv, sub)
                if err != nil {
                   return err
                }
-               copy(sample.Data, dec)
             }
             // required for playback
             traf.RemoveEncryptionBoxes()

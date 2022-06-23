@@ -5,21 +5,6 @@ import (
    "strconv"
 )
 
-func add[T Encoded](mes Message, num Number, val T) error {
-   lvalue := mes[num]
-   switch rvalue := lvalue.(type) {
-   case nil:
-      mes[num] = Encoder(val)
-   case T:
-      mes[num] = Slice[T]{rvalue, val}
-   case Slice[T]:
-      mes[num] = append(rvalue, val)
-   default:
-      return type_error{num, lvalue, rvalue}
-   }
-   return nil
-}
-
 type Bytes []byte
 
 func (b Bytes) encode(buf []byte, num Number) []byte {
@@ -67,6 +52,20 @@ func (r Raw) encode(buf []byte, num Number) []byte {
 
 func (Raw) get_type() string { return "Raw" }
 
+type Slice[T Encoder] []T
+
+func (s Slice[T]) encode(buf []byte, num Number) []byte {
+   for _, value := range s {
+      buf = value.encode(buf, num)
+   }
+   return buf
+}
+
+func (Slice[T]) get_type() string {
+   var value T
+   return "[]" + value.get_type()
+}
+
 type String string
 
 func (s String) encode(buf []byte, num Number) []byte {
@@ -100,22 +99,4 @@ func (t type_error) Error() string {
    b = append(b, ", not "...)
    b = append(b, t.rvalue.get_type()...)
    return string(b)
-}
-
-type Encoded interface {
-   Fixed32 | Fixed64 | Message | Raw | String | Varint
-}
-
-type Slice[T Encoded] []T
-
-func (s Slice[T]) encode(buf []byte, num Number) []byte {
-   for _, value := range s {
-      buf = Encoder(value).encode(buf, num)
-   }
-   return buf
-}
-
-func (Slice[T]) get_type() string {
-   var value T
-   return "[]" + Encoder(value).get_type()
 }

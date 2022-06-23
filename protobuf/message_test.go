@@ -33,7 +33,6 @@ func Test_Add(t *testing.T) {
             "GL_OES_compressed_ETC1_RGB8_texture",
             "GL_KHR_texture_compression_astc_ldr",
          },
-         26: Slice[Message]{},
       },
    }
    androids := []string{
@@ -61,7 +60,7 @@ func Test_Add(t *testing.T) {
       "android.software.midi",
    }
    for _, android := range androids {
-      err := Add(checkin.Message(18), 26, Message{
+      err := checkin.Get(18).Add(26, Message{
          1: String(android),
       })
       if err != nil {
@@ -136,46 +135,46 @@ func Test_Unmarshal(t *testing.T) {
    if err != nil {
       t.Fatal(err)
    }
-   doc_V2 := response_wrapper.Message(1).Message(2).Message(4)
-   if v := doc_V2.Message(13).Message(1).Messages(17); len(v) != 4 {
+   doc_V2 := response_wrapper.Get(1).Get(2).Get(4)
+   if v := doc_V2.Get(13).Get(1).Get_Messages(17); len(v) != 4 {
       t.Fatal("File", v)
    }
-   if v, err := doc_V2.Message(13).Message(1).Varint(3); err != nil {
+   if v, err := doc_V2.Get(13).Get(1).Get_Varint(3); err != nil {
       t.Fatal(err)
    } else if v != 10218030 {
       t.Fatal("VersionCode", v)
    }
-   if v, err := doc_V2.Message(13).Message(1).String(4); err != nil {
+   if v, err := doc_V2.Get(13).Get(1).Get_String(4); err != nil {
       t.Fatal(err)
    } else if v != "10.21.0" {
       t.Fatal("VersionString", v)
    }
-   if v, err := doc_V2.Message(13).Message(1).Varint(9); err != nil {
+   if v, err := doc_V2.Get(13).Get(1).Get_Varint(9); err != nil {
       t.Fatal(err)
    } else if v != 47705639 {
       t.Fatal("Size", v)
    }
-   if v, err := doc_V2.Message(13).Message(1).String(16); err != nil {
+   if v, err := doc_V2.Get(13).Get(1).Get_String(16); err != nil {
       t.Fatal(err)
    } else if v != "Jun 14, 2022" {
       t.Fatal("Date", v)
    }
-   if v, err := doc_V2.String(5); err != nil {
+   if v, err := doc_V2.Get_String(5); err != nil {
       t.Fatal(err)
    } else if v != "Pinterest" {
       t.Fatal("title", v)
    }
-   if v, err := doc_V2.String(6); err != nil {
+   if v, err := doc_V2.Get_String(6); err != nil {
       t.Fatal(err)
    } else if v != "Pinterest" {
       t.Fatal("creator", v)
    }
-   if v, err := doc_V2.Message(8).String(2); err != nil {
+   if v, err := doc_V2.Get(8).Get_String(2); err != nil {
       t.Fatal(err)
    } else if v != "USD" {
       t.Fatal("currencyCode", v)
    }
-   if v, err := doc_V2.Message(13).Message(1).Varint(70); err != nil {
+   if v, err := doc_V2.Get(13).Get(1).Get_Varint(70); err != nil {
       t.Fatal(err)
    } else if v != 750510010 {
       t.Fatal("NumDownloads", v)
