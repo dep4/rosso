@@ -13,6 +13,32 @@ import (
    "strings"
 )
 
+// cannot call pointer method RoundTrip on http.Transport
+func Transport(spec *tls.ClientHelloSpec) *http.Transport {
+   var tr http.Transport
+   //lint:ignore SA1019 godocs.io/context
+   tr.DialTLS = func(network, addr string) (net.Conn, error) {
+      conn, err := net.Dial(network, addr)
+      if err != nil {
+         return nil, err
+      }
+      host, _, err := net.SplitHostPort(addr)
+      if err != nil {
+         return nil, err
+      }
+      config := &tls.Config{ServerName: host}
+      uconn := tls.UClient(conn, config, tls.HelloCustom)
+      if err := uconn.ApplyPreset(spec); err != nil {
+         return nil, err
+      }
+      if err := uconn.Handshake(); err != nil {
+         return nil, err
+      }
+      return uconn, nil
+   }
+   return &tr
+}
+
 // len 122, 8fcaa9e4a15f48af0a7d396e3fa5c5eb
 const Android_API_24 =
    "771,49195-49196-52393-49199-49200-52392-158-159-49161-49162-49171-" +
@@ -109,30 +135,6 @@ func Format_JA3(spec *tls.ClientHelloSpec) (string, error) {
       fmt.Fprint(buf, val)
    }
    return buf.String(), nil
-}
-
-func Transport(spec *tls.ClientHelloSpec) *http.Transport {
-   return &http.Transport{
-      DialTLS: func(network, addr string) (net.Conn, error) {
-         conn, err := net.Dial(network, addr)
-         if err != nil {
-            return nil, err
-         }
-         host, _, err := net.SplitHostPort(addr)
-         if err != nil {
-            return nil, err
-         }
-         config := &tls.Config{ServerName: host}
-         uconn := tls.UClient(conn, config, tls.HelloCustom)
-         if err := uconn.ApplyPreset(spec); err != nil {
-            return nil, err
-         }
-         if err := uconn.Handshake(); err != nil {
-            return nil, err
-         }
-         return uconn, nil
-      },
-   }
 }
 
 func extension_type(ext tls.TLSExtension) (uint16, error) {
