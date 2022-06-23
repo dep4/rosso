@@ -71,6 +71,21 @@ func (m Message) Add_Fixed64(num Number, val uint64) error {
    return nil
 }
 
+func (m Message) Add_String(num Number, val string) error {
+   rvalue := String(val)
+   switch lvalue := m[num].(type) {
+   case nil:
+      m[num] = rvalue
+   case String:
+      m[num] = Slice[String]{lvalue, rvalue}
+   case Slice[String]:
+      m[num] = append(lvalue, rvalue)
+   default:
+      return type_error{num, lvalue, rvalue}
+   }
+   return nil
+}
+
 func (m Message) Add_Varint(num Number, val uint64) error {
    rvalue := Varint(val)
    switch lvalue := m[num].(type) {
