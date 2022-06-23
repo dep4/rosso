@@ -11,6 +11,8 @@ type Raw struct {
    Message map[Number]Encoder
 }
 
+func (Raw) get_type() string { return "Raw" }
+
 func add[T Encoder](m Message, num Number, rvalue T) error {
    switch lvalue := m[num].(type) {
    case nil:

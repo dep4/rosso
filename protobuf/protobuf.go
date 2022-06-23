@@ -5,7 +5,7 @@ import (
    "strconv"
 )
 
-func Add[T Encoded](mes Message, num Number, val T) error {
+func add[T Encoded](mes Message, num Number, val T) error {
    lvalue := mes[num]
    switch rvalue := lvalue.(type) {
    case nil:

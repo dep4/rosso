@@ -123,7 +123,7 @@ func (m Message) consume_fixed32(num Number, buf []byte) ([]byte, error) {
    if err != nil {
       return nil, err
    }
-   if err := Add(m, num, Fixed32(val)); err != nil {
+   if err := add(m, num, Fixed32(val)); err != nil {
       return nil, err
    }
    return buf[length:], nil
@@ -135,7 +135,7 @@ func (m Message) consume_fixed64(num Number, buf []byte) ([]byte, error) {
    if err != nil {
       return nil, err
    }
-   if err := Add(m, num, Fixed64(val)); err != nil {
+   if err := add(m, num, Fixed64(val)); err != nil {
       return nil, err
    }
    return buf[length:], nil
@@ -155,7 +155,7 @@ func (m Message) consume_raw(num Number, buf []byte) ([]byte, error) {
       val.String = string(val.Bytes)
    }
    val.Message, _ = Unmarshal(val.Bytes)
-   if err := Add(m, num, val); err != nil {
+   if err := add(m, num, val); err != nil {
       return nil, err
    }
    return buf[length:], nil
@@ -167,7 +167,7 @@ func (m Message) consume_varint(num Number, buf []byte) ([]byte, error) {
    if err != nil {
       return nil, err
    }
-   if err := Add(m, num, Varint(val)); err != nil {
+   if err := add(m, num, Varint(val)); err != nil {
       return nil, err
    }
    return buf[length:], nil
