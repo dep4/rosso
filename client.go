@@ -10,26 +10,29 @@ import (
 )
 
 type Client struct {
-   Log_Level int // this needs to work with flag.IntVar
+   Level int // this needs to work with flag.IntVar
+   Status int
    http.Client
 }
 
-func (c *Client) Do(req *http.Request) (*http.Response, error) {
-   c.CheckRedirect = func(*http.Request, []*http.Request) error {
-      return http.ErrUseLastResponse
-   }
-   c.Transport = nil
-   return c.Custom(req)
+var Default_Client = Client{
+   Level: 1,
+   Status: http.StatusOK,
+   Client: http.Client{
+      CheckRedirect: func(*http.Request, []*http.Request) error {
+         return http.ErrUseLastResponse
+      },
+   },
 }
 
-func (c *Client) Custom(req *http.Request) (*http.Response, error) {
-   switch c.Log_Level {
-   case 0:
+func (c Client) Do(req *http.Request) (*http.Response, error) {
+   switch c.Level {
+   case 1:
       os.Stderr.WriteString(req.Method)
       os.Stderr.WriteString(" ")
       os.Stderr.WriteString(req.URL.String())
       os.Stderr.WriteString("\n")
-   case 1:
+   case 2:
       buf, err := httputil.DumpRequest(req, true)
       if err != nil {
          return nil, err
@@ -46,8 +49,28 @@ func (c *Client) Custom(req *http.Request) (*http.Response, error) {
    if err != nil {
       return nil, err
    }
-   if res.StatusCode != http.StatusOK {
+   if res.StatusCode != c.Status {
       return nil, errors.New(res.Status)
    }
    return res, nil
+}
+
+func (c Client) WithLevel(level int) Client {
+   c.Level = level
+   return c
+}
+
+func (c Client) WithRedirect() Client {
+   c.CheckRedirect = nil
+   return c
+}
+
+func (c Client) WithStatus(status int) Client {
+   c.Status = status
+   return c
+}
+
+func (c Client) WithTransport(tr *http.Transport) Client {
+   c.Transport = tr
+   return c
 }
