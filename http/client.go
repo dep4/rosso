@@ -1,52 +1,53 @@
-package format
+package http
 
 import (
    "bytes"
    "errors"
+   "github.com/89z/format"
    "net/http"
    "net/http/httputil"
    "os"
    "strconv"
 )
 
+func (c Client) Redirect() Client {
+   c.client.CheckRedirect = nil
+   return c
+}
+
+func (c Client) Level(level int) Client {
+   c.level = level
+   return c
+}
+
+func (c Client) Status(status int) Client {
+   c.status = status
+   return c
+}
+
+func (c Client) Transport(tr *http.Transport) Client {
+   c.client.Transport = tr
+   return c
+}
+
 type Client struct {
-   http.Client
-   Level int // this needs to work with flag.IntVar
-   Status int
+   level int // this needs to work with flag.IntVar
+   status int
+   client http.Client
 }
 
 var Default_Client = Client{
-   Client: http.Client{
+   level: 1,
+   status: http.StatusOK,
+   client: http.Client{
       CheckRedirect: func(*http.Request, []*http.Request) error {
          return http.ErrUseLastResponse
       },
    },
-   Level: 1,
-   Status: http.StatusOK,
-}
-
-func (c Client) WithRedirect() Client {
-   c.CheckRedirect = nil
-   return c
-}
-
-func (c Client) WithLevel(level int) Client {
-   c.Level = level
-   return c
-}
-
-func (c Client) WithStatus(status int) Client {
-   c.Status = status
-   return c
-}
-
-func (c Client) WithTransport(tr *http.Transport) Client {
-   c.Transport = tr
-   return c
 }
 
 func (c Client) Do(req *http.Request) (*http.Response, error) {
-   switch c.Level {
+   switch c.level {
    case 1:
       os.Stderr.WriteString(req.Method)
       os.Stderr.WriteString(" ")
@@ -57,7 +58,7 @@ func (c Client) Do(req *http.Request) (*http.Response, error) {
       if err != nil {
          return nil, err
       }
-      if !String(buf) {
+      if !format.String(buf) {
          buf = strconv.AppendQuote(nil, string(buf))
       }
       if !bytes.HasSuffix(buf, []byte{'\n'}) {
@@ -65,17 +66,16 @@ func (c Client) Do(req *http.Request) (*http.Response, error) {
       }
       os.Stderr.Write(buf)
    }
-   res, err := c.Client.Do(req)
+   res, err := c.client.Do(req)
    if err != nil {
       return nil, err
    }
-   if res.StatusCode != c.Status {
+   if res.StatusCode != c.status {
       return nil, errors.New(res.Status)
    }
    return res, nil
 }
 
-// kill this?
 func (c Client) Get(addr string) (*http.Response, error) {
    req, err := http.NewRequest("GET", addr, nil)
    if err != nil {
