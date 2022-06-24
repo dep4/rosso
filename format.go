@@ -3,7 +3,6 @@ package format
 import (
    "io"
    "os"
-   "path/filepath"
    "strconv"
    "strings"
    "time"
@@ -31,17 +30,6 @@ func String(buf []byte) bool {
 
 type Number interface {
    float64 | int | int64 | ~uint64
-}
-
-func Create(name string) (*os.File, error) {
-   os.Stderr.WriteString("Create ")
-   os.Stderr.WriteString(filepath.FromSlash(name))
-   os.Stderr.WriteString("\n")
-   err := os.MkdirAll(filepath.Dir(name), os.ModePerm)
-   if err != nil {
-      return nil, err
-   }
-   return os.Create(name)
 }
 
 func Label[T Number](value T, unit ...string) string {

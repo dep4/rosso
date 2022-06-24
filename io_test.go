@@ -11,7 +11,7 @@ func Test_Client(t *testing.T) {
    if err != nil {
       t.Fatal(err)
    }
-   if _, err := new(Client).Do(req); err != nil {
+   if _, err := Default_Client.Do(req); err != nil {
       fmt.Println(err)
    } else {
       t.Fatal(req)
