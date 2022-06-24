@@ -1,8 +1,9 @@
-package format
+package http
 
 import (
    "bytes"
    "errors"
+   "github.com/89z/format"
    "net/http"
    "net/http/httputil"
    "os"
@@ -17,7 +18,7 @@ type Client struct {
 
 var Default_Client = Client{
    Client: http.Client{
-      CheckRedirect: func(*http.Request, []*http.Request) error {
+      CheckRedirect: func(*Request, []*Request) error {
          return http.ErrUseLastResponse
       },
    },
@@ -40,12 +41,12 @@ func (c Client) WithStatus(status int) Client {
    return c
 }
 
-func (c Client) WithTransport(tr *http.Transport) Client {
+func (c Client) WithTransport(tr *Transport) Client {
    c.Transport = tr
    return c
 }
 
-func (c Client) Do(req *http.Request) (*http.Response, error) {
+func (c Client) Do(req *Request) (*http.Response, error) {
    switch c.Level {
    case 1:
       os.Stderr.WriteString(req.Method)
@@ -57,7 +58,7 @@ func (c Client) Do(req *http.Request) (*http.Response, error) {
       if err != nil {
          return nil, err
       }
-      if !String(buf) {
+      if !format.String(buf) {
          buf = strconv.AppendQuote(nil, string(buf))
       }
       if !bytes.HasSuffix(buf, []byte{'\n'}) {
@@ -75,7 +76,6 @@ func (c Client) Do(req *http.Request) (*http.Response, error) {
    return res, nil
 }
 
-// kill this?
 func (c Client) Get(addr string) (*http.Response, error) {
    req, err := http.NewRequest("GET", addr, nil)
    if err != nil {
