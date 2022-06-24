@@ -1,4 +1,4 @@
-package format
+package http
 
 import (
    "net/http"
@@ -6,7 +6,7 @@ import (
 )
 
 func Test_Client_Get(t *testing.T) {
-   res, err := Default_Client.WithStatus(302).Get("http://godocs.io")
+   res, err := Default_Client.Status(302).Get("http://godocs.io")
    if err != nil {
       t.Fatal(err)
    }
@@ -20,7 +20,7 @@ func Test_Client_Do(t *testing.T) {
    if err != nil {
       t.Fatal(err)
    }
-   res, err := Default_Client.WithStatus(302).Do(req)
+   res, err := Default_Client.Status(302).Do(req)
    if err != nil {
       t.Fatal(err)
    }
