@@ -1,4 +1,4 @@
-package net
+package url
 
 import (
    "bufio"
@@ -6,6 +6,8 @@ import (
    "net/url"
    "strings"
 )
+
+type Values = url.Values
 
 func Decode(r io.Reader) (url.Values, error) {
    vals := make(url.Values)
