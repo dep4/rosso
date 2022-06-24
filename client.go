@@ -10,7 +10,7 @@ import (
 )
 
 type Client struct {
-   Log_Level int // this needs to work with flag.IntVar
+   Level int // this needs to work with flag.IntVar
    http.Client
 }
 
@@ -23,7 +23,7 @@ func (c *Client) Do(req *http.Request) (*http.Response, error) {
 }
 
 func (c *Client) Custom(req *http.Request) (*http.Response, error) {
-   switch c.Log_Level {
+   switch c.Level {
    case 0:
       os.Stderr.WriteString(req.Method)
       os.Stderr.WriteString(" ")
