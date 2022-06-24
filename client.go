@@ -6,46 +6,43 @@ import (
    "net/http"
    "net/http/httputil"
    "os"
-   "path/filepath"
    "strconv"
 )
 
-// godocs.io/os#WriteFile
-func WriteFile(name string, data []byte) error {
-   name = filepath.FromSlash(name)
-   os.Stderr.WriteString("WriteFile " + name + "\n")
-   err := os.MkdirAll(filepath.Dir(name), os.ModePerm)
-   if err != nil {
-      return err
-   }
-   return os.WriteFile(name, data, os.ModePerm)
-}
-
-// godocs.io/os#Create
-func Create(name string) (*os.File, error) {
-   name = filepath.FromSlash(name)
-   os.Stderr.WriteString("Create " + name + "\n")
-   err := os.MkdirAll(filepath.Dir(name), os.ModePerm)
-   if err != nil {
-      return nil, err
-   }
-   return os.Create(name)
-}
-
 type Client struct {
+   http.Client
    Level int // this needs to work with flag.IntVar
    Status int
-   http.Client
 }
 
 var Default_Client = Client{
-   Level: 1,
-   Status: http.StatusOK,
    Client: http.Client{
       CheckRedirect: func(*http.Request, []*http.Request) error {
          return http.ErrUseLastResponse
       },
    },
+   Level: 1,
+   Status: http.StatusOK,
+}
+
+func (c Client) WithRedirect() Client {
+   c.CheckRedirect = nil
+   return c
+}
+
+func (c Client) WithLevel(level int) Client {
+   c.Level = level
+   return c
+}
+
+func (c Client) WithStatus(status int) Client {
+   c.Status = status
+   return c
+}
+
+func (c Client) WithTransport(tr *http.Transport) Client {
+   c.Transport = tr
+   return c
 }
 
 func (c Client) Do(req *http.Request) (*http.Response, error) {
@@ -78,22 +75,11 @@ func (c Client) Do(req *http.Request) (*http.Response, error) {
    return res, nil
 }
 
-func (c Client) WithLevel(level int) Client {
-   c.Level = level
-   return c
-}
-
-func (c Client) WithRedirect() Client {
-   c.CheckRedirect = nil
-   return c
-}
-
-func (c Client) WithStatus(status int) Client {
-   c.Status = status
-   return c
-}
-
-func (c Client) WithTransport(tr *http.Transport) Client {
-   c.Transport = tr
-   return c
+// kill this?
+func (c Client) Get(addr string) (*http.Response, error) {
+   req, err := http.NewRequest("GET", addr, nil)
+   if err != nil {
+      return nil, err
+   }
+   return c.Do(req)
 }

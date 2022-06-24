@@ -2,6 +2,7 @@ package main
 
 import (
    "flag"
+   "github.com/89z/format"
    "github.com/89z/format/net"
    "os"
 )
@@ -24,11 +25,11 @@ func main() {
    flag.BoolVar(&https, "s", false, "HTTPS")
    flag.Parse()
    if name != "" {
-      dst, err := os.Create(output)
+      out, err := format.Create(output)
       if err != nil {
-         dst = os.Stdout
+         out = os.Stdout
       }
-      defer dst.Close()
+      defer out.Close()
       src, err := os.Open(name)
       if err != nil {
          panic(err)
@@ -46,12 +47,12 @@ func main() {
          }
       }
       if golang {
-         err := net.Write_Request(req, dst)
+         err := net.Write_Request(req, out)
          if err != nil {
             panic(err)
          }
       } else {
-         err := write(req, redirect, dst)
+         err := write(req, redirect, out)
          if err != nil {
             panic(err)
          }

@@ -3,11 +3,32 @@ package format
 import (
    "io"
    "os"
+   "path/filepath"
    "strconv"
    "strings"
    "time"
    "unicode/utf8"
 )
+
+func WriteFile(name string, data []byte) error {
+   name = filepath.FromSlash(name)
+   os.Stderr.WriteString("WriteFile " + name + "\n")
+   err := os.MkdirAll(filepath.Dir(name), os.ModePerm)
+   if err != nil {
+      return err
+   }
+   return os.WriteFile(name, data, os.ModePerm)
+}
+
+func Create(name string) (*os.File, error) {
+   name = filepath.FromSlash(name)
+   os.Stderr.WriteString("Create " + name + "\n")
+   err := os.MkdirAll(filepath.Dir(name), os.ModePerm)
+   if err != nil {
+      return nil, err
+   }
+   return os.Create(name)
+}
 
 // mimesniff.spec.whatwg.org#binary-data-byte
 func String(buf []byte) bool {
