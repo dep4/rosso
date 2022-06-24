@@ -1,8 +1,9 @@
-package format
+package http
 
 import (
    "bytes"
    "errors"
+   "github.com/89z/format"
    "net/http"
    "net/http/httputil"
    "os"
@@ -57,7 +58,7 @@ func (c Client) Do(req *http.Request) (*http.Response, error) {
       if err != nil {
          return nil, err
       }
-      if !String(buf) {
+      if !format.String(buf) {
          buf = strconv.AppendQuote(nil, string(buf))
       }
       if !bytes.HasSuffix(buf, []byte{'\n'}) {
@@ -75,7 +76,6 @@ func (c Client) Do(req *http.Request) (*http.Response, error) {
    return res, nil
 }
 
-// kill this?
 func (c Client) Get(addr string) (*http.Response, error) {
    req, err := http.NewRequest("GET", addr, nil)
    if err != nil {
