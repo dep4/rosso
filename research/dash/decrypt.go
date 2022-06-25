@@ -100,116 +100,103 @@ func decryptMP4withCenc(r io.Reader, key []byte, w io.Writer) error {
 }
 
 func decryptAndWriteSegments(segs []*mp4.MediaSegment, tracks []trackInfo, key []byte, ofh io.Writer) error {
-	var outNr uint32 = 1
-	for _, seg := range segs {
-		for _, frag := range seg.Fragments {
-			//fmt.Printf("Segment %d, fragment %d\n", i+1, j+1)
-			err := decryptFragment(frag, tracks, key)
-			if err != nil {
-				return err
-			}
-			outNr++
-		}
-		if seg.Sidx != nil {
-			seg.Sidx = nil // drop sidx inside segment, since not modified properly
-		}
-		err := seg.Encode(ofh)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
+   var outNr uint32 = 1
+   for _, seg := range segs {
+      for _, frag := range seg.Fragments {
+         err := decryptFragment(frag, tracks, key)
+         if err != nil {
+            return err
+         }
+         outNr++
+      }
+      if seg.Sidx != nil {
+         seg.Sidx = nil // drop sidx inside segment, since not modified properly
+      }
+      err := seg.Encode(ofh)
+      if err != nil {
+         return err
+      }
+   }
+   return nil
 }
 
-// decryptFragment - decrypt fragment in place
 func decryptFragment(frag *mp4.Fragment, tracks []trackInfo, key []byte) error {
-	moof := frag.Moof
-	var nrBytesRemoved uint64 = 0
-	for _, traf := range moof.Trafs {
-		ti := findTrackInfo(tracks, traf.Tfhd.TrackID)
-		if ti.sinf != nil {
-			schemeType := ti.sinf.Schm.SchemeType
-			if schemeType != "cenc" && schemeType != "cbcs" {
-				return fmt.Errorf("scheme type %s not supported", schemeType)
-			}
-			hasSenc, isParsed := traf.ContainsSencBox()
-			if !hasSenc {
-				return fmt.Errorf("no senc box in traf")
-			}
-			if !isParsed {
-				defaultPerSampleIVSize := ti.sinf.Schi.Tenc.DefaultPerSampleIVSize
-				err := traf.ParseReadSenc(defaultPerSampleIVSize, moof.StartPos)
-				if err != nil {
-					return fmt.Errorf("parseReadSenc: %w", err)
-				}
-			}
-
-			tenc := ti.sinf.Schi.Tenc
-			samples, err := frag.GetFullSamples(ti.trex)
-			if err != nil {
-				return err
-			}
-
-			err = decryptSamplesInPlace(schemeType, samples, key, tenc, traf.Senc)
-			if err != nil {
-				return err
-			}
-			nrBytesRemoved += traf.RemoveEncryptionBoxes()
-		}
-	}
-	_, psshBytesRemoved := moof.RemovePsshs()
-	nrBytesRemoved += psshBytesRemoved
-	for _, traf := range moof.Trafs {
-		for _, trun := range traf.Truns {
-			trun.DataOffset -= int32(nrBytesRemoved)
-		}
-	}
-
-	return nil
+   moof := frag.Moof
+   var nrBytesRemoved uint64 = 0
+   for _, traf := range moof.Trafs {
+      ti := findTrackInfo(tracks, traf.Tfhd.TrackID)
+      if ti.sinf != nil {
+         schemeType := ti.sinf.Schm.SchemeType
+         if schemeType != "cenc" && schemeType != "cbcs" {
+            return fmt.Errorf("scheme type %s not supported", schemeType)
+         }
+         hasSenc, isParsed := traf.ContainsSencBox()
+         if !hasSenc {
+            return fmt.Errorf("no senc box in traf")
+         }
+         if !isParsed {
+            defaultPerSampleIVSize := ti.sinf.Schi.Tenc.DefaultPerSampleIVSize
+            err := traf.ParseReadSenc(defaultPerSampleIVSize, moof.StartPos)
+            if err != nil {
+               return fmt.Errorf("parseReadSenc: %w", err)
+            }
+         }
+         tenc := ti.sinf.Schi.Tenc
+         samples, err := frag.GetFullSamples(ti.trex)
+         if err != nil {
+            return err
+         }
+         err = decryptSamplesInPlace(schemeType, samples, key, tenc, traf.Senc)
+         if err != nil {
+            return err
+         }
+         nrBytesRemoved += traf.RemoveEncryptionBoxes()
+      }
+   }
+   _, psshBytesRemoved := moof.RemovePsshs()
+   nrBytesRemoved += psshBytesRemoved
+   for _, traf := range moof.Trafs {
+      for _, trun := range traf.Truns {
+         trun.DataOffset -= int32(nrBytesRemoved)
+      }
+   }
+   return nil
 }
 
-// decryptSample - decrypt samples inplace
 func decryptSamplesInPlace(schemeType string, samples []mp4.FullSample, key []byte, tenc *mp4.TencBox, senc *mp4.SencBox) error {
-
-	// TODO. Interpret saio and saiz to get to the right place
-	// Saio tells where the IV starts relative to moof start
-	// It typically ends up inside senc (16 bytes after start)
-
-	for i := range samples {
-		encSample := samples[i].Data
-		var iv []byte
-		if len(senc.IVs) == len(samples) {
-			if len(senc.IVs[i]) == 8 {
-				iv = make([]byte, 0, 16)
-				iv = append(iv, senc.IVs[i]...)
-				iv = append(iv, []byte{0, 0, 0, 0, 0, 0, 0, 0}...)
-			} else if len(senc.IVs) == len(samples) {
-				iv = senc.IVs[i]
-			}
-		} else if tenc.DefaultConstantIV != nil {
-			iv = tenc.DefaultConstantIV
-		}
-		if len(iv) == 0 {
-			return fmt.Errorf("iv has length 0")
-		}
-
-		var subSamplePatterns []mp4.SubSamplePattern
-		if len(senc.SubSamples) != 0 {
-			subSamplePatterns = senc.SubSamples[i]
-		}
-		switch schemeType {
-		case "cenc":
-			err := mp4.DecryptSampleCenc(encSample, key, iv, subSamplePatterns)
-			if err != nil {
-				return err
-			}
-		case "cbcs":
-			err := mp4.DecryptSampleCbcs(encSample, key, iv, subSamplePatterns, tenc)
-			if err != nil {
-				return err
-			}
-		}
-	}
-	return nil
+   for i := range samples {
+      encSample := samples[i].Data
+      var iv []byte
+      if len(senc.IVs) == len(samples) {
+         if len(senc.IVs[i]) == 8 {
+            iv = make([]byte, 0, 16)
+            iv = append(iv, senc.IVs[i]...)
+            iv = append(iv, []byte{0, 0, 0, 0, 0, 0, 0, 0}...)
+         } else if len(senc.IVs) == len(samples) {
+            iv = senc.IVs[i]
+         }
+      } else if tenc.DefaultConstantIV != nil {
+         iv = tenc.DefaultConstantIV
+      }
+      if len(iv) == 0 {
+         return fmt.Errorf("iv has length 0")
+      }
+      var subSamplePatterns []mp4.SubSamplePattern
+      if len(senc.SubSamples) != 0 {
+         subSamplePatterns = senc.SubSamples[i]
+      }
+      switch schemeType {
+      case "cenc":
+         err := mp4.DecryptSampleCenc(encSample, key, iv, subSamplePatterns)
+         if err != nil {
+            return err
+         }
+      case "cbcs":
+         err := mp4.DecryptSampleCbcs(encSample, key, iv, subSamplePatterns, tenc)
+         if err != nil {
+            return err
+         }
+      }
+   }
+   return nil
 }
