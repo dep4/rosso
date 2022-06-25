@@ -69,7 +69,7 @@ func (c Client) Level(level int) Client {
    return c
 }
 
-func (c Client) Redirect() Client {
+func (c Client) Redirect(fn Redirect_Func) Client {
    c.client.CheckRedirect = nil
    return c
 }
@@ -83,3 +83,5 @@ func (c Client) Transport(tr *http.Transport) Client {
    c.client.Transport = tr
    return c
 }
+
+type Redirect_Func func(*http.Request, []*http.Request) error
