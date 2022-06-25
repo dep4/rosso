@@ -4,14 +4,14 @@ import (
    "encoding/hex"
    "os"
    "testing"
+   "bytes"
 )
 
 func Test_Decrypt(t *testing.T) {
-   enc, err := os.Open("ignore/enc.mp4")
+   enc, err := os.ReadFile("ignore/enc.mp4")
    if err != nil {
       t.Fatal(err)
    }
-   defer enc.Close()
    dec, err := os.Create("ignore.mp4")
    if err != nil {
       t.Fatal(err)
@@ -21,7 +21,11 @@ func Test_Decrypt(t *testing.T) {
    if err != nil {
       t.Fatal(err)
    }
-   if err := decryptMP4withCenc(enc, key, dec); err != nil {
+   sinf, err := decrypt(bytes.NewReader(enc), dec)
+   if err != nil {
+      t.Fatal(err)
+   }
+   if err := sinf.decrypt(bytes.NewReader(enc), key, dec); err != nil {
       t.Fatal(err)
    }
 }

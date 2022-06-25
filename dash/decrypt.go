@@ -47,12 +47,12 @@ func Decrypt(dst io.Writer, src io.Reader, key []byte) error {
    return nil
 }
 
-// Need for Mozilla Firefox and VLC media player
 func Decrypt_Init(out io.Writer, in io.Reader) error {
    file, err := mp4.DecodeFile(in)
    if err != nil {
       return err
    }
+   // need for VLC media player
    for _, trak := range file.Init.Moov.Traks {
       for _, child := range trak.Mdia.Minf.Stbl.Stsd.Children {
          switch child.Type() {
@@ -66,5 +66,7 @@ func Decrypt_Init(out io.Writer, in io.Reader) error {
          }
       }
    }
+   // need for Mozilla Firefox
+   file.Init.Moov.RemovePsshs()
    return file.Init.Encode(out)
 }
