@@ -106,7 +106,7 @@ func main() {
    flag.BoolVar(&https, "s", false, "HTTPS")
    flag.Parse()
    if name != "" {
-      out, err := format.Create(output)
+      out, err := os.Create(output)
       if err != nil {
          out = os.Stdout
       }
