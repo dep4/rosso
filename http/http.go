@@ -16,6 +16,7 @@ type (
    Cookie = http.Cookie
    Header = http.Header
    Request = http.Request
+   Response = http.Response
    Transport = http.Transport
 )
 

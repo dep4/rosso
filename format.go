@@ -10,24 +10,42 @@ import (
    "unicode/utf8"
 )
 
-func WriteFile(name string, data []byte) error {
-   name = filepath.FromSlash(name)
-   os.Stderr.WriteString("WriteFile " + name + "\n")
-   err := os.MkdirAll(filepath.Dir(name), os.ModePerm)
-   if err != nil {
-      return err
+func clean(name string) (string, error) {
+   dir, file := filepath.Split(name)
+   if dir != "" {
+      err := os.MkdirAll(dir, os.ModePerm)
+      if err != nil {
+         return "", err
+      }
    }
-   return os.WriteFile(name, data, os.ModePerm)
+   mapping := func(r rune) rune {
+      if strings.ContainsRune(`"*/:<>?\|`, r) {
+         return -1
+      }
+      return r
+   }
+   file = strings.Map(mapping, file)
+   name = filepath.Join(dir, file)
+   os.Stderr.WriteString("OpenFile " + name + "\n")
+   return name, nil
 }
 
 func Create(name string) (*os.File, error) {
-   name = filepath.FromSlash(name)
-   os.Stderr.WriteString("Create " + name + "\n")
-   err := os.MkdirAll(filepath.Dir(name), os.ModePerm)
+   var err error
+   name, err = clean(name)
    if err != nil {
       return nil, err
    }
    return os.Create(name)
+}
+
+func WriteFile(name string, data []byte) error {
+   var err error
+   name, err = clean(name)
+   if err != nil {
+      return err
+   }
+   return os.WriteFile(name, data, os.ModePerm)
 }
 
 // mimesniff.spec.whatwg.org#binary-data-byte
@@ -83,8 +101,6 @@ func Label_Size[T Number](value T) string {
    return Label(value, " B", " kB", " MB", " GB", " TB")
 }
 
-// pkg.go.dev/io#Writer.Write
-// pkg.go.dev/time#Time.String
 type Progress struct {
    bytes int64
    bytes_read int64
