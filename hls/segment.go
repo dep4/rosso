@@ -17,10 +17,10 @@ func (s Scanner) Segment() (*Segment, error) {
    )
    for s.line.Scan() != scanner.EOF {
       line := s.line.TokenText()
-      s.Init(strings.NewReader(line))
       switch {
       case strings.HasPrefix(line, "#EXT-X-KEY:"):
          key = true
+         s.Init(strings.NewReader(line))
          for s.Scan() != scanner.EOF {
             switch s.TokenText() {
             case "IV":

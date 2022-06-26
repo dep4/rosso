@@ -5,38 +5,39 @@ import (
    "io"
 )
 
-type sinf_box struct {
+type decrypter struct {
    *mp4.SinfBox
+   w io.Writer
 }
 
-func decrypt(init io.Reader, w io.Writer) (*sinf_box, error) {
-   file, err := mp4.DecodeFile(init)
+func new_decrypter(w io.Writer) decrypter {
+   return decrypter{w: w}
+}
+
+func (d *decrypter) init(r io.Reader) error {
+   file, err := mp4.DecodeFile(r)
    if err != nil {
-      return nil, err
+      return err
    }
-   var sinf sinf_box
    for _, trak := range file.Init.Moov.Traks {
       for _, child := range trak.Mdia.Minf.Stbl.Stsd.Children {
          switch child.Type() {
          case "encv":
-            sinf.SinfBox, err = child.(*mp4.VisualSampleEntryBox).RemoveEncryption()
+            d.SinfBox, err = child.(*mp4.VisualSampleEntryBox).RemoveEncryption()
          case "enca":
-            sinf.SinfBox, err = child.(*mp4.AudioSampleEntryBox).RemoveEncryption()
+            d.SinfBox, err = child.(*mp4.AudioSampleEntryBox).RemoveEncryption()
          }
          if err != nil {
-            return nil, err
+            return err
          }
       }
    }
    file.Init.Moov.RemovePsshs()
-   if err := file.Init.Encode(w); err != nil {
-      return nil, err
-   }
-   return &sinf, nil
+   return file.Init.Encode(d.w)
 }
 
-func (s sinf_box) decrypt(segment io.Reader, key []byte, w io.Writer) error {
-   file, err := mp4.DecodeFile(segment)
+func (d decrypter) segment(r io.Reader, key []byte) error {
+   file, err := mp4.DecodeFile(r)
    if err != nil {
       return err
    }
@@ -47,7 +48,7 @@ func (s sinf_box) decrypt(segment io.Reader, key []byte, w io.Writer) error {
             if err != nil {
                return err
             }
-            tenc := s.SinfBox.Schi.Tenc
+            tenc := d.SinfBox.Schi.Tenc
             for i, sample := range samples {
                var iv []byte
                if len(traf.Senc.IVs) == len(samples) {
@@ -64,7 +65,7 @@ func (s sinf_box) decrypt(segment io.Reader, key []byte, w io.Writer) error {
                if len(traf.Senc.SubSamples) >= 1 {
                   subSamplePatterns = traf.Senc.SubSamples[i]
                }
-               switch s.SinfBox.Schm.SchemeType {
+               switch d.SinfBox.Schm.SchemeType {
                case "cenc":
                   err = mp4.DecryptSampleCenc(sample.Data, key, iv, subSamplePatterns)
                case "cbcs":
@@ -79,7 +80,7 @@ func (s sinf_box) decrypt(segment io.Reader, key []byte, w io.Writer) error {
          frag.Moof.RemovePsshs()
       }
       seg.Sidx = nil // drop sidx inside segment, since not modified properly
-      err := seg.Encode(w)
+      err := seg.Encode(d.w)
       if err != nil {
          return err
       }
