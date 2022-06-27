@@ -19,7 +19,9 @@ func Create[T any](value T, name string) error {
       return err
    }
    defer file.Close()
-   return json.NewEncoder(file).Encode(value)
+   enc := json.NewEncoder(file)
+   enc.SetIndent("", " ")
+   return enc.Encode(value)
 }
 
 func Open[T any](name string) (*T, error) {
