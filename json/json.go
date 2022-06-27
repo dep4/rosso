@@ -7,33 +7,33 @@ import (
    "os"
 )
 
-var (
-   NewDecoder = json.NewDecoder
-   NewEncoder = json.NewEncoder
-)
+func Decode(name string, value any) error {
+   file, err := os.Open(name)
+   if err != nil {
+      return err
+   }
+   defer file.Close()
+   return json.NewDecoder(file).Decode(value)
+}
 
-// `value` is the receiver
-func Create[T any](value T, name string) error {
+func Encode(name string, value any) error {
    file, err := format.Create(name)
    if err != nil {
       return err
    }
    defer file.Close()
-   return json.NewEncoder(file).Encode(value)
+   enc := json.NewEncoder(file)
+   enc.SetEscapeHTML(false)
+   enc.SetIndent("", " ")
+   return enc.Encode(value)
 }
 
-func Open[T any](name string) (*T, error) {
-   file, err := os.Open(name)
-   if err != nil {
-      return nil, err
-   }
-   defer file.Close()
-   value := new(T)
-   if err := json.NewDecoder(file).Decode(value); err != nil {
-      return nil, err
-   }
-   return value, nil
-}
+var (
+   Marshal = json.Marshal
+   NewDecoder = json.NewDecoder
+   NewEncoder = json.NewEncoder
+   Unmarshal = json.Unmarshal
+)
 
 type Scanner struct {
    Data []byte
