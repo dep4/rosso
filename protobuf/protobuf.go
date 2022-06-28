@@ -5,6 +5,29 @@ import (
    "strconv"
 )
 
+func (t type_error) Error() string {
+   get_type := func(e Encoder) string {
+      if e == nil {
+         return "nil"
+      }
+      return e.get_type()
+   }
+   var b []byte
+   b = append(b, "field "...)
+   b = strconv.AppendInt(b, int64(t.Number), 10)
+   b = append(b, " is "...)
+   b = append(b, get_type(t.lvalue)...)
+   b = append(b, ", not "...)
+   b = append(b, get_type(t.rvalue)...)
+   return string(b)
+}
+
+type type_error struct {
+   Number
+   lvalue Encoder
+   rvalue Encoder
+}
+
 type Bytes []byte
 
 func (b Bytes) encode(buf []byte, num Number) []byte {
@@ -83,20 +106,3 @@ func (v Varint) encode(buf []byte, num Number) []byte {
 }
 
 func (Varint) get_type() string { return "Varint" }
-
-type type_error struct {
-   Number
-   lvalue Encoder
-   rvalue Encoder
-}
-
-func (t type_error) Error() string {
-   var b []byte
-   b = append(b, "field "...)
-   b = strconv.AppendInt(b, int64(t.Number), 10)
-   b = append(b, " is "...)
-   b = append(b, t.lvalue.get_type()...)
-   b = append(b, ", not "...)
-   b = append(b, t.rvalue.get_type()...)
-   return string(b)
-}
