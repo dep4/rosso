@@ -1,14 +1,29 @@
 package dash
 
 import (
+   "bytes"
    "encoding/hex"
+   "fmt"
    "os"
    "testing"
-   "bytes"
 )
+
+var tests = []test_type{
+   // pass
+   {
+      "680a46ebd6cf2b9a6a0b05a24dcf944a",
+      "ignore/enc-piff.mp4", "ignore/dec-piff.mp4",
+   },
+   // fail
+   {
+      "22bdb0063805260307ee5045c0f3835a",
+      "ignore/enc-cbcs.mp4", "ignore/dec-cbcs.mp4",
+   },
+}
 
 func Test_Two(t *testing.T) {
    for _, test := range tests {
+      fmt.Println(test.enc)
       file, err := os.Create(test.dec)
       if err != nil {
          t.Fatal(err)
