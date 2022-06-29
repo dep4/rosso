@@ -5,10 +5,21 @@ import (
    "strings"
 )
 
+func (r Representations) Filter_Codecs(v string) Representations {
+   var reps Representations
+   for _, rep := range r {
+      if rep.Codecs != nil && strings.HasPrefix(*rep.Codecs, v) {
+         reps = append(reps, rep)
+      }
+   }
+   return reps
+}
+
 type Adaptation struct {
+   Codecs *string `xml:"codecs,attr"`
    ContentProtection *ContentProtection
-   Lang string `xml:"lang,attr"`
-   MimeType string `xml:"mimeType,attr"`
+   Lang *string `xml:"lang,attr"`
+   MimeType *string `xml:"mimeType,attr"`
    Representation Representations
    Role *struct {
       Value string `xml:"value,attr"`
@@ -16,20 +27,30 @@ type Adaptation struct {
    SegmentTemplate *SegmentTemplate
 }
 
-func (a *Adaptation) Representations() Representations {
+func (r Representations) Filter_Lang(v string) Representations {
    var reps Representations
-   for _, rep := range a.Representation {
-      rep.Adaptation = a
-      if rep.ContentProtection == nil {
-         rep.ContentProtection = a.ContentProtection
+   for _, rep := range r {
+      var lang string
+      if rep.Adaptation.Lang != nil {
+         lang = *rep.Adaptation.Lang
       }
-      if rep.MimeType == "" {
-         rep.MimeType = a.MimeType
+      if lang == v {
+         reps = append(reps, rep)
       }
-      if rep.SegmentTemplate == nil {
-         rep.SegmentTemplate = a.SegmentTemplate
+   }
+   return reps
+}
+
+func (r Representations) Filter_Role(v string) Representations {
+   var reps Representations
+   for _, rep := range r {
+      var role string
+      if rep.Adaptation.Role != nil {
+         role = rep.Adaptation.Role.Value
       }
-      reps = append(reps, rep)
+      if role == v {
+         reps = append(reps, rep)
+      }
    }
    return reps
 }
@@ -42,18 +63,6 @@ type Media struct {
    Period struct {
       AdaptationSet []Adaptation
    }
-}
-
-type Representation struct {
-   Adaptation *Adaptation
-   Bandwidth int64 `xml:"bandwidth,attr"`
-   Codecs string `xml:"codecs,attr"`
-   ContentProtection *ContentProtection
-   Height int64 `xml:"height,attr"`
-   ID string `xml:"id,attr"`
-   MimeType string `xml:"mimeType,attr"`
-   SegmentTemplate *SegmentTemplate
-   Width int64 `xml:"width,attr"`
 }
 
 func (r Representation) Initialization() string {
@@ -89,24 +98,28 @@ func (r Representation) Media() []string {
 
 func (r Representation) String() string {
    var b []byte
-   b = append(b, "Lang:"...)
-   b = append(b, r.Adaptation.Lang...)
+   b = append(b, "ID:"...)
+   b = append(b, r.ID...)
+   if r.Codecs != nil {
+      b = append(b, " Codecs:"...)
+      b = append(b, *r.Codecs...)
+   }
+   if r.Adaptation.Lang != nil {
+      b = append(b, " Lang:"...)
+      b = append(b, *r.Adaptation.Lang...)
+   }
    if r.Adaptation.Role != nil {
       b = append(b, " Role:"...)
       b = append(b, r.Adaptation.Role.Value...)
    }
    b = append(b, " Bandwidth:"...)
    b = strconv.AppendInt(b, r.Bandwidth, 10)
-   b = append(b, " Codecs:"...)
-   b = append(b, r.Codecs...)
-   if r.Width >= 1 {
+   if r.Width != nil {
       b = append(b, " Width:"...)
-      b = strconv.AppendInt(b, r.Width, 10)
+      b = strconv.AppendInt(b, *r.Width, 10)
       b = append(b, " Height:"...)
-      b = strconv.AppendInt(b, r.Height, 10)
+      b = strconv.AppendInt(b, *r.Height, 10)
    }
-   b = append(b, " ID:"...)
-   b = append(b, r.ID...)
    return string(b)
 }
 
@@ -116,7 +129,7 @@ func (r Representation) replace_ID(s string) string {
 
 type Representations []Representation
 
-func (r Representations) Search_Bandwidth(v int64) *Representation {
+func (r Representations) Reduce_Bandwidth(v int64) *Representation {
    distance := func(r *Representation) int64 {
       if r.Bandwidth > v {
          return r.Bandwidth - v
@@ -144,3 +157,37 @@ type SegmentTemplate struct {
    }
    StartNumber *int `xml:"startNumber,attr"`
 }
+
+func (a *Adaptation) Representations() Representations {
+   var reps Representations
+   for _, rep := range a.Representation {
+      rep.Adaptation = a
+      if rep.Codecs == nil {
+         rep.Codecs = a.Codecs
+      }
+      if rep.ContentProtection == nil {
+         rep.ContentProtection = a.ContentProtection
+      }
+      if rep.MimeType == nil {
+         rep.MimeType = a.MimeType
+      }
+      if rep.SegmentTemplate == nil {
+         rep.SegmentTemplate = a.SegmentTemplate
+      }
+      reps = append(reps, rep)
+   }
+   return reps
+}
+
+type Representation struct {
+   Bandwidth int64 `xml:"bandwidth,attr"`
+   ID string `xml:"id,attr"`
+   Width *int64 `xml:"width,attr"`
+   Height *int64 `xml:"height,attr"`
+   Adaptation *Adaptation
+   Codecs *string `xml:"codecs,attr"`
+   ContentProtection *ContentProtection
+   MimeType *string `xml:"mimeType,attr"`
+   SegmentTemplate *SegmentTemplate
+}
+
