@@ -5,19 +5,19 @@ import (
    "io"
 )
 
-type decrypter struct {
-   track map[uint32]*mp4.SinfBox
-   w io.Writer
+type Decrypt struct {
+   sinf map[uint32]*mp4.SinfBox
+   write io.Writer
 }
 
-func new_decrypter(w io.Writer) decrypter {
-   var d decrypter
-   d.track = make(map[uint32]*mp4.SinfBox)
-   d.w = w
-   return d
+func New_Decrypt(w io.Writer) Decrypt {
+   var dec Decrypt
+   dec.sinf = make(map[uint32]*mp4.SinfBox)
+   dec.write = w
+   return dec
 }
 
-func (d *decrypter) init(r io.Reader) error {
+func (d *Decrypt) Init(r io.Reader) error {
    file, err := mp4.DecodeFile(r)
    if err != nil {
       return err
@@ -27,9 +27,9 @@ func (d *decrypter) init(r io.Reader) error {
       for _, child := range trak.Mdia.Minf.Stbl.Stsd.Children {
          switch box := child.(type) {
          case *mp4.AudioSampleEntryBox:
-            d.track[trak.Tkhd.TrackID], err = box.RemoveEncryption()
+            d.sinf[trak.Tkhd.TrackID], err = box.RemoveEncryption()
          case *mp4.VisualSampleEntryBox:
-            d.track[trak.Tkhd.TrackID], err = box.RemoveEncryption()
+            d.sinf[trak.Tkhd.TrackID], err = box.RemoveEncryption()
          }
          if err != nil {
             return err
@@ -38,10 +38,10 @@ func (d *decrypter) init(r io.Reader) error {
    }
    // need for Mozilla Firefox
    file.Init.Moov.RemovePsshs()
-   return file.Init.Encode(d.w)
+   return file.Init.Encode(d.write)
 }
 
-func (d decrypter) segment(r io.Reader, key []byte) error {
+func (d Decrypt) Segment(r io.Reader, key []byte) error {
    file, err := mp4.DecodeFile(r)
    if err != nil {
       return err
@@ -50,7 +50,7 @@ func (d decrypter) segment(r io.Reader, key []byte) error {
       for _, frag := range seg.Fragments {
          var removed uint64
          for _, traf := range frag.Moof.Trafs {
-            sinf := d.track[traf.Tfhd.TrackID]
+            sinf := d.sinf[traf.Tfhd.TrackID]
             if sinf == nil {
                continue
             }
@@ -95,7 +95,7 @@ func (d decrypter) segment(r io.Reader, key []byte) error {
       }
       // fix jerk between fragments
       seg.Sidx = nil
-      err := seg.Encode(d.w)
+      err := seg.Encode(d.write)
       if err != nil {
          return err
       }
