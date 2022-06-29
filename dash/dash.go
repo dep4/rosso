@@ -22,20 +22,20 @@ type Represent struct {
 }
 
 func (r Represent) String() string {
-   var buf []byte
-   buf = append(buf, "ID:"...)
-   buf = append(buf, r.ID...)
+   var b []byte
+   b = append(b, "ID:"...)
+   b = append(b, r.ID...)
    if r.Width >= 1 {
-      buf = append(buf, " Width:"...)
-      buf = strconv.AppendInt(buf, r.Width, 10)
-      buf = append(buf, " Height:"...)
-      buf = strconv.AppendInt(buf, r.Height, 10)
+      b = append(b, " Width:"...)
+      b = strconv.AppendInt(b, r.Width, 10)
+      b = append(b, " Height:"...)
+      b = strconv.AppendInt(b, r.Height, 10)
    }
-   buf = append(buf, " Bandwidth:"...)
-   buf = strconv.AppendInt(buf, r.Bandwidth, 10)
-   buf = append(buf, " Codec:"...)
-   buf = append(buf, r.Codecs...)
-   return string(buf)
+   b = append(b, " Bandwidth:"...)
+   b = strconv.AppendInt(b, r.Bandwidth, 10)
+   b = append(b, " Codec:"...)
+   b = append(b, r.Codecs...)
+   return string(b)
 }
 
 func (r Represent) Initial(base *url.URL) (*url.URL, error) {
