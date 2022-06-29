@@ -5,6 +5,21 @@ import (
    "io"
 )
 
+type trackInfo struct {
+   trackID uint32
+   sinf    *mp4.SinfBox
+   trex    *mp4.TrexBox
+}
+
+func findTrackInfo(tracks []trackInfo, trackID uint32) trackInfo {
+   for _, ti := range tracks {
+      if ti.trackID == trackID {
+         return ti
+      }
+   }
+   return trackInfo{}
+}
+
 type decrypter struct {
    tracks []trackInfo
    w io.Writer

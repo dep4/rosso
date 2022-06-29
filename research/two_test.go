@@ -8,6 +8,12 @@ import (
    "testing"
 )
 
+type test_type struct {
+   key string
+   enc string
+   dec string
+}
+
 var tests = []test_type{
    // pass
    {
