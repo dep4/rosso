@@ -4,16 +4,7 @@ import (
    "strings"
 )
 
-func (m Medium) String() string {
-   var b strings.Builder
-   b.WriteString("Type:")
-   b.WriteString(m.Type)
-   b.WriteString(" Name:")
-   b.WriteString(m.Name)
-   b.WriteString(" ID:")
-   b.WriteString(m.Group_ID)
-   return b.String()
-}
+const AAC = ".aac"
 
 type Medium struct {
    Group_ID string
@@ -22,18 +13,29 @@ type Medium struct {
    Type string
 }
 
-type Media []Medium
-
-// use GROUP-ID instead
-func (m Media) URI(value string) Media {
-   var out Media
-   for _, medium := range m {
-      if strings.Contains(medium.Raw_URI, value) {
-         out = append(out, medium)
-      }
-   }
-   return out
+func (m Medium) String() string {
+   var b strings.Builder
+   b.WriteString("Type:")
+   b.WriteString(m.Type)
+   b.WriteString(" Name:")
+   b.WriteString(m.Name)
+   b.WriteString("\nGROUP-ID:")
+   b.WriteString(m.Group_ID)
+   return b.String()
 }
+
+func (m Media) String() string {
+   var b strings.Builder
+   for i, media := range m {
+      if i >= 1 {
+         b.WriteString("\n\n")
+      }
+      b.WriteString(media.String())
+   }
+   return b.String()
+}
+
+type Media []Medium
 
 func (m Media) Get_Group_ID(value string) *Medium {
    for _, medium := range m {

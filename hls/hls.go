@@ -125,11 +125,6 @@ func (b *Block_Mode) Read(p []byte) (int, error) {
    return num, err
 }
 
-const (
-   AAC = ".aac"
-   TS = ".ts"
-)
-
 type Master struct {
    Media Media
    Streams Streams
@@ -207,10 +202,10 @@ func (s Scanner) Master() (*Master, error) {
          var str Stream
          for s.Scan() != scanner.EOF {
             switch s.TokenText() {
-            case "RESOLUTION":
+            case "AUDIO":
                s.Scan()
                s.Scan()
-               str.Resolution = s.TokenText()
+               str.Audio, err = strconv.Unquote(s.TokenText())
             case "BANDWIDTH":
                s.Scan()
                s.Scan()
@@ -218,11 +213,11 @@ func (s Scanner) Master() (*Master, error) {
             case "CODECS":
                s.Scan()
                s.Scan()
-               str.Raw_Codecs, err = strconv.Unquote(s.TokenText())
-            case "VIDEO-RANGE":
+               str.Codecs, err = strconv.Unquote(s.TokenText())
+            case "RESOLUTION":
                s.Scan()
                s.Scan()
-               str.Video_Range = s.TokenText()
+               str.Resolution = s.TokenText()
             }
             if err != nil {
                return nil, err
