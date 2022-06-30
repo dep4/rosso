@@ -1,10 +1,9 @@
 package hls
 
 import (
+   "bytes"
    "strings"
 )
-
-const AAC = ".aac"
 
 type Medium struct {
    Group_ID string
@@ -72,4 +71,14 @@ func (m Media) Type(value string) Media {
       }
    }
    return out
+}
+
+func (m Media) Ext(b []byte) string {
+   if bytes.Contains(b, []byte("ftypiso5")) {
+      return ".m4a"
+   }
+   if bytes.HasPrefix(b, []byte{'G'}) {
+      return ".mts"
+   }
+   return ""
 }

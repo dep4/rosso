@@ -30,3 +30,15 @@ If IV is missing, then use KEY for both.
 - <https://wikipedia.org/wiki/Padding_(cryptography)#PKCS#5_and_PKCS#7>
 - https://datatracker.ietf.org/doc/html/rfc5652
 - https://datatracker.ietf.org/doc/html/rfc8216#section-4.3.2.4
+
+## Extensions
+
+item        | format
+------------|------------------------
+Apple audio | mov,mp4,m4a,3gp,3g2,mj2
+Apple video | mov,mp4,m4a,3gp,3g2,mj2
+CBC audio   | mpegts
+CBC video   | mpegts
+NBC         | mpegts
+Paramount   | mpegts
+Roku        | mpegts
