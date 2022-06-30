@@ -1,10 +1,22 @@
 # Crypto
 
-## Extensions
+## TLS version
 
-- <https://github.com/refraction-networking/utls/blob/9d36ce36/u_fingerprinter.go#L33-L43>
-- https://github.com/refraction-networking/utls/blob/9d36ce36/common.go#L79-L99
-- https://iana.org/assignments/tls-extensiontype-values/tls-extensiontype-values.xhtml
+The version is actually set in three places:
+
+1. record version
+2. handshake version
+3. supported versions
+
+with regards to JA3, "handshake version" should always be used. "supported
+versions" cannot be used, as its an array not a single value. further, "record
+version" cannot be used, as its deprecated since TLS 1.3. More info:
+
+https://datatracker.ietf.org/doc/html/rfc8446#appendix-D
+
+In summary, the TLSVersion should never be higher than `0x0303` (771), as its
+locked at that value since TLS 1.3. That means that anyone reporting 772 or
+higher is wrong.
 
 ## How to get Android JA3?
 
@@ -43,3 +55,7 @@ I would need to add HTTP/2 support to my existing code:
 https://github.com/refraction-networking/utls/blob/9d36ce36/examples/examples.go#L417-L427
 
 So in that case, supporting JA3 is simpler than supporting Akamai.
+
+## Extensions
+
+https://iana.org/assignments/tls-extensiontype-values/tls-extensiontype-values.xhtml
