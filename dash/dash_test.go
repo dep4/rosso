@@ -13,7 +13,7 @@ var tests = []string{
    "mpd/roku.mpd",
 }
 
-func Test_Represent(t *testing.T) {
+func Test_Filter(t *testing.T) {
    for _, test := range tests {
       file, err := os.Open(test)
       if err != nil {
@@ -26,16 +26,33 @@ func Test_Represent(t *testing.T) {
       if err := file.Close(); err != nil {
          t.Fatal(err)
       }
-      for _, rep := range med.Represents(Video) {
+      reps := med.Representations()
+      fmt.Println(test, "video")
+      for _, rep := range reps.Filter_Codecs("avc1") {
          fmt.Println(rep)
       }
-      for _, rep := range med.Represents(Audio) {
-         fmt.Println(rep)
-      }
-      protect := med.Protection()
+      fmt.Println(test, "audio")
+      rep := reps.Reduce_Codecs("mp4a")
+      fmt.Println(rep) 
+   }
+}
+
+func Test_Representations(t *testing.T) {
+   for _, test := range tests {
+      file, err := os.Open(test)
       if err != nil {
          t.Fatal(err)
       }
-      fmt.Println(protect.Default_KID)
+      var med Media
+      if err := xml.NewDecoder(file).Decode(&med); err != nil {
+         t.Fatal(err)
+      }
+      if err := file.Close(); err != nil {
+         t.Fatal(err)
+      }
+      fmt.Println(test)
+      for _, rep := range med.Representations() {
+         fmt.Println(rep)
+      }
    }
 }
