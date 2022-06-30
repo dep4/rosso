@@ -9,8 +9,8 @@ const AAC = ".aac"
 type Medium struct {
    Group_ID string
    Name string
-   Raw_URI string
    Type string
+   URI string
 }
 
 func (m Medium) String() string {

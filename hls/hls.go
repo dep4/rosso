@@ -32,7 +32,7 @@ func (s Scanner) Segment() (*Segment, error) {
                s.Scan()
                s.Scan()
                var err error
-               seg.Raw_Key, err = strconv.Unquote(s.TokenText())
+               seg.Key, err = strconv.Unquote(s.TokenText())
                if err != nil {
                   return nil, err
                }
@@ -58,9 +58,9 @@ func (s Segment) IV() ([]byte, error) {
 
 type Segment struct {
    Clear []string
+   Key string
    Protected []string
    Raw_IV string
-   Raw_Key string
 }
 
 type Block struct {
@@ -191,7 +191,7 @@ func (s Scanner) Master() (*Master, error) {
             case "URI":
                s.Scan()
                s.Scan()
-               med.Raw_URI, err = strconv.Unquote(s.TokenText())
+               med.URI, err = strconv.Unquote(s.TokenText())
             }
             if err != nil {
                return nil, err
@@ -224,7 +224,7 @@ func (s Scanner) Master() (*Master, error) {
             }
          }
          s.line.Scan()
-         str.Raw_URI = s.line.TokenText()
+         str.URI = s.line.TokenText()
          mas.Streams = append(mas.Streams, str)
       }
    }

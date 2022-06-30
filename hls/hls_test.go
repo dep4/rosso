@@ -22,7 +22,7 @@ func Test_Segment(t *testing.T) {
    for _, pro := range seg.Protected {
       fmt.Println(pro)
    }
-   fmt.Println(seg.Raw_Key)
+   fmt.Println(seg.Key)
 }
 
 func Test_Block(t *testing.T) {
@@ -40,7 +40,7 @@ func Test_Block(t *testing.T) {
    if err := res.Body.Close(); err != nil {
       t.Fatal(err)
    }
-   key, err := get_key(seg.Raw_Key)
+   key, err := get_key(seg.Key)
    if err != nil {
       t.Fatal(err)
    }

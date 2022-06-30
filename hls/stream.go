@@ -47,8 +47,8 @@ type Stream struct {
    Audio string
    Bandwidth int64
    Codecs string
-   Raw_URI string
    Resolution string
+   URI string
 }
 
 type Streams []Stream
