@@ -18,10 +18,11 @@ func Test_Media_Some(t *testing.T) {
    }
    media := master.Media.
       Group_ID("-ak-").
-      Group_ID("-stereo-").
       Name("English").
       Type("AUDIO")
-   fmt.Println(media)
+   for _, medium := range media {
+      fmt.Println(medium)
+   }
 }
 
 func Test_Media_All(t *testing.T) {

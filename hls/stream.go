@@ -53,17 +53,6 @@ type Stream struct {
 
 type Streams []Stream
 
-func (s Streams) String() string {
-   var b []byte
-   for i, stream := range s {
-      if i >= 1 {
-         b = append(b, "\n\n"...)
-      }
-      b = append(b, stream.String()...)
-   }
-   return string(b)
-}
-
 func (s Stream) String() string {
    var b []byte
    b = append(b, "Bandwidth:"...)
@@ -76,7 +65,7 @@ func (s Stream) String() string {
       b = append(b, " Resolution:"...)
       b = append(b, s.Resolution...)
    }
-   b = append(b, "\nAudio:"...)
+   b = append(b, "\n\tAudio:"...)
    b = append(b, s.Audio...)
    return string(b)
 }

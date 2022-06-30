@@ -20,7 +20,9 @@ func Test_Stream_Some(t *testing.T) {
       Audio("-ak-").
       Audio("-stereo-").
       Codecs("dvh1")
-   fmt.Println(streams)
+   for _, stream := range streams {
+      fmt.Println(stream)
+   }
 }
 
 func Test_Stream_All(t *testing.T) {

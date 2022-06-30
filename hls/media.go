@@ -19,19 +19,8 @@ func (m Medium) String() string {
    b.WriteString(m.Type)
    b.WriteString(" Name:")
    b.WriteString(m.Name)
-   b.WriteString("\nGROUP-ID:")
+   b.WriteString("\n\tGROUP-ID:")
    b.WriteString(m.Group_ID)
-   return b.String()
-}
-
-func (m Media) String() string {
-   var b strings.Builder
-   for i, media := range m {
-      if i >= 1 {
-         b.WriteString("\n\n")
-      }
-      b.WriteString(media.String())
-   }
    return b.String()
 }
 
