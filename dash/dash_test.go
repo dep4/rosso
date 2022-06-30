@@ -13,7 +13,7 @@ var tests = []string{
    "mpd/roku.mpd",
 }
 
-func Test_Filter(t *testing.T) {
+func Test_Get(t *testing.T) {
    for _, test := range tests {
       file, err := os.Open(test)
       if err != nil {
@@ -28,11 +28,11 @@ func Test_Filter(t *testing.T) {
       }
       reps := med.Representations()
       fmt.Println(test, "video")
-      for _, rep := range reps.Filter_Codecs("avc1") {
+      for _, rep := range reps.Codecs("avc1") {
          fmt.Println(rep)
       }
       fmt.Println(test, "audio")
-      rep := reps.Reduce_Codecs("mp4a")
+      rep := reps.Get_Codecs("mp4a")
       fmt.Println(rep) 
    }
 }
@@ -53,6 +53,27 @@ func Test_Representations(t *testing.T) {
       fmt.Println(test)
       for _, rep := range med.Representations() {
          fmt.Println(rep)
+         fmt.Printf("%q\n", rep.Ext())
+      }
+   }
+}
+
+func Test_Ext(t *testing.T) {
+   for _, test := range tests {
+      file, err := os.Open(test)
+      if err != nil {
+         t.Fatal(err)
+      }
+      var med Media
+      if err := xml.NewDecoder(file).Decode(&med); err != nil {
+         t.Fatal(err)
+      }
+      if err := file.Close(); err != nil {
+         t.Fatal(err)
+      }
+      fmt.Println(test)
+      for _, rep := range med.Representations() {
+         fmt.Printf("%q\n", rep.Ext())
       }
    }
 }

@@ -62,6 +62,24 @@ type Representation struct {
    Width *int64 `xml:"width,attr"`
 }
 
+func (r Representation) Ext() string {
+   switch *r.MimeType {
+   case "audio/mp4":
+      return ".m4a"
+   case "image/jpeg":
+      return ".jpg"
+   case "video/mp4":
+      return ".m4v"
+   }
+   switch *r.Codecs {
+   case "stpp":
+      return ".ttml"
+   case "wvtt":
+      return ".vtt"
+   }
+   return ""
+}
+
 func (r Representation) Initialization() string {
    return r.replace_ID(r.SegmentTemplate.Initialization)
 }
@@ -126,7 +144,20 @@ func (r Representation) replace_ID(s string) string {
 
 type Representations []Representation
 
-func (r Representations) Filter_Codecs(v string) Representations {
+type SegmentTemplate struct {
+   Initialization string `xml:"initialization,attr"`
+   Media string `xml:"media,attr"`
+   SegmentTimeline struct {
+      S []struct {
+         Duration int `xml:"d,attr"`
+         Repeat int `xml:"r,attr"`
+         Time int `xml:"t,attr"`
+      }
+   }
+   StartNumber *int `xml:"startNumber,attr"`
+}
+
+func (r Representations) Codecs(v string) Representations {
    var reps Representations
    for _, rep := range r {
       if rep.Codecs != nil && strings.HasPrefix(*rep.Codecs, v) {
@@ -136,7 +167,16 @@ func (r Representations) Filter_Codecs(v string) Representations {
    return reps
 }
 
-func (r Representations) Reduce_Bandwidth(v int64) *Representation {
+func (r Representations) Get_Codecs(v string) *Representation {
+   for _, rep := range r {
+      if rep.Codecs != nil && strings.HasPrefix(*rep.Codecs, v) {
+         return &rep
+      }
+   }
+   return nil
+}
+
+func (r Representations) Get_Bandwidth(v int64) *Representation {
    distance := func(r *Representation) int64 {
       if r.Bandwidth > v {
          return r.Bandwidth - v
@@ -150,26 +190,4 @@ func (r Representations) Reduce_Bandwidth(v int64) *Representation {
       }
    }
    return output
-}
-
-func (r Representations) Reduce_Codecs(v string) *Representation {
-   for _, rep := range r {
-      if rep.Codecs != nil && strings.HasPrefix(*rep.Codecs, v) {
-         return &rep
-      }
-   }
-   return nil
-}
-
-type SegmentTemplate struct {
-   Initialization string `xml:"initialization,attr"`
-   Media string `xml:"media,attr"`
-   SegmentTimeline struct {
-      S []struct {
-         Duration int `xml:"d,attr"`
-         Repeat int `xml:"r,attr"`
-         Time int `xml:"t,attr"`
-      }
-   }
-   StartNumber *int `xml:"startNumber,attr"`
 }

@@ -35,69 +35,6 @@ type Master struct {
 
 type Media []Medium
 
-func (m Media) Get_Group_ID(val string) *Medium {
-   for _, medium := range m {
-      if medium.Group_ID == val {
-         return &medium
-      }
-   }
-   return nil
-}
-
-// English
-func (m Media) Get_Name(val string) *Medium {
-   for _, medium := range m {
-      if medium.Name == val {
-         return &medium
-      }
-   }
-   return nil
-}
-
-// stereo
-func (m Media) Group_ID(val string) Media {
-   var out Media
-   for _, medium := range m {
-      if strings.Contains(medium.Group_ID, val) {
-         out = append(out, medium)
-      }
-   }
-   return out
-}
-
-// English
-func (m Media) Name(val string) Media {
-   var out Media
-   for _, medium := range m {
-      if medium.Name == val {
-         out = append(out, medium)
-      }
-   }
-   return out
-}
-
-// cdn
-func (m Media) URI(val string) Media {
-   var out Media
-   for _, medium := range m {
-      if strings.Contains(medium.Raw_URI, val) {
-         out = append(out, medium)
-      }
-   }
-   return out
-}
-
-// AUDIO
-func (m Media) Type(val string) Media {
-   var out Media
-   for _, medium := range m {
-      if medium.Type == val {
-         out = append(out, medium)
-      }
-   }
-   return out
-}
-
 func (m Medium) String() string {
    var buf strings.Builder
    buf.WriteString("Type:")
@@ -241,7 +178,64 @@ func (s Stream) String() string {
 
 type Streams []Stream
 
-// hvc1 mp4a
+func (m Media) Get_Group_ID(val string) *Medium {
+   for _, medium := range m {
+      if medium.Group_ID == val {
+         return &medium
+      }
+   }
+   return nil
+}
+
+func (m Media) Get_Name(val string) *Medium {
+   for _, medium := range m {
+      if medium.Name == val {
+         return &medium
+      }
+   }
+   return nil
+}
+
+func (m Media) Group_ID(val string) Media {
+   var out Media
+   for _, medium := range m {
+      if strings.Contains(medium.Group_ID, val) {
+         out = append(out, medium)
+      }
+   }
+   return out
+}
+
+func (m Media) Name(val string) Media {
+   var out Media
+   for _, medium := range m {
+      if medium.Name == val {
+         out = append(out, medium)
+      }
+   }
+   return out
+}
+
+func (m Media) URI(val string) Media {
+   var out Media
+   for _, medium := range m {
+      if strings.Contains(medium.Raw_URI, val) {
+         out = append(out, medium)
+      }
+   }
+   return out
+}
+
+func (m Media) Type(val string) Media {
+   var out Media
+   for _, medium := range m {
+      if medium.Type == val {
+         out = append(out, medium)
+      }
+   }
+   return out
+}
+
 func (s Streams) Codecs(val string) Streams {
    var out Streams
    for _, stream := range s {
@@ -268,7 +262,6 @@ func (s Streams) Get_Bandwidth(val int64) *Stream {
    return out
 }
 
-// cdn=vod-ak-aoc.tv.apple.com
 func (s Streams) URI(val string) Streams {
    var out Streams
    for _, stream := range s {
@@ -279,7 +272,6 @@ func (s Streams) URI(val string) Streams {
    return out
 }
 
-// PQ
 func (s Streams) Video_Range(val string) Streams {
    var out Streams
    for _, stream := range s {
