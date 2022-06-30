@@ -7,29 +7,9 @@ import (
    "os"
 )
 
-func Decode(name string, value any) error {
-   file, err := os.Open(name)
-   if err != nil {
-      return err
-   }
-   defer file.Close()
-   return json.NewDecoder(file).Decode(value)
-}
-
-func Encode(name string, value any) error {
-   file, err := format.Create(name)
-   if err != nil {
-      return err
-   }
-   defer file.Close()
-   enc := json.NewEncoder(file)
-   enc.SetEscapeHTML(false)
-   enc.SetIndent("", " ")
-   return enc.Encode(value)
-}
-
 var (
    Marshal = json.Marshal
+   MarshalIndent = json.MarshalIndent
    NewDecoder = json.NewDecoder
    NewEncoder = json.NewEncoder
    Unmarshal = json.Unmarshal
@@ -56,4 +36,25 @@ func (s *Scanner) Scan() bool {
    var found bool
    _, s.Data, found = bytes.Cut(s.Data, s.Sep)
    return found
+}
+
+func Decode(name string, value any) error {
+   file, err := os.Open(name)
+   if err != nil {
+      return err
+   }
+   defer file.Close()
+   return json.NewDecoder(file).Decode(value)
+}
+
+func Encode(name string, value any) error {
+   file, err := format.Create(name)
+   if err != nil {
+      return err
+   }
+   defer file.Close()
+   enc := json.NewEncoder(file)
+   enc.SetEscapeHTML(false)
+   enc.SetIndent("", " ")
+   return enc.Encode(value)
 }

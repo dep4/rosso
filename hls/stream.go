@@ -1,11 +1,10 @@
 package hls
 
 import (
+   "bytes"
    "strconv"
    "strings"
 )
-
-const TS = ".ts"
 
 func (s Streams) Audio(value string) Streams {
    var out Streams
@@ -68,4 +67,14 @@ func (s Stream) String() string {
    b = append(b, "\n\tAudio:"...)
    b = append(b, s.Audio...)
    return string(b)
+}
+
+func (s Stream) Ext(b []byte) string {
+   if bytes.Contains(b, []byte("ftypiso5")) {
+      return ".m4v"
+   }
+   if bytes.HasPrefix(b, []byte{'G'}) {
+      return ".ts"
+   }
+   return ""
 }
