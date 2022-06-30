@@ -4,8 +4,25 @@ import (
    "bytes"
    "encoding/json"
    "github.com/89z/format"
+   "io"
    "os"
 )
+
+var (
+   Marshal = json.Marshal
+   NewDecoder = json.NewDecoder
+   NewEncoder = json.NewEncoder
+   Unmarshal = json.Unmarshal
+)
+
+func Buffer(value any) (*bytes.Buffer, error) {
+   buf := new(bytes.Buffer)
+   err := indent(buf).Encode(value)
+   if err != nil {
+      return nil, err
+   }
+   return buf, nil
+}
 
 func Decode(name string, value any) error {
    file, err := os.Open(name)
@@ -22,18 +39,15 @@ func Encode(name string, value any) error {
       return err
    }
    defer file.Close()
-   enc := json.NewEncoder(file)
-   enc.SetEscapeHTML(false)
-   enc.SetIndent("", " ")
-   return enc.Encode(value)
+   return indent(file).Encode(value)
 }
 
-var (
-   Marshal = json.Marshal
-   NewDecoder = json.NewDecoder
-   NewEncoder = json.NewEncoder
-   Unmarshal = json.Unmarshal
-)
+func indent(w io.Writer) *json.Encoder {
+   enc := json.NewEncoder(w)
+   enc.SetEscapeHTML(false)
+   enc.SetIndent("", " ")
+   return enc
+}
 
 type Scanner struct {
    Data []byte
