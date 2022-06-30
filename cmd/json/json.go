@@ -3,8 +3,7 @@ package main
 import (
    "encoding/json"
    "flag"
-   "github.com/89z/format"
-   "os"
+   "github.com/89z/format/os"
 )
 
 func do_json(input, output string) error {
@@ -13,7 +12,7 @@ func do_json(input, output string) error {
       return err
    }
    defer in.Close()
-   out, err := format.Create(output)
+   out, err := os.Create(output)
    if err != nil {
       out = os.Stdout
    }
