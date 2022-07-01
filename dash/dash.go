@@ -5,6 +5,18 @@ import (
    "strings"
 )
 
+type Representation struct {
+   Adaptation *Adaptation
+   Bandwidth int64 `xml:"bandwidth,attr"`
+   Codecs *string `xml:"codecs,attr"`
+   ContentProtection *ContentProtection
+   Height *int64 `xml:"height,attr"`
+   ID string `xml:"id,attr"`
+   MimeType *string `xml:"mimeType,attr"`
+   SegmentTemplate *SegmentTemplate
+   Width *int64 `xml:"width,attr"`
+}
+
 type Adaptation struct {
    Codecs *string `xml:"codecs,attr"`
    ContentProtection *ContentProtection
@@ -15,6 +27,41 @@ type Adaptation struct {
       Value string `xml:"value,attr"`
    }
    SegmentTemplate *SegmentTemplate
+}
+
+func (r Representations) English() *Representation {
+   for _, rep := range r {
+      if rep.Adaptation.Lang != nil {
+         if strings.HasPrefix(*rep.Adaptation.Lang, "en") {
+            return &rep
+         }
+      }
+   }
+   return nil
+}
+
+func (r Representations) AVC1() Representations {
+   var reps Representations
+   for _, rep := range r {
+      if rep.Codecs != nil {
+         if strings.HasPrefix(*rep.Codecs, "avc1.") {
+            reps = append(reps, rep)
+         }
+      }
+   }
+   return reps
+}
+
+func (r Representations) MP4A() Representations {
+   var reps Representations
+   for _, rep := range r {
+      if rep.Codecs != nil {
+         if strings.HasPrefix(*rep.Codecs, "mp4a.") {
+            reps = append(reps, rep)
+         }
+      }
+   }
+   return reps
 }
 
 type ContentProtection struct {
@@ -48,18 +95,6 @@ func (m Media) Representations() Representations {
       }
    }
    return reps
-}
-
-type Representation struct {
-   Adaptation *Adaptation
-   Bandwidth int64 `xml:"bandwidth,attr"`
-   Codecs *string `xml:"codecs,attr"`
-   ContentProtection *ContentProtection
-   Height *int64 `xml:"height,attr"`
-   ID string `xml:"id,attr"`
-   MimeType *string `xml:"mimeType,attr"`
-   SegmentTemplate *SegmentTemplate
-   Width *int64 `xml:"width,attr"`
 }
 
 func (r Representation) Ext() string {
@@ -155,25 +190,6 @@ type SegmentTemplate struct {
       }
    }
    StartNumber *int `xml:"startNumber,attr"`
-}
-
-func (r Representations) Codecs(v string) Representations {
-   var reps Representations
-   for _, rep := range r {
-      if rep.Codecs != nil && strings.HasPrefix(*rep.Codecs, v) {
-         reps = append(reps, rep)
-      }
-   }
-   return reps
-}
-
-func (r Representations) Get_Codecs(v string) *Representation {
-   for _, rep := range r {
-      if rep.Codecs != nil && strings.HasPrefix(*rep.Codecs, v) {
-         return &rep
-      }
-   }
-   return nil
 }
 
 func (r Representations) Get_Bandwidth(v int64) *Representation {

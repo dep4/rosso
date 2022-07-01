@@ -10,6 +10,7 @@ var (
    Open = os.Open
    ReadFile = os.ReadFile
    Stdout = os.Stdout
+   UserHomeDir = os.UserHomeDir
 )
 
 func Create(name string) (*os.File, error) {

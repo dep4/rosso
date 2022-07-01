@@ -28,12 +28,13 @@ func Test_Get(t *testing.T) {
       }
       reps := med.Representations()
       fmt.Println(test, "video")
-      for _, rep := range reps.Codecs("avc1") {
+      for _, rep := range reps.AVC1() {
          fmt.Println(rep)
       }
       fmt.Println(test, "audio")
-      rep := reps.Get_Codecs("mp4a")
-      fmt.Println(rep) 
+      for _, rep := range reps.MP4A() {
+         fmt.Println(rep)
+      }
    }
 }
 

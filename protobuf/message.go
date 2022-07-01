@@ -2,7 +2,7 @@ package protobuf
 
 import (
    "errors"
-   "github.com/89z/std"
+   "github.com/89z/std/strconv"
    "google.golang.org/protobuf/encoding/protowire"
    "io"
    "sort"
@@ -230,7 +230,7 @@ func (m Message) consume_raw(num Number, buf []byte) ([]byte, error) {
    if err != nil {
       return nil, err
    }
-   if std.String(rvalue.Bytes) {
+   if strconv.String(rvalue.Bytes) {
       rvalue.String = string(rvalue.Bytes)
    }
    rvalue.Message, _ = Unmarshal(rvalue.Bytes)
