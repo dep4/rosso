@@ -3,11 +3,10 @@ package http
 import (
    "bytes"
    "errors"
-   "github.com/89z/std"
+   "github.com/89z/std/strconv"
    "net/http"
    "net/http/httputil"
    "os"
-   "strconv"
 )
 
 type Client struct {
@@ -38,7 +37,7 @@ func (c Client) Do(req *http.Request) (*http.Response, error) {
       if err != nil {
          return nil, err
       }
-      if !std.String(buf) {
+      if !strconv.String(buf) {
          buf = strconv.AppendQuote(nil, string(buf))
       }
       if !bytes.HasSuffix(buf, []byte{'\n'}) {
