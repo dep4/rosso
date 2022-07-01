@@ -3,7 +3,7 @@ package http
 import (
    "bytes"
    "errors"
-   "github.com/89z/format"
+   "github.com/89z/std"
    "net/http"
    "net/http/httputil"
    "os"
@@ -38,7 +38,7 @@ func (c Client) Do(req *http.Request) (*http.Response, error) {
       if err != nil {
          return nil, err
       }
-      if !format.String(buf) {
+      if !std.String(buf) {
          buf = strconv.AppendQuote(nil, string(buf))
       }
       if !bytes.HasSuffix(buf, []byte{'\n'}) {

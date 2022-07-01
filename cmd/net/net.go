@@ -4,8 +4,8 @@ import (
    "bytes"
    "flag"
    "fmt"
-   "github.com/89z/format"
-   "github.com/89z/format/http"
+   "github.com/89z/std"
+   "github.com/89z/std/http"
    "io"
    "net/http/httputil"
    "net/url"
@@ -154,7 +154,7 @@ func write(req *http.Request, file *os.File) error {
       if err != nil {
          return err
       }
-      if format.String(buf) {
+      if std.String(buf) {
          file.Write(buf)
       } else {
          quote := strconv.Quote(string(buf))

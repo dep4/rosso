@@ -3,7 +3,7 @@ package main
 import (
    "encoding/json"
    "flag"
-   "github.com/89z/format/os"
+   "github.com/89z/std/os"
 )
 
 func do_json(input, output string) error {

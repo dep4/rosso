@@ -1,4 +1,4 @@
-# Format
+# std
 
 > Yeah so it sounds like you and me had the same journey here, and uh yeah I'm
 > glad to find someone who's on the other side of it. So uh tell me what did you
@@ -43,4 +43,4 @@ text. For business opportunities, contact me:
 
 ## Repo
 
-https://github.com/89z/format
+https://github.com/89z/std

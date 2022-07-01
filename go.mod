@@ -1,4 +1,4 @@
-module github.com/89z/format
+module github.com/89z/std
 
 go 1.18
 
