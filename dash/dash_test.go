@@ -14,6 +14,29 @@ var tests = []string{
    "mpd/roku.mpd",
 }
 
+func Test_Audio(t *testing.T) {
+   for i, test := range tests {
+      file, err := os.Open(test)
+      if err != nil {
+         t.Fatal(err)
+      }
+      var med Media
+      if err := xml.NewDecoder(file).Decode(&med); err != nil {
+         t.Fatal(err)
+      }
+      if err := file.Close(); err != nil {
+         t.Fatal(err)
+      }
+      if i >= 1 {
+         fmt.Println()
+      }
+      fmt.Println(test)
+      for _, rep := range med.Representations().Audio() {
+         fmt.Println(rep)
+      }
+   }
+}
+
 func Test_Video(t *testing.T) {
    for i, test := range tests {
       file, err := os.Open(test)
@@ -31,7 +54,7 @@ func Test_Video(t *testing.T) {
          fmt.Println()
       }
       fmt.Println(test)
-      for _, rep := range med.Representations() {
+      for _, rep := range med.Representations().Video() {
          fmt.Println(rep)
       }
    }

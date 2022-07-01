@@ -5,16 +5,47 @@ import (
    "strings"
 )
 
+func (r Representation) String() string {
+   var (
+      s []string
+      t []string
+   )
+   s = append(s, "MimeType:" + r.MimeType)
+   if r.Codecs != "" {
+      s = append(s, "Codecs:" + r.Codecs)
+   }
+   if r.Adaptation.Lang != "" {
+      s = append(s, "Lang:" + r.Adaptation.Lang)
+   }
+   if r.Adaptation.Role != nil {
+      s = append(s, "Role:" + r.Adaptation.Role.Value)
+   }
+   if r.Bandwidth >= 1 {
+      t = append(t, "Bandwidth:" + strconv.Itoa(r.Bandwidth))
+   }
+   if r.Width >= 1 {
+      t = append(t, "Width:" + strconv.Itoa(r.Width))
+   }
+   if r.Height >= 1 {
+      t = append(t, "Height:" + strconv.Itoa(r.Height))
+   }
+   js, jt := strings.Join(s, " "), strings.Join(t, " ")
+   if jt != "" {
+      return js + "\n\t" + jt
+   }
+   return js
+}
+
 type Representation struct {
    Adaptation *Adaptation
-   Bandwidth int64 `xml:"bandwidth,attr"`
+   Bandwidth int `xml:"bandwidth,attr"`
    ContentProtection *ContentProtection
-   Height *int64 `xml:"height,attr"`
+   Height int `xml:"height,attr"`
    ID string `xml:"id,attr"`
-   MimeType *string `xml:"mimeType,attr"`
-   Raw_Codecs *string `xml:"codecs,attr"`
+   MimeType string `xml:"mimeType,attr"`
+   Codecs string `xml:"codecs,attr"`
    SegmentTemplate *SegmentTemplate
-   Width *int64 `xml:"width,attr"`
+   Width int `xml:"width,attr"`
 }
 
 func (r Representation) Role() string {
@@ -25,7 +56,7 @@ func (r Representation) Role() string {
 }
 
 func (r Representation) Ext() string {
-   switch *r.MimeType {
+   switch r.MimeType {
    case "video/mp4":
       return ".m4v"
    case "audio/mp4":
@@ -33,7 +64,7 @@ func (r Representation) Ext() string {
    case "image/jpeg":
       return ".jpg"
    }
-   switch *r.Raw_Codecs {
+   switch r.Codecs {
    case "stpp":
       return ".ttml"
    case "wvtt":
@@ -71,34 +102,6 @@ func (r Representation) Media() []string {
       }
    }
    return media
-}
-
-func (r Representation) String() string {
-   var b []byte
-   if r.Raw_Codecs != nil {
-      b = append(b, "Codecs:"...)
-      b = append(b, *r.Raw_Codecs...)
-   } else {
-      b = append(b, "MimeType:"...)
-      b = append(b, *r.MimeType...)
-   }
-   if r.Adaptation.Lang != nil {
-      b = append(b, " Lang:"...)
-      b = append(b, *r.Adaptation.Lang...)
-   }
-   if r.Adaptation.Role != nil {
-      b = append(b, " Role:"...)
-      b = append(b, r.Adaptation.Role.Value...)
-   }
-   b = append(b, " Bandwidth:"...)
-   b = strconv.AppendInt(b, r.Bandwidth, 10)
-   if r.Width != nil {
-      b = append(b, " Width:"...)
-      b = strconv.AppendInt(b, *r.Width, 10)
-      b = append(b, " Height:"...)
-      b = strconv.AppendInt(b, *r.Height, 10)
-   }
-   return string(b)
 }
 
 func (r Representation) replace_ID(s string) string {
