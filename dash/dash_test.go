@@ -8,13 +8,14 @@ import (
 )
 
 var tests = []string{
+   "mpd/amc.mpd",
    "mpd/paramount-lang.mpd",
    "mpd/paramount-role.mpd",
    "mpd/roku.mpd",
 }
 
-func Test_Get(t *testing.T) {
-   for _, test := range tests {
+func Test_Video(t *testing.T) {
+   for i, test := range tests {
       file, err := os.Open(test)
       if err != nil {
          t.Fatal(err)
@@ -26,20 +27,18 @@ func Test_Get(t *testing.T) {
       if err := file.Close(); err != nil {
          t.Fatal(err)
       }
-      reps := med.Representations()
-      fmt.Println(test, "video")
-      for _, rep := range reps.AVC1() {
-         fmt.Println(rep)
+      if i >= 1 {
+         fmt.Println()
       }
-      fmt.Println(test, "audio")
-      for _, rep := range reps.MP4A() {
+      fmt.Println(test)
+      for _, rep := range med.Representations() {
          fmt.Println(rep)
       }
    }
 }
 
 func Test_Representations(t *testing.T) {
-   for _, test := range tests {
+   for i, test := range tests {
       file, err := os.Open(test)
       if err != nil {
          t.Fatal(err)
@@ -51,10 +50,12 @@ func Test_Representations(t *testing.T) {
       if err := file.Close(); err != nil {
          t.Fatal(err)
       }
+      if i >= 1 {
+         fmt.Println()
+      }
       fmt.Println(test)
       for _, rep := range med.Representations() {
          fmt.Println(rep)
-         fmt.Printf("%q\n", rep.Ext())
       }
    }
 }
