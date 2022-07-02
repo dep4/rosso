@@ -10,12 +10,7 @@ import (
 )
 
 func (f flags) DASH() error {
-   play, err := auth.Playback(f.nid)
-   if err != nil {
-      return err
-   }
-   source := play.Source()
-   res, err := amc.Client.Redirect(nil).Get(source.Src)
+   res, err := amc.Client.Redirect(nil).Get(f.address)
    if err != nil {
       return err
    }

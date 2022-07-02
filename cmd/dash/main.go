@@ -2,7 +2,10 @@ package main
 
 import (
    "flag"
+   "github.com/89z/std/http"
 )
+
+var client = http.Default_Client
 
 type flags struct {
    address string
