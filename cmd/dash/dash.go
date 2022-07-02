@@ -1,6 +1,7 @@
 package main
 
 import (
+   "encoding/hex"
    "encoding/xml"
    "fmt"
    "github.com/89z/std/dash"
@@ -10,7 +11,7 @@ import (
 )
 
 func (f flags) DASH() error {
-   res, err := amc.Client.Redirect(nil).Get(f.address)
+   res, err := client.Redirect(nil).Get(f.address)
    if err != nil {
       return err
    }
@@ -19,38 +20,45 @@ func (f flags) DASH() error {
    if err := xml.NewDecoder(res.Body).Decode(&media); err != nil {
       return err
    }
-   reps := media.Representations().Video()
-   if f.bandwidth_video >= 1 {
-      rep := reps.Get_Bandwidth(f.bandwidth_video)
-      if f.info {
-         for _, each := range reps {
-            if each.Bandwidth == rep.Bandwidth {
-               fmt.Print("!")
-            }
-            fmt.Println(each)
-         }
-      } else {
-         var key []byte
-         if source.Key_Systems != nil {
-            key, err = f.key(play, rep.ContentProtection.Default_KID)
-            if err != nil {
-               return err
-            }
-         }
-         return download(rep, key, play.Base())
+   reps := media.Representations()
+   var str stream
+   str.base = "ignore"
+   if f.key != "" {
+      str.key, err = hex.DecodeString(f.key)
+      if err != nil {
+         return err
       }
    }
-   return nil
+   str.Representations = reps.Audio()
+   str.bandwidth = f.bandwidth_audio
+   if err := f.download(str); err != nil {
+      return err
+   }
+   str.Representations = reps.Video()
+   str.bandwidth = f.bandwidth_video
+   return f.download(str)
 }
 
-
-func download(rep *dash.Representation, key []byte, base string) error {
-   file, err := os.Create(base + rep.Ext())
+func (f flags) download(str stream) error {
+   if str.bandwidth <= 0 {
+      return nil
+   }
+   rep := str.Get_Bandwidth(str.bandwidth)
+   if f.info {
+      for _, each := range str.Representations {
+         if each.Bandwidth == rep.Bandwidth {
+            fmt.Print("!")
+         }
+         fmt.Println(each)
+      }
+      return nil
+   }
+   file, err := os.Create(str.base + rep.Ext())
    if err != nil {
       return err
    }
    defer file.Close()
-   res, err := amc.Client.Redirect(nil).Get(rep.Initialization())
+   res, err := client.Redirect(nil).Get(rep.Initialization())
    if err != nil {
       return err
    }
@@ -58,17 +66,22 @@ func download(rep *dash.Representation, key []byte, base string) error {
    media := rep.Media()
    pro := os.Progress_Chunks(file, len(media))
    dec := mp4.New_Decrypt(pro)
-   if err := dec.Init(res.Body); err != nil {
+   if str.key != nil {
+      err = dec.Init(res.Body)
+   } else {
+      _, err = io.Copy(pro, res.Body)
+   }
+   if err != nil {
       return err
    }
    for _, addr := range media {
-      res, err := amc.Client.Redirect(nil).Level(0).Get(addr)
+      res, err := client.Redirect(nil).Level(0).Get(addr)
       if err != nil {
          return err
       }
       pro.Add_Chunk(res.ContentLength)
-      if key != nil {
-         err = dec.Segment(res.Body, key)
+      if str.key != nil {
+         err = dec.Segment(res.Body, str.key)
       } else {
          _, err = io.Copy(pro, res.Body)
       }
