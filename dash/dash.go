@@ -43,8 +43,8 @@ func (r Representations) Video() Representations {
    return reps
 }
 
-func (r Representations) Get_Bandwidth(v int) *Representation {
-   distance := func(r *Representation) int {
+func (r Representations) Get_Bandwidth(v int64) *Representation {
+   distance := func(r *Representation) int64 {
       if r.Bandwidth > v {
          return r.Bandwidth - v
       }

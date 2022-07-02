@@ -21,7 +21,7 @@ func (r Representation) String() string {
       s = append(s, "Role:" + r.Adaptation.Role.Value)
    }
    if r.Bandwidth >= 1 {
-      t = append(t, "Bandwidth:" + strconv.Itoa(r.Bandwidth))
+      t = append(t, "Bandwidth:" + strconv.FormatInt(r.Bandwidth, 10))
    }
    if r.Width >= 1 {
       t = append(t, "Width:" + strconv.Itoa(r.Width))
@@ -38,7 +38,7 @@ func (r Representation) String() string {
 
 type Representation struct {
    Adaptation *Adaptation
-   Bandwidth int `xml:"bandwidth,attr"`
+   Bandwidth int64 `xml:"bandwidth,attr"`
    ContentProtection *ContentProtection
    Height int `xml:"height,attr"`
    ID string `xml:"id,attr"`
