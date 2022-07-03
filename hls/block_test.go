@@ -1,21 +1,22 @@
 package hls
 
 import (
-   "errors"
    "fmt"
+   "github.com/89z/std/http"
    "io"
-   "net/http"
    "os"
    "testing"
 )
 
+// paramount -b 622520382 -f 499000
+const address = "https://cbsios-vh.akamaihd.net/i/temp_hd_gallery_video/CBS_Production_Outlet_VMS/video_robot/CBS_Production_Entertainment/2012/09/12/41581439/CBS_MELROSE_PLACE_001_SD_prores_78930_,503,4628,3128,2228,1628,848,000.mp4.csmil/index_0_av.m3u8?null=0&id=AgBItRcmFy81SkUfwWIsRdilI6s+0hIRmFI6R378aTEqsuj0TmwsVvPmGEoeaIYYS8H6mKrNRB0PPQ%3d%3d&hdntl=exp=1656910021~acl=%2fi%2ftemp_hd_gallery_video%2fCBS_Production_Outlet_VMS%2fvideo_robot%2fCBS_Production_Entertainment%2f2012%2f09%2f12%2f41581439%2fCBS_MELROSE_PLACE_001_SD_prores_78930_*~data=hdntl~hmac=d571a5878bd4532e7fc553c8a9fd1374e039c9506295dacdcc10533b991a3447"
+
+var client = http.Default_Client
+
 func Test_Block(t *testing.T) {
-   res, err := http.Get("https://cbsios-vh.akamaihd.net/i/temp_hd_gallery_video/CBS_Production_Outlet_VMS/video_robot/CBS_Production_Entertainment/2012/09/12/41581439/CBS_MELROSE_PLACE_001_SD_prores_78930_,503,4628,3128,2228,1628,848,000.mp4.csmil/index_0_av.m3u8?null=0&id=AgBItRcmF8YMPETJp2Idb%2ff8kST9HgI7mEbBnb7XI96bqUv7h7HvAzf5egQq8EdGCZGfDgozAsOiGw%3d%3d&hdntl=exp=1655249604~acl=%2fi%2ftemp_hd_gallery_video%2fCBS_Production_Outlet_VMS%2fvideo_robot%2fCBS_Production_Entertainment%2f2012%2f09%2f12%2f41581439%2fCBS_MELROSE_PLACE_001_SD_prores_78930_*~data=hdntl~hmac=9e7582fede5fb810be51146b848d2df4e675ed8d78d39931da3273f5880dcfa2")
+   res, err := client.Get(address)
    if err != nil {
       t.Fatal(err)
-   }
-   if res.StatusCode != http.StatusOK {
-      t.Fatal(res.Status)
    }
    seg, err := New_Scanner(res.Body).Segment()
    if err != nil {
@@ -39,14 +40,16 @@ func Test_Block(t *testing.T) {
    }
    for i, addr := range seg.Protected {
       fmt.Println(len(seg.Protected)-i)
-      res, err := http.Get(addr)
+      res, err := client.Level(0).Get(addr)
       if err != nil {
          t.Fatal(err)
       }
-      if res.StatusCode != http.StatusOK {
-         t.Fatal(res.Status)
+      text, err := io.ReadAll(res.Body)
+      if err != nil {
+         t.Fatal(err)
       }
-      if _, err := file.ReadFrom(block.Mode_Key(res.Body)); err != nil {
+      text = block.Decrypt_Key(text)
+      if _, err := file.Write(text); err != nil {
          t.Fatal(err)
       }
       if err := res.Body.Close(); err != nil {
@@ -56,13 +59,10 @@ func Test_Block(t *testing.T) {
 }
 
 func get_key(s string) ([]byte, error) {
-   res, err := http.Get(s)
+   res, err := client.Get(s)
    if err != nil {
       return nil, err
    }
    defer res.Body.Close()
-   if res.StatusCode != http.StatusOK {
-      return nil, errors.New(res.Status)
-   }
    return io.ReadAll(res.Body)
 }
