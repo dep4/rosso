@@ -6,13 +6,12 @@ import (
    "testing"
 )
 
-var names = []string{
-   "m3u8/apple-audio.m3u8",
-   "m3u8/cbc-video.m3u8",
-   "m3u8/roku-segment.m3u8",
-}
-
 func Test_Segment(t *testing.T) {
+   names := []string{
+      "m3u8/apple-audio.m3u8",
+      "m3u8/cbc-video.m3u8",
+      "m3u8/roku-segment.m3u8",
+   }
    for _, name := range names {
       file, err := os.Open(name)
       if err != nil {
