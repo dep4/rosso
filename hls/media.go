@@ -1,15 +1,15 @@
 package hls
 
 import (
-   "bytes"
    "strings"
 )
 
 type Medium struct {
-   Group_ID string
-   Name string
-   Type string
    URI string
+   Type string
+   Name string
+   Group_ID string
+   Characteristics string
 }
 
 func (m Medium) String() string {
@@ -18,12 +18,24 @@ func (m Medium) String() string {
    b.WriteString(m.Type)
    b.WriteString(" Name:")
    b.WriteString(m.Name)
-   b.WriteString("\n\tGROUP-ID:")
+   b.WriteString("\n  Group ID:")
    b.WriteString(m.Group_ID)
+   if m.Characteristics != "" {
+      b.WriteString("\n  Characteristics:")
+      b.WriteString(m.Characteristics)
+   }
    return b.String()
 }
 
-type Media []Medium
+func (m Media) Audio() Media {
+   var slice Media
+   for _, elem := range m {
+      if elem.Type == "AUDIO" {
+         slice = append(slice, elem)
+      }
+   }
+   return slice
+}
 
 func (m Media) Get_Group_ID(value string) *Medium {
    for _, medium := range m {
@@ -43,42 +55,8 @@ func (m Media) Get_Name(value string) *Medium {
    return nil
 }
 
-func (m Media) Group_ID(value string) Media {
-   var out Media
-   for _, medium := range m {
-      if strings.Contains(medium.Group_ID, value) {
-         out = append(out, medium)
-      }
-   }
-   return out
+func (m Media) Ext() string {
+   return ".m4a"
 }
 
-func (m Media) Name(value string) Media {
-   var out Media
-   for _, medium := range m {
-      if medium.Name == value {
-         out = append(out, medium)
-      }
-   }
-   return out
-}
-
-func (m Media) Type(value string) Media {
-   var out Media
-   for _, medium := range m {
-      if medium.Type == value {
-         out = append(out, medium)
-      }
-   }
-   return out
-}
-
-func (m Media) Ext(b []byte) string {
-   if bytes.Contains(b, []byte("ftypiso5")) {
-      return ".m4a"
-   }
-   if bytes.HasPrefix(b, []byte{'G'}) {
-      return ".mts"
-   }
-   return ""
-}
+type Media []Medium
