@@ -4,6 +4,22 @@ import (
    "strings"
 )
 
+func (r Representations) Bandwidth(v int) *Representation {
+   distance := func(r *Representation) int {
+      if r.Bandwidth > v {
+         return r.Bandwidth - v
+      }
+      return v - r.Bandwidth
+   }
+   var output *Representation
+   for i, input := range r {
+      if output == nil || distance(&input) < distance(output) {
+         output = &r[i]
+      }
+   }
+   return output
+}
+
 type Adaptation struct {
    Codecs string `xml:"codecs,attr"`
    ContentProtection *ContentProtection
@@ -41,22 +57,6 @@ func (r Representations) Video() Representations {
       }
    }
    return reps
-}
-
-func (r Representations) Get_Bandwidth(v int64) *Representation {
-   distance := func(r *Representation) int64 {
-      if r.Bandwidth > v {
-         return r.Bandwidth - v
-      }
-      return v - r.Bandwidth
-   }
-   var output *Representation
-   for i, input := range r {
-      if output == nil || distance(&input) < distance(output) {
-         output = &r[i]
-      }
-   }
-   return output
 }
 
 type ContentProtection struct {
