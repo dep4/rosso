@@ -6,20 +6,27 @@ import (
    "testing"
 )
 
+var names = []string{
+   "m3u8/apple-audio.m3u8",
+   "m3u8/cbc-video.m3u8",
+   "m3u8/roku-segment.m3u8",
+}
+
 func Test_Segment(t *testing.T) {
-   file, err := os.Open("ignore/apple-audio.m3u8")
-   if err != nil {
-      t.Fatal(err)
+   for _, name := range names {
+      file, err := os.Open(name)
+      if err != nil {
+         t.Fatal(err)
+      }
+      seg, err := New_Scanner(file).Segment()
+      if err != nil {
+         t.Fatal(err)
+      }
+      if err := file.Close(); err != nil {
+         t.Fatal(err)
+      }
+      fmt.Printf("%+v\n\n", seg)
    }
-   defer file.Close()
-   seg, err := New_Scanner(file).Segment()
-   if err != nil {
-      t.Fatal(err)
-   }
-   for _, pro := range seg.Protected {
-      fmt.Println(pro)
-   }
-   fmt.Println(seg.Key)
 }
 
 var raw_ivs = []string{
