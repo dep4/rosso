@@ -4,6 +4,22 @@ import (
    "strings"
 )
 
+func (s Streams) Bandwidth(value int) *Stream {
+   distance := func(s *Stream) int {
+      if s.Bandwidth > value {
+         return s.Bandwidth - value
+      }
+      return value - s.Bandwidth
+   }
+   var elem *Stream
+   for key, value := range s {
+      if elem == nil || distance(&value) < distance(elem) {
+         elem = &s[key]
+      }
+   }
+   return elem
+}
+
 type Stream struct {
    Audio string
    Bandwidth int

@@ -15,7 +15,7 @@ func (s stream_filter) Audio() string { return s.audio }
 
 func (s stream_filter) Codecs() []string { return s.codecs }
 
-var master_names = map[string]Stream_Filter{
+var stream_filters = map[string]Stream_Filter{
    "m3u8/nbc-master.m3u8": nil,
    "m3u8/roku-master.m3u8": nil,
    "m3u8/paramount-master.m3u8": &stream_filter{
@@ -31,7 +31,7 @@ var master_names = map[string]Stream_Filter{
 }
 
 func Test_Stream(t *testing.T) {
-   for key, val := range master_names {
+   for key, val := range stream_filters {
       fmt.Println(key)
       file, err := os.Open(key)
       if err != nil {

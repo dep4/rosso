@@ -30,43 +30,9 @@ func (m Medium) String() string {
    return b.String()
 }
 
-func (m Media) Get_Group_ID(value string) *Medium {
-   for _, medium := range m {
-      if medium.Group_ID == value {
-         return &medium
-      }
-   }
-   return nil
-}
-
-func (m Media) Get_Name(value string) *Medium {
-   for _, medium := range m {
-      if medium.Name == value {
-         return &medium
-      }
-   }
-   return nil
-}
-
 type Media []Medium
 
 type Streams []Stream
-
-func (s Streams) Bandwidth(value int) *Stream {
-   distance := func(s *Stream) int {
-      if s.Bandwidth > value {
-         return s.Bandwidth - value
-      }
-      return value - s.Bandwidth
-   }
-   var elem *Stream
-   for key, value := range s {
-      if elem == nil || distance(&value) < distance(elem) {
-         elem = &s[key]
-      }
-   }
-   return elem
-}
 
 func (s Stream) String() string {
    var (
