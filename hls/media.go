@@ -1,39 +1,30 @@
 package hls
 
 import (
-   "strings"
+   "sort"
 )
 
-func (m Media) Get_Group_ID(value string) *Medium {
-   for _, medium := range m {
-      if medium.Group_ID == value {
-         return &medium
-      }
+func (m Media) Reduce(r Media_Reduce) *Medium {
+   if len(m) == 0 {
+      return nil
    }
-   return nil
+   distance := func(i int) int {
+      return r.distance(m[i].Group_ID, m[i].Name)
+   }
+   sort.Slice(m, func(a, b int) bool {
+      return distance(a) < distance(b)
+   })
+   return &m[0]
 }
 
-func (m Media) Get_Name(value string) *Medium {
-   for _, medium := range m {
-      if medium.Name == value {
-         return &medium
-      }
-   }
-   return nil
-}
-
-type Medium struct {
-   URI string
-   Type string
-   Name string
-   Group_ID string
-   Characteristics string
+type Media_Reduce interface {
+   distance(group_ID, name string) int
 }
 
 type Media_Filter interface {
-   Group_ID() string
-   Name() string
-   Type() string
+   Group_ID(string) bool
+   Name(string) bool
+   Type(string) bool
 }
 
 func (m Media) Filter(f Media_Filter) Media {
@@ -41,13 +32,13 @@ func (m Media) Filter(f Media_Filter) Media {
       return m
    }
    pass := func(m Medium) bool {
-      if !strings.Contains(m.Group_ID, f.Group_ID()) {
+      if !f.Group_ID(m.Group_ID) {
          return false
       }
-      if f.Name() != "" && f.Name() != m.Name {
+      if !f.Name(m.Name) {
          return false
       }
-      if f.Type() != "" && f.Type() != m.Type {
+      if !f.Type(m.Type) {
          return false
       }
       return true
@@ -59,4 +50,12 @@ func (m Media) Filter(f Media_Filter) Media {
       }
    }
    return slice
+}
+
+type Medium struct {
+   URI string
+   Type string
+   Name string
+   Group_ID string
+   Characteristics string
 }

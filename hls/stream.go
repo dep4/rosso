@@ -1,24 +1,8 @@
 package hls
 
 import (
-   "strings"
+   "sort"
 )
-
-func (s Streams) Bandwidth(value int) *Stream {
-   distance := func(s *Stream) int {
-      if s.Bandwidth > value {
-         return s.Bandwidth - value
-      }
-      return value - s.Bandwidth
-   }
-   var elem *Stream
-   for key, value := range s {
-      if elem == nil || distance(&value) < distance(elem) {
-         elem = &s[key]
-      }
-   }
-   return elem
-}
 
 type Stream struct {
    Audio string
@@ -28,31 +12,30 @@ type Stream struct {
    URI string
 }
 
-type Stream_Filter interface {
-   Audio() string
-   Codecs() []string
-}
+type Stream_Filter func(audio, codecs string) bool
 
-func (s Streams) Filter(f Stream_Filter) Streams {
-   if f == nil {
+func (s Streams) Filter(fn Stream_Filter) Streams {
+   if fn == nil {
       return s
-   }
-   pass := func(s Stream) bool {
-      if !strings.Contains(s.Audio, f.Audio()) {
-         return false
-      }
-      for _, elem := range f.Codecs() {
-         if !strings.Contains(s.Codecs, elem) {
-            return false
-         }
-      }
-      return true
    }
    var slice Streams
    for _, elem := range s {
-      if pass(elem) {
+      if fn(elem.Audio, elem.Codecs) {
          slice = append(slice, elem)
       }
    }
    return slice
+}
+
+type Bandwidth func(int) int
+
+func (s Streams) Reduce(fn Bandwidth) *Stream {
+   if len(s) == 0 {
+      return nil
+   }
+   sort.Slice(s, func(a, b int) bool {
+      sa, sb := s[a].Bandwidth, s[b].Bandwidth
+      return fn(sa) < fn(sb)
+   })
+   return &s[0]
 }

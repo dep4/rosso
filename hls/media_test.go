@@ -3,6 +3,7 @@ package hls
 import (
    "fmt"
    "os"
+   "strings"
    "testing"
 )
 
@@ -12,11 +13,17 @@ type media_filter struct {
    typ string
 }
 
-func (m media_filter) Name() string { return m.name }
+func (m media_filter) Group_ID(s string) bool {
+   return strings.Contains(s, m.id)
+}
 
-func (m media_filter) Type() string { return m.typ }
+func (m media_filter) Name(s string) bool {
+   return m.name == "" || m.name == s
+}
 
-func (m media_filter) Group_ID() string { return m.id }
+func (m media_filter) Type(s string) bool {
+   return m.typ == s
+}
 
 var media_filters = map[string]Media_Filter{
    "m3u8/paramount-master.m3u8": nil, // 0
