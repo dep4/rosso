@@ -8,48 +8,41 @@ import (
    "testing"
 )
 
-func Test_Stream_Some(t *testing.T) {
+func Test_Segment(t *testing.T) {
    names := []string{
-      "m3u8/apple-master.m3u8",
-      "m3u8/cbc-master.m3u8",
-      "m3u8/nbc-master.m3u8",
-      "m3u8/paramount-master.m3u8",
-      "m3u8/roku-master.m3u8",
+      "m3u8/apple-audio.m3u8",
+      "m3u8/cbc-video.m3u8",
+      "m3u8/roku-segment.m3u8",
    }
-   for i, name := range names {
-      if i >= 1 {
-         fmt.Println()
-      }
-      fmt.Println(name)
+   for _, name := range names {
       file, err := os.Open(name)
       if err != nil {
          t.Fatal(err)
       }
-      master, err := New_Scanner(file).Master()
+      seg, err := New_Scanner(file).Segment()
       if err != nil {
          t.Fatal(err)
       }
       if err := file.Close(); err != nil {
          t.Fatal(err)
       }
-      for _, stream := range master.Streams.Video() {
-         fmt.Println(stream)
-      }
+      fmt.Printf("%+v\n\n", seg)
    }
 }
 
-func Test_Stream_All(t *testing.T) {
-   file, err := os.Open("ignore/apple-master.m3u8")
-   if err != nil {
-      t.Fatal(err)
-   }
-   defer file.Close()
-   master, err := New_Scanner(file).Master()
-   if err != nil {
-      t.Fatal(err)
-   }
-   for _, stream := range master.Streams {
-      fmt.Println(stream)
+var raw_ivs = []string{
+   "00000000000000000000000000000001",
+   "0X00000000000000000000000000000001",
+   "0x00000000000000000000000000000001",
+}
+
+func Test_Hex(t *testing.T) {
+   for _, raw_iv := range raw_ivs {
+      iv, err := Segment{Raw_IV: raw_iv}.IV()
+      if err != nil {
+         t.Fatal(err)
+      }
+      fmt.Println(iv)
    }
 }
 
@@ -111,4 +104,3 @@ func get_key(s string) ([]byte, error) {
    defer res.Body.Close()
    return io.ReadAll(res.Body)
 }
-
