@@ -7,11 +7,24 @@ import (
 )
 
 var (
+   Args = os.Args
+   Link = os.Link
    Open = os.Open
    ReadFile = os.ReadFile
+   Stat = os.Stat
+   Stderr = os.Stderr
    Stdout = os.Stdout
    UserHomeDir = os.UserHomeDir
 )
+
+func Rename(old_path, new_path string) error {
+   var err error
+   new_path, err = clean(new_path)
+   if err != nil {
+      return err
+   }
+   return os.Rename(old_path, new_path)
+}
 
 func Create(name string) (*os.File, error) {
    var err error

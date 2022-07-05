@@ -1,9 +1,5 @@
 package hls
 
-import (
-   "sort"
-)
-
 type Stream struct {
    Audio string
    Bandwidth int
@@ -12,33 +8,38 @@ type Stream struct {
    URI string
 }
 
-type Streams_Func func(audio, codecs string) bool
-
-func (s Streams) Streams(fn Streams_Func) Streams {
-   if fn == nil {
-      return s
-   }
-   var slice Streams
-   for _, elem := range s {
-      if fn(elem.Audio, elem.Codecs) {
-         slice = append(slice, elem)
-      }
-   }
-   return slice
+type Stream_Filter interface {
+   Audio(string) bool
+   Bandwidth(int) int
+   Codecs(string) bool
 }
 
-type Stream_Func func(bandwidth int) int
+func (s Streams) Streams(f Stream_Filter) Streams {
+   var prev Streams
+   for _, curr := range s {
+      if !f.Audio(curr.Audio) {
+         continue
+      }
+      if !f.Codecs(curr.Codecs) {
+         continue
+      }
+      if f.Bandwidth(curr.Bandwidth) < 0 {
+         continue
+      }
+      prev = append(prev, curr)
+   }
+   return prev
+}
 
-func (s Streams) Stream(fn Stream_Func) *Stream {
-   if len(s) == 0 || fn == nil {
-      return nil
+func (s Streams) Bandwidth(f Stream_Filter) *Stream {
+   var prev *Stream
+   for i, curr := range s {
+      if prev != nil {
+         if f.Bandwidth(curr.Bandwidth) >= f.Bandwidth(prev.Bandwidth) {
+            continue
+         }
+      }
+      prev = &s[i]
    }
-   distance := func(i int) int {
-      bandwidth := s[i].Bandwidth
-      return fn(bandwidth)
-   }
-   sort.Slice(s, func(a, b int) bool {
-      return distance(a) < distance(b)
-   })
-   return &s[0]
+   return prev
 }
