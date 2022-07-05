@@ -8,38 +8,24 @@ type Stream struct {
    URI string
 }
 
-type Stream_Filter interface {
-   Audio(string) bool
-   Bandwidth(int) int
-   Codecs(string) bool
+type Stream_Filter func(Stream) bool
+
+func (s Streams) Filter(callback Stream_Filter) Streams {
+   var carry Streams
+   for _, item := range s {
+      if callback(item) {
+         carry = append(carry, item)
+      }
+   }
+   return carry
 }
 
-func (s Streams) Streams(f Stream_Filter) Streams {
-   var prev Streams
-   for _, curr := range s {
-      if !f.Audio(curr.Audio) {
-         continue
-      }
-      if !f.Codecs(curr.Codecs) {
-         continue
-      }
-      if f.Bandwidth(curr.Bandwidth) < 0 {
-         continue
-      }
-      prev = append(prev, curr)
-   }
-   return prev
-}
+type Stream_Reduce func(*Stream, Stream) *Stream
 
-func (s Streams) Bandwidth(f Stream_Filter) *Stream {
-   var prev *Stream
-   for i, curr := range s {
-      if prev != nil {
-         if f.Bandwidth(curr.Bandwidth) >= f.Bandwidth(prev.Bandwidth) {
-            continue
-         }
-      }
-      prev = &s[i]
+func (s Streams) Reduce(callback Stream_Reduce) *Stream {
+   var carry *Stream
+   for _, item := range s {
+      carry = callback(carry, item)
    }
-   return prev
+   return carry
 }
