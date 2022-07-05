@@ -7,8 +7,12 @@ import (
 )
 
 var (
+   Args = os.Args
+   Link = os.Link
    Open = os.Open
    ReadFile = os.ReadFile
+   Stat = os.Stat
+   Stderr = os.Stderr
    Stdout = os.Stdout
    UserHomeDir = os.UserHomeDir
 )

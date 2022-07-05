@@ -7,40 +7,45 @@ import (
    "testing"
 )
 
-func apple_stream_filter(bandwidth int, audio, codecs string) int {
-   if !strings.Contains(codecs, "avc1.") {
-      return 0
-   }
-   if !strings.Contains(codecs, "mp4a.") {
-      return 0
-   }
-   if !strings.Contains(audio, "-ak-") {
-      return 0
-   }
-   return 1
+func (s stream_filter) Audio(v string) bool {
+   return strings.Contains(v, s.audio)
 }
 
-var stream_filters = map[string]Stream_Func{
-   "m3u8/nbc-master.m3u8": nil,
-   "m3u8/roku-master.m3u8": nil,
-   "m3u8/paramount-master.m3u8": avc1_stream_filter,
-   "m3u8/cbc-master.m3u8": avc1_stream_filter,
-   "m3u8/apple-master.m3u8": apple_stream_filter,
+func (s stream_filter) Bandwidth(v int) int {
+   if v > s.bandwidth {
+      return v - s.bandwidth
+   }
+   return s.bandwidth - v
 }
 
-func avc1_stream_filter(bandwidth int, audio, codecs string) int {
-   if strings.Contains(codecs, "avc1.") {
-      return 1
-   }
-   return 0
+type stream_filter struct {
+   audio string
+   bandwidth int
+   codecs []string
 }
 
-func bandwidth_stream_reduce(bandwidth int, audio, codecs string) int {
-   b := 1
-   if bandwidth > b {
-      return bandwidth - b
+func (s stream_filter) Codecs(v string) bool {
+   for _, curr := range s.codecs {
+      if !strings.Contains(v, curr) {
+         return false
+      }
    }
-   return b - bandwidth
+   return true
+}
+
+var stream_filters = map[string]Stream_Filter{
+   "m3u8/nbc-master.m3u8": stream_filter{},
+   "m3u8/roku-master.m3u8": stream_filter{},
+   "m3u8/paramount-master.m3u8": stream_filter{
+      codecs: []string{"avc1."},
+   },
+   "m3u8/cbc-master.m3u8": stream_filter{
+      codecs: []string{"avc1."},
+   },
+   "m3u8/apple-master.m3u8": stream_filter{
+      audio: "-ak-",
+      codecs: []string{"avc1.", "mp4a."},
+   },
 }
 
 func Test_Stream_Reduce(t *testing.T) {
@@ -56,7 +61,7 @@ func Test_Stream_Reduce(t *testing.T) {
       if err := file.Close(); err != nil {
          t.Fatal(err)
       }
-      stream := master.Streams.Streams(val).Stream(bandwidth_stream_reduce)
+      stream := master.Streams.Streams(val).Bandwidth(val)
       fmt.Print(key, "\n", stream, "\n\n")
    }
 }

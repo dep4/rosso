@@ -1,9 +1,5 @@
 package hls
 
-import (
-   "sort"
-)
-
 type Medium struct {
    URI string
    Type string
@@ -12,33 +8,40 @@ type Medium struct {
    Characteristics string
 }
 
-type Media_Func func(group_ID, name, typ string) bool
-
-func (m Media) Media(fn Media_Func) Media {
-   if fn == nil {
-      return m
-   }
-   var slice Media
-   for _, elem := range m {
-      if fn(elem.Group_ID, elem.Name, elem.Type) {
-         slice = append(slice, elem)
-      }
-   }
-   return slice
+type Media_Filter interface {
+   Group_ID(string) bool
+   Name(string) bool
+   Type(string) bool
 }
 
-type Medium_Func func(group_ID, name string) int
+func (m Media) Media(f Media_Filter) Media {
+   var prev Media
+   for _, curr := range m {
+      if !f.Group_ID(curr.Group_ID) {
+         continue
+      }
+      if !f.Name(curr.Name) {
+         continue
+      }
+      if !f.Type(curr.Type) {
+         continue
+      }
+      prev = append(prev, curr)
+   }
+   return prev
+}
 
-func (m Media) Medium(fn Medium_Func) *Medium {
-   if len(m) == 0 || fn == nil {
-      return nil
+func (m Media) Medium(f Media_Filter) *Medium {
+   for _, curr := range m {
+      if f.Group_ID(curr.Group_ID) {
+         return &curr
+      }
+      if f.Name(curr.Name) {
+         return &curr
+      }
+      if f.Type(curr.Type) {
+         return &curr
+      }
    }
-   distance := func(i int) int {
-      group_ID, name := m[i].Group_ID, m[i].Name
-      return fn(group_ID, name)
-   }
-   sort.Slice(m, func(a, b int) bool {
-      return distance(a) < distance(b)
-   })
-   return &m[0]
+   return nil
 }
