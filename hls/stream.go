@@ -12,30 +12,31 @@ type Stream struct {
    URI string
 }
 
-type Stream_Filter func(audio, codecs string) bool
+type Stream_Func func(bandwidth int, audio, codecs string) int
 
-func (s Streams) Filter(fn Stream_Filter) Streams {
+func (s Streams) Streams(fn Stream_Func) Streams {
    if fn == nil {
       return s
    }
    var slice Streams
    for _, elem := range s {
-      if fn(elem.Audio, elem.Codecs) {
+      if fn(elem.Bandwidth, elem.Audio, elem.Codecs) != 0 {
          slice = append(slice, elem)
       }
    }
    return slice
 }
 
-type Bandwidth func(int) int
-
-func (s Streams) Reduce(fn Bandwidth) *Stream {
-   if len(s) == 0 {
+func (s Streams) Stream(fn Stream_Func) *Stream {
+   if len(s) == 0 || fn == nil {
       return nil
    }
+   distance := func(i int) int {
+      bandwidth, audio, codecs := s[i].Bandwidth, s[i].Audio, s[i].Codecs
+      return fn(bandwidth, audio, codecs)
+   }
    sort.Slice(s, func(a, b int) bool {
-      sa, sb := s[a].Bandwidth, s[b].Bandwidth
-      return fn(sa) < fn(sb)
+      return distance(a) < distance(b)
    })
    return &s[0]
 }

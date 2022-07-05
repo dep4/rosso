@@ -7,37 +7,40 @@ import (
    "testing"
 )
 
-func apple(audio, codecs string) bool {
+func apple_stream_filter(bandwidth int, audio, codecs string) int {
    if !strings.Contains(codecs, "avc1.") {
-      return false
+      return 0
    }
    if !strings.Contains(codecs, "mp4a.") {
-      return false
+      return 0
    }
    if !strings.Contains(audio, "-ak-") {
-      return false
+      return 0
    }
-   return true
+   return 1
 }
 
-var stream_filters = map[string]Stream_Filter{
+var stream_filters = map[string]Stream_Func{
    "m3u8/nbc-master.m3u8": nil,
    "m3u8/roku-master.m3u8": nil,
-   "m3u8/paramount-master.m3u8": avc1,
-   "m3u8/cbc-master.m3u8": avc1,
-   "m3u8/apple-master.m3u8": apple,
+   "m3u8/paramount-master.m3u8": avc1_stream_filter,
+   "m3u8/cbc-master.m3u8": avc1_stream_filter,
+   "m3u8/apple-master.m3u8": apple_stream_filter,
 }
 
-func avc1(audio, codecs string) bool {
-   return strings.Contains(codecs, "avc1.")
-}
-
-func bandwidth(a int) int {
-   b := 1
-   if b > a {
-      return b - a
+func avc1_stream_filter(bandwidth int, audio, codecs string) int {
+   if strings.Contains(codecs, "avc1.") {
+      return 1
    }
-   return a - b
+   return 0
+}
+
+func bandwidth_stream_reduce(bandwidth int, audio, codecs string) int {
+   b := 1
+   if bandwidth > b {
+      return bandwidth - b
+   }
+   return b - bandwidth
 }
 
 func Test_Stream_Reduce(t *testing.T) {
@@ -53,7 +56,7 @@ func Test_Stream_Reduce(t *testing.T) {
       if err := file.Close(); err != nil {
          t.Fatal(err)
       }
-      stream := master.Streams.Filter(val).Reduce(bandwidth)
+      stream := master.Streams.Streams(val).Stream(bandwidth_stream_reduce)
       fmt.Print(key, "\n", stream, "\n\n")
    }
 }
@@ -72,7 +75,7 @@ func Test_Stream_Filter(t *testing.T) {
       if err := file.Close(); err != nil {
          t.Fatal(err)
       }
-      for _, stream := range master.Streams.Filter(val) {
+      for _, stream := range master.Streams.Streams(val) {
          fmt.Println(stream)
       }
       fmt.Println()

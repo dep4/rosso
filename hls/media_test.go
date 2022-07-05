@@ -7,38 +7,72 @@ import (
    "testing"
 )
 
-type media_filter struct {
-   id string
-   name string
-   typ string
+func audio_media_filter(group_ID, name, typ string) bool {
+   return typ == "AUDIO"
 }
 
-func (m media_filter) Group_ID(s string) bool {
-   return strings.Contains(s, m.id)
+func apple_media_filter(group_ID, name, typ string) bool {
+   if !strings.Contains(group_ID, "-ak-") {
+      return false
+   }
+   if name != "English" {
+      return false
+   }
+   if typ != "AUDIO" {
+      return false
+   }
+   return true
 }
 
-func (m media_filter) Name(s string) bool {
-   return m.name == "" || m.name == s
+type filter_reduce struct {
+   filter func(string, string, string) bool
+   reduce func(string, string) bool
 }
 
-func (m media_filter) Type(s string) bool {
-   return m.typ == s
+func cbc_media_reduce(group_ID, name string) bool {
+   return name == "English"
 }
 
-var media_filters = map[string]Media_Filter{
-   "m3u8/paramount-master.m3u8": nil, // 0
-   "m3u8/roku-master.m3u8": nil, // 0
-   "m3u8/nbc-master.m3u8": media_filter{typ: "AUDIO"}, // 0
-   "m3u8/cbc-master.m3u8": media_filter{typ: "AUDIO"}, // 2
-   "m3u8/apple-master.m3u8": media_filter{
-      id: "-ak-",
-      name: "English",
-      typ: "AUDIO",
+func apple_media_reduce(group_ID, name string) bool {
+   return strings.Contains(group_ID, "-160_")
+}
+
+var media_tests = map[string]filter_reduce {
+   "m3u8/paramount-master.m3u8": {},
+   "m3u8/roku-master.m3u8": {},
+   "m3u8/nbc-master.m3u8": {
+      filter: audio_media_filter,
+   },
+   "m3u8/cbc-master.m3u8": {
+      filter: audio_media_filter,
+      reduce: cbc_media_reduce,
+   },
+   "m3u8/apple-master.m3u8": {
+      filter: apple_media_filter,
+      reduce: apple_media_reduce,
    },
 }
 
-func Test_Media(t *testing.T) {
-   for key, val := range media_filters {
+func Test_Media_Reduce(t *testing.T) {
+   for key, val := range media_tests {
+      file, err := os.Open(key)
+      if err != nil {
+         t.Fatal(err)
+      }
+      master, err := New_Scanner(file).Master()
+      if err != nil {
+         t.Fatal(err)
+      }
+      if err := file.Close(); err != nil {
+         t.Fatal(err)
+      }
+      medium := master.Media.Media(val.filter).Medium(val.reduce)
+      fmt.Print(key, "\n", medium, "\n\n")
+   }
+}
+
+func Test_Media_Filter(t *testing.T) {
+   for key, val := range media_tests {
       fmt.Println(key)
       file, err := os.Open(key)
       if err != nil {
@@ -51,7 +85,7 @@ func Test_Media(t *testing.T) {
       if err := file.Close(); err != nil {
          t.Fatal(err)
       }
-      for _, medium := range master.Media.Filter(val) {
+      for _, medium := range master.Media.Filter(val.filter) {
          fmt.Println(medium)
       }
       fmt.Println()
