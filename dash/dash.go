@@ -17,48 +17,40 @@ type Adaptation struct {
    SegmentTemplate *SegmentTemplate
 }
 
-type Representation struct {
-   Adaptation *Adaptation
-   Bandwidth int `xml:"bandwidth,attr"`
-   ContentProtection *ContentProtection
-   Height int `xml:"height,attr"`
-   SegmentTemplate *SegmentTemplate
-   Width int `xml:"width,attr"`
-   MimeType string `xml:"mimeType,attr"`
-   Codecs string `xml:"codecs,attr"`
-   ID string `xml:"id,attr"`
-}
-
 func (r Representation) String() string {
    var (
-      s []string
-      t []string
+      a []string
+      b []string
+      c []string
    )
+   a = append(a, "ID:" + r.ID)
    if r.Width >= 1 {
-      s = append(s, "Width:" + strconv.Itoa(r.Width))
+      b = append(b, "Width:" + strconv.Itoa(r.Width))
    }
    if r.Height >= 1 {
-      s = append(s, "Height:" + strconv.Itoa(r.Height))
+      b = append(b, "Height:" + strconv.Itoa(r.Height))
    }
    if r.Bandwidth >= 1 {
-      s = append(s, "Bandwidth:" + strconv.Itoa(r.Bandwidth))
+      b = append(b, "Bandwidth:" + strconv.Itoa(r.Bandwidth))
    }
+   c = append(c, "MimeType:" + r.MimeType)
    if r.Codecs != "" {
-      s = append(s, "Codecs:" + r.Codecs)
+      c = append(c, "Codecs:" + r.Codecs)
    }
-   t = append(t, "MimeType:" + r.MimeType)
    if r.Adaptation.Lang != "" {
-      t = append(t, "Lang:" + r.Adaptation.Lang)
+      c = append(c, "Lang:" + r.Adaptation.Lang)
    }
    if r.Adaptation.Role != nil {
-      t = append(t, "Role:" + r.Adaptation.Role.Value)
+      c = append(c, "Role:" + r.Adaptation.Role.Value)
    }
-   t = append(t, "ID:" + r.ID)
-   js, jt := strings.Join(s, " "), strings.Join(t, " ")
-   if jt != "" {
-      return js + "\n  " + jt
+   s := strings.Join(a, " ")
+   if b != nil {
+      s += "\n  " + strings.Join(b, " ")
    }
-   return js
+   if c != nil {
+      s += "\n  " + strings.Join(c, " ")
+   }
+   return s
 }
 
 func (r Representation) Role() string {

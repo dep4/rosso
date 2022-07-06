@@ -53,25 +53,26 @@ func (r Representations) Reduce(callback Reduce) *Representation {
 
 type Reduce func(*Representation, Representation) *Representation
 
-func Bandwidth(v int) Reduce {
-   distance := func(r *Representation) int {
-      if r.Bandwidth > v {
-         return r.Bandwidth - v
-      }
-      return v - r.Bandwidth
-   }
-   return func(carry *Representation, item Representation) *Representation {
-      if carry == nil || distance(&item) < distance(carry) {
-         return &item
-      }
-      return carry
-   }
+type Representation struct {
+   Adaptation *Adaptation
+   Bandwidth int `xml:"bandwidth,attr"`
+   ContentProtection *ContentProtection
+   Height int `xml:"height,attr"`
+   SegmentTemplate *SegmentTemplate
+   Width int `xml:"width,attr"`
+   MimeType string `xml:"mimeType,attr"`
+   Codecs string `xml:"codecs,attr"`
+   ID string `xml:"id,attr"`
+}
+
+func Audio(r Representation) bool {
+   return r.MimeType == "audio/mp4"
 }
 
 func Video(r Representation) bool {
    return r.MimeType == "video/mp4"
 }
 
-func Audio(r Representation) bool {
-   return r.MimeType == "audio/mp4"
+func AudioVideo(r Representation) bool {
+   return Audio(r) || Video(r)
 }
