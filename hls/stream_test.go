@@ -11,7 +11,7 @@ func avc1(s Stream) bool {
    return strings.Contains(s.Codecs, "avc1.")
 }
 
-func apple(s Stream) bool {
+func apple_stream(s Stream) bool {
    if !strings.Contains(s.Audio, "-ak-") {
       return false
    }
@@ -29,7 +29,25 @@ var stream_filters = map[string]Stream_Filter{
    "m3u8/roku-master.m3u8": nil,
    "m3u8/paramount-master.m3u8": avc1,
    "m3u8/cbc-master.m3u8": avc1,
-   "m3u8/apple-master.m3u8": apple,
+   "m3u8/apple-master.m3u8": apple_stream,
+}
+
+func Test_Stream_Reduce(t *testing.T) {
+   for name, callback := range stream_filters {
+      file, err := os.Open(name)
+      if err != nil {
+         t.Fatal(err)
+      }
+      master, err := New_Scanner(file).Master()
+      if err != nil {
+         t.Fatal(err)
+      }
+      if err := file.Close(); err != nil {
+         t.Fatal(err)
+      }
+      stream := master.Streams.Filter(callback).Reduce(Bandwidth(0))
+      fmt.Print(name, "\n", stream, "\n\n")
+   }
 }
 
 func Test_Stream_Filter(t *testing.T) {
