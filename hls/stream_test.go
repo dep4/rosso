@@ -45,7 +45,7 @@ func Test_Stream(t *testing.T) {
       if err := file.Close(); err != nil {
          t.Fatal(err)
       }
-      stream := master.Streams.Filter(callback).Reduce(Bandwidth(0))
+      stream := master.Stream.Filter(callback).Reduce(Bandwidth(0))
       fmt.Print(name, "\n", stream, "\n\n")
    }
 }

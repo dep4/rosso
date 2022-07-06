@@ -7,11 +7,11 @@ import (
    "testing"
 )
 
-func audio_media_filter(m Medium) bool {
+func audio_media_filter(m Media) bool {
    return m.Type == "AUDIO"
 }
 
-func apple_media_filter(m Medium) bool {
+func apple_media_filter(m Media) bool {
    if !strings.Contains(m.Group_ID, "-ak-") {
       return false
    }
@@ -25,18 +25,18 @@ func apple_media_filter(m Medium) bool {
 }
 
 type filter_reduce struct {
-   Filter[Medium]
-   Reduce[Medium]
+   Filter[Media]
+   Reduce[Media]
 }
 
-func apple_media_reduce(carry *Medium, item Medium) *Medium {
+func apple_media_reduce(carry *Media, item Media) *Media {
    if strings.Contains(item.Group_ID, "-160_") {
       return &item
    }
    return carry
 }
 
-func cbc_media_reduce(carry *Medium, item Medium) *Medium {
+func cbc_media_reduce(carry *Media, item Media) *Media {
    if item.Name == "English" {
       return &item
    }
@@ -64,7 +64,7 @@ func Test_Media(t *testing.T) {
       if err := file.Close(); err != nil {
          t.Fatal(err)
       }
-      medium := master.Media.Filter(val.Filter).Reduce(val.Reduce)
-      fmt.Print(key, "\n", medium, "\n\n")
+      media := master.Media.Filter(val.Filter).Reduce(val.Reduce)
+      fmt.Print(key, "\n", media, "\n\n")
    }
 }

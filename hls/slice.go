@@ -1,17 +1,17 @@
 package hls
 
 type Element interface {
-   Medium | Stream
+   Media | Stream
 }
 
 type Filter[T Element] func(T) bool
 
 type Master struct {
-   Media Slice[Medium]
-   Streams Slice[Stream]
+   Media Slice[Media]
+   Stream Slice[Stream]
 }
 
-type Medium struct {
+type Media struct {
    URI string
    Type string
    Name string
@@ -30,6 +30,15 @@ func Bandwidth(v int) Reduce[Stream] {
    }
    return func(carry *Stream, item Stream) *Stream {
       if carry == nil || distance(&item) < distance(carry) {
+         return &item
+      }
+      return carry
+   }
+}
+
+func Name(v string) Reduce[Media] {
+   return func(carry *Media, item Media) *Media {
+      if item.Name == v {
          return &item
       }
       return carry
