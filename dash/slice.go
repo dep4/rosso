@@ -1,7 +1,5 @@
 package dash
 
-type Representations []Representation
-
 func (m Media) Representations() Representations {
    var reps Representations
    for i, ada := range m.Period.AdaptationSet {
@@ -25,6 +23,22 @@ func (m Media) Representations() Representations {
    return reps
 }
 
+type Representations []Representation
+
+type Representation struct {
+   Adaptation *Adaptation
+   Bandwidth int `xml:"bandwidth,attr"`
+   Codecs string `xml:"codecs,attr"`
+   ContentProtection *ContentProtection
+   Height int `xml:"height,attr"`
+   ID string `xml:"id,attr"`
+   MimeType string `xml:"mimeType,attr"`
+   SegmentTemplate *SegmentTemplate
+   Width int `xml:"width,attr"`
+}
+
+type Filter func(Representation) bool
+
 func (r Representations) Filter(callback Filter) Representations {
    if callback == nil {
       return r
@@ -38,7 +52,17 @@ func (r Representations) Filter(callback Filter) Representations {
    return carry
 }
 
-type Filter func(Representation) bool
+type Map func(Representation) Representation
+
+func (r Representations) Map(callback Map) Representations {
+   if callback == nil {
+      return r
+   }
+   for i, item := range r {
+      r[i] = callback(item)
+   }
+   return r
+}
 
 func (r Representations) Reduce(callback Reduce) *Representation {
    if callback == nil {
@@ -51,20 +75,6 @@ func (r Representations) Reduce(callback Reduce) *Representation {
    return carry
 }
 
-type Reduce func(*Representation, Representation) *Representation
-
-type Representation struct {
-   Adaptation *Adaptation
-   Bandwidth int `xml:"bandwidth,attr"`
-   ContentProtection *ContentProtection
-   Height int `xml:"height,attr"`
-   SegmentTemplate *SegmentTemplate
-   Width int `xml:"width,attr"`
-   MimeType string `xml:"mimeType,attr"`
-   Codecs string `xml:"codecs,attr"`
-   ID string `xml:"id,attr"`
-}
-
 func Audio(r Representation) bool {
    return r.MimeType == "audio/mp4"
 }
@@ -73,6 +83,19 @@ func Video(r Representation) bool {
    return r.MimeType == "video/mp4"
 }
 
-func AudioVideo(r Representation) bool {
+func Audio_Video(r Representation) bool {
    return Audio(r) || Video(r)
+}
+
+type Reduce func(*Representation, Representation) *Representation
+
+func Bandwidth(v int) Map {
+   return func(r Representation) Representation {
+      if r.Bandwidth > v {
+         r.Bandwidth = r.Bandwidth - v
+      } else {
+         r.Bandwidth = v - r.Bandwidth
+      }
+      return r
+   }
 }

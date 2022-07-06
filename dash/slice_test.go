@@ -7,21 +7,6 @@ import (
    "testing"
 )
 
-func bandwidth(v int) Reduce {
-   distance := func(r *Representation) int {
-      if r.Bandwidth > v {
-         return r.Bandwidth - v
-      }
-      return v - r.Bandwidth
-   }
-   return func(carry *Representation, item Representation) *Representation {
-      if carry == nil || distance(&item) < distance(carry) {
-         return &item
-      }
-      return carry
-   }
-}
-
 var tests = []string{
    "mpd/roku.mpd",
    "mpd/paramount-role.mpd",
@@ -43,8 +28,14 @@ func Test_Video(t *testing.T) {
       if err := file.Close(); err != nil {
          t.Fatal(err)
       }
-      rep := med.Representations().Filter(Video).Reduce(bandwidth(0))
-      fmt.Print(name, "\n", rep, "\n\n")
+      fmt.Println(name)
+      reps := med.Representations()
+      reps = reps.Filter(Video)
+      reps = reps.Map(Bandwidth(0))
+      for _, rep := range reps {
+         fmt.Println(rep)
+      }
+      fmt.Println()
    }
 }
 
@@ -62,7 +53,7 @@ func Test_Info(t *testing.T) {
          t.Fatal(err)
       }
       fmt.Println(name)
-      for _, rep := range med.Representations().Filter(AudioVideo) {
+      for _, rep := range med.Representations().Filter(Audio_Video) {
          fmt.Println(rep)
       }
       fmt.Println()
