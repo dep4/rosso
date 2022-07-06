@@ -25,8 +25,8 @@ func apple_media_filter(m Medium) bool {
 }
 
 type filter_reduce struct {
-   Media_Filter
-   Media_Reduce
+   Filter[Medium]
+   Reduce[Medium]
 }
 
 func apple_media_reduce(carry *Medium, item Medium) *Medium {
@@ -64,7 +64,7 @@ func Test_Media(t *testing.T) {
       if err := file.Close(); err != nil {
          t.Fatal(err)
       }
-      medium := master.Media.Filter(val.Media_Filter).Reduce(val.Media_Reduce)
+      medium := master.Media.Filter(val.Filter).Reduce(val.Reduce)
       fmt.Print(key, "\n", medium, "\n\n")
    }
 }
