@@ -1,17 +1,5 @@
 package dash
 
-type Adaptation struct {
-   Codecs string `xml:"codecs,attr"`
-   ContentProtection *ContentProtection
-   Lang string `xml:"lang,attr"`
-   MimeType string `xml:"mimeType,attr"`
-   Representation Representations
-   Role *struct {
-      Value string `xml:"value,attr"`
-   }
-   SegmentTemplate *SegmentTemplate
-}
-
 type Representations []Representation
 
 func (m Media) Representations() Representations {
@@ -82,4 +70,8 @@ func Bandwidth(v int) Reduce {
 
 func Video(r Representation) bool {
    return r.MimeType == "video/mp4"
+}
+
+func Audio(r Representation) bool {
+   return r.MimeType == "audio/mp4"
 }

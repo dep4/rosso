@@ -8,7 +8,7 @@ import (
 )
 
 func Test_Ext(t *testing.T) {
-   for name, callback := range tests {
+   for _, name := range tests {
       file, err := os.Open(name)
       if err != nil {
          t.Fatal(err)
@@ -21,7 +21,7 @@ func Test_Ext(t *testing.T) {
          t.Fatal(err)
       }
       fmt.Println(name)
-      for _, rep := range med.Representations().Filter(callback) {
+      for _, rep := range med.Representations() {
          fmt.Printf("%q\n", rep.Ext())
       }
       fmt.Println()

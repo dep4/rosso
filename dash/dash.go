@@ -5,35 +5,16 @@ import (
    "strings"
 )
 
-func (r Representation) String() string {
-   var (
-      s []string
-      t []string
-   )
-   s = append(s, "MimeType:" + r.MimeType)
-   if r.Codecs != "" {
-      s = append(s, "Codecs:" + r.Codecs)
+type Adaptation struct {
+   Codecs string `xml:"codecs,attr"`
+   ContentProtection *ContentProtection
+   Lang string `xml:"lang,attr"`
+   MimeType string `xml:"mimeType,attr"`
+   Representation Representations
+   Role *struct {
+      Value string `xml:"value,attr"`
    }
-   if r.Adaptation.Lang != "" {
-      s = append(s, "Lang:" + r.Adaptation.Lang)
-   }
-   if r.Adaptation.Role != nil {
-      s = append(s, "Role:" + r.Adaptation.Role.Value)
-   }
-   if r.Bandwidth >= 1 {
-      t = append(t, "Bandwidth:" + strconv.Itoa(r.Bandwidth))
-   }
-   if r.Width >= 1 {
-      t = append(t, "Width:" + strconv.Itoa(r.Width))
-   }
-   if r.Height >= 1 {
-      t = append(t, "Height:" + strconv.Itoa(r.Height))
-   }
-   js, jt := strings.Join(s, " "), strings.Join(t, " ")
-   if jt != "" {
-      return js + "\n\t" + jt
-   }
-   return js
+   SegmentTemplate *SegmentTemplate
 }
 
 type Representation struct {
@@ -41,11 +22,43 @@ type Representation struct {
    Bandwidth int `xml:"bandwidth,attr"`
    ContentProtection *ContentProtection
    Height int `xml:"height,attr"`
-   ID string `xml:"id,attr"`
-   MimeType string `xml:"mimeType,attr"`
-   Codecs string `xml:"codecs,attr"`
    SegmentTemplate *SegmentTemplate
    Width int `xml:"width,attr"`
+   MimeType string `xml:"mimeType,attr"`
+   Codecs string `xml:"codecs,attr"`
+   ID string `xml:"id,attr"`
+}
+
+func (r Representation) String() string {
+   var (
+      s []string
+      t []string
+   )
+   if r.Width >= 1 {
+      s = append(s, "Width:" + strconv.Itoa(r.Width))
+   }
+   if r.Height >= 1 {
+      s = append(s, "Height:" + strconv.Itoa(r.Height))
+   }
+   if r.Bandwidth >= 1 {
+      s = append(s, "Bandwidth:" + strconv.Itoa(r.Bandwidth))
+   }
+   if r.Codecs != "" {
+      s = append(s, "Codecs:" + r.Codecs)
+   }
+   t = append(t, "MimeType:" + r.MimeType)
+   if r.Adaptation.Lang != "" {
+      t = append(t, "Lang:" + r.Adaptation.Lang)
+   }
+   if r.Adaptation.Role != nil {
+      t = append(t, "Role:" + r.Adaptation.Role.Value)
+   }
+   t = append(t, "ID:" + r.ID)
+   js, jt := strings.Join(s, " "), strings.Join(t, " ")
+   if jt != "" {
+      return js + "\n  " + jt
+   }
+   return js
 }
 
 func (r Representation) Role() string {

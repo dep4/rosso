@@ -244,7 +244,7 @@ func (s Stream) String() string {
    }
    ja := strings.Join(a, " ")
    if b != "" {
-      return ja + "\n\t" + b
+      return ja + "\n  " + b
    }
    return ja
 }

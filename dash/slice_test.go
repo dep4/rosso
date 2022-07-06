@@ -7,24 +7,16 @@ import (
    "testing"
 )
 
-/*
-if !strings.HasPrefix(rep.Adaptation.Lang, "en") {
-if rep.Role() == "description" {
-*/
-func audio(r Representation) bool {
-   return r.MimeType == "audio/mp4"
+var tests = []string{
+   "mpd/roku.mpd",
+   "mpd/paramount-role.mpd",
+   "mpd/paramount-lang.mpd",
+   "mpd/amc-protected.mpd",
+   "mpd/amc-clear.mpd",
 }
 
-var tests = map[string]Filter{
-   "mpd/amc-clear.mpd": nil,
-   "mpd/amc-protected.mpd": nil,
-   "mpd/paramount-lang.mpd": nil,
-   "mpd/paramount-role.mpd": nil,
-   "mpd/roku.mpd": nil,
-}
-
-func Test_Audio(t *testing.T) {
-   for name, callback := range tests {
+func Test_All(t *testing.T) {
+   for _, name := range tests {
       file, err := os.Open(name)
       if err != nil {
          t.Fatal(err)
@@ -37,7 +29,85 @@ func Test_Audio(t *testing.T) {
          t.Fatal(err)
       }
       fmt.Println(name)
-      for _, rep := range med.Representations().Filter(callback) {
+      for _, rep := range med.Representations() {
+         fmt.Println(rep)
+      }
+      fmt.Println()
+   }
+}
+
+func Test_Audio_Reduce(t *testing.T) {
+   for _, name := range tests {
+      file, err := os.Open(name)
+      if err != nil {
+         t.Fatal(err)
+      }
+      var med Media
+      if err := xml.NewDecoder(file).Decode(&med); err != nil {
+         t.Fatal(err)
+      }
+      if err := file.Close(); err != nil {
+         t.Fatal(err)
+      }
+      rep := med.Representations().Filter(Audio).Reduce(Bandwidth(0))
+      fmt.Print(name, "\n", rep, "\n\n")
+   }
+}
+
+func Test_Video_Filter(t *testing.T) {
+   for _, name := range tests {
+      file, err := os.Open(name)
+      if err != nil {
+         t.Fatal(err)
+      }
+      var med Media
+      if err := xml.NewDecoder(file).Decode(&med); err != nil {
+         t.Fatal(err)
+      }
+      if err := file.Close(); err != nil {
+         t.Fatal(err)
+      }
+      fmt.Println(name)
+      for _, rep := range med.Representations().Filter(Video) {
+         fmt.Println(rep)
+      }
+      fmt.Println()
+   }
+}
+
+func Test_Video_Reduce(t *testing.T) {
+   for _, name := range tests {
+      file, err := os.Open(name)
+      if err != nil {
+         t.Fatal(err)
+      }
+      var med Media
+      if err := xml.NewDecoder(file).Decode(&med); err != nil {
+         t.Fatal(err)
+      }
+      if err := file.Close(); err != nil {
+         t.Fatal(err)
+      }
+      rep := med.Representations().Filter(Video).Reduce(Bandwidth(0))
+      fmt.Print(name, "\n", rep, "\n\n")
+   }
+}
+
+func Test_Audio_Filter(t *testing.T) {
+   for _, name := range tests {
+      file, err := os.Open(name)
+      if err != nil {
+         t.Fatal(err)
+      }
+      var med Media
+      if err := xml.NewDecoder(file).Decode(&med); err != nil {
+         t.Fatal(err)
+      }
+      if err := file.Close(); err != nil {
+         t.Fatal(err)
+      }
+      fmt.Println(name)
+      for _, rep := range med.Representations().Filter(Audio) {
          fmt.Println(rep)
       }
       fmt.Println()
