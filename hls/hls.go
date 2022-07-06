@@ -30,10 +30,6 @@ func (m Medium) String() string {
    return b.String()
 }
 
-type Media []Medium
-
-type Streams []Stream
-
 func (s Stream) String() string {
    var (
       a []string
@@ -146,11 +142,6 @@ func (b Block) Decrypt(text, iv []byte) []byte {
 
 func (b Block) Decrypt_Key(text []byte) []byte {
    return b.Decrypt(text, b.key)
-}
-
-type Master struct {
-   Media Media
-   Streams Streams
 }
 
 type Scanner struct {
