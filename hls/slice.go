@@ -1,17 +1,17 @@
 package hls
 
 type Element interface {
-   Medium | Stream
+   Media | Stream
 }
 
 type Filter[T Element] func(T) bool
 
 type Master struct {
-   Media Slice[Medium]
-   Streams Slice[Stream]
+   Media Slice[Media]
+   Stream Slice[Stream]
 }
 
-type Medium struct {
+type Media struct {
    URI string
    Type string
    Name string

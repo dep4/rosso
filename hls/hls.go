@@ -39,11 +39,11 @@ func (b Block) Decrypt_Key(text []byte) []byte {
    return b.Decrypt(text, b.key)
 }
 
-func (Medium) Ext() string {
+func (Media) Ext() string {
    return ".m4a"
 }
 
-func (m Medium) String() string {
+func (m Media) String() string {
    var b strings.Builder
    b.WriteString("Type:")
    b.WriteString(m.Type)
@@ -101,7 +101,7 @@ func (s Scanner) Master() (*Master, error) {
       s.Init(strings.NewReader(line))
       switch {
       case strings.HasPrefix(line, "#EXT-X-MEDIA:"):
-         var med Medium
+         var med Media
          for s.Scan() != scanner.EOF {
             switch s.TokenText() {
             case "CHARACTERISTICS":
@@ -157,7 +157,7 @@ func (s Scanner) Master() (*Master, error) {
          }
          s.line.Scan()
          str.URI = s.line.TokenText()
-         mas.Streams = append(mas.Streams, str)
+         mas.Stream = append(mas.Stream, str)
       }
    }
    return &mas, nil
