@@ -7,7 +7,23 @@ import (
    "testing"
 )
 
-func Test_Ext(t *testing.T) {
+/*
+if !strings.HasPrefix(rep.Adaptation.Lang, "en") {
+if rep.Role() == "description" {
+*/
+func audio(r Representation) bool {
+   return r.MimeType == "audio/mp4"
+}
+
+var tests = map[string]Filter{
+   "mpd/amc-clear.mpd": nil,
+   "mpd/amc-protected.mpd": nil,
+   "mpd/paramount-lang.mpd": nil,
+   "mpd/paramount-role.mpd": nil,
+   "mpd/roku.mpd": nil,
+}
+
+func Test_Audio(t *testing.T) {
    for name, callback := range tests {
       file, err := os.Open(name)
       if err != nil {
@@ -22,7 +38,7 @@ func Test_Ext(t *testing.T) {
       }
       fmt.Println(name)
       for _, rep := range med.Representations().Filter(callback) {
-         fmt.Printf("%q\n", rep.Ext())
+         fmt.Println(rep)
       }
       fmt.Println()
    }

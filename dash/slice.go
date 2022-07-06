@@ -52,10 +52,6 @@ func (r Representations) Filter(callback Filter) Representations {
 
 type Filter func(Representation) bool
 
-func Video(r Representation) bool {
-   return r.MimeType == "video/mp4"
-}
-
 func (r Representations) Reduce(callback Reduce) *Representation {
    if callback == nil {
       return nil
@@ -84,21 +80,6 @@ func Bandwidth(v int) Reduce {
    }
 }
 
-/*
-func (r Representations) Audio() Representations {
-   var reps Representations
-   for _, rep := range r {
-      if !strings.HasPrefix(rep.Adaptation.Lang, "en") {
-         continue
-      }
-      if rep.MimeType != "audio/mp4" {
-         continue
-      }
-      if rep.Role() == "description" {
-         continue
-      }
-      reps = append(reps, rep)
-   }
-   return reps
+func Video(r Representation) bool {
+   return r.MimeType == "video/mp4"
 }
-*/
