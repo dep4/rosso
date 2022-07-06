@@ -1,7 +1,7 @@
 package os
 
 import (
-   "github.com/89z/std/strconv"
+   "github.com/89z/rosso/strconv"
    "io"
    "os"
    "time"

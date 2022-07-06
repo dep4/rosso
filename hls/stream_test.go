@@ -7,11 +7,11 @@ import (
    "testing"
 )
 
-func avc1(s Stream) bool {
+func avc1_stream_filter(s Stream) bool {
    return strings.Contains(s.Codecs, "avc1.")
 }
 
-func apple_stream(s Stream) bool {
+func apple_stream_filter(s Stream) bool {
    if !strings.Contains(s.Audio, "-ak-") {
       return false
    }
@@ -27,9 +27,9 @@ func apple_stream(s Stream) bool {
 var stream_filters = map[string]Stream_Filter{
    "m3u8/nbc-master.m3u8": nil,
    "m3u8/roku-master.m3u8": nil,
-   "m3u8/paramount-master.m3u8": avc1,
-   "m3u8/cbc-master.m3u8": avc1,
-   "m3u8/apple-master.m3u8": apple_stream,
+   "m3u8/paramount-master.m3u8": avc1_stream_filter,
+   "m3u8/cbc-master.m3u8": avc1_stream_filter,
+   "m3u8/apple-master.m3u8": apple_stream_filter,
 }
 
 func Test_Stream_Reduce(t *testing.T) {

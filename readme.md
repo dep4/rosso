@@ -1,4 +1,4 @@
-# std
+# Rosso
 
 > Yeah so it sounds like you and me had the same journey here, and uh yeah I'm
 > glad to find someone who's on the other side of it. So uh tell me what did you
@@ -27,8 +27,8 @@ least 9 USD will be closed immediately. Payment can be made to the PayPal link
 on this page, or if you want to use another method, mention that in the issue
 text. For business opportunities, contact me:
 
-- Email srpen6@gmail.com
-- Discord 89z#4149
+- srpen6@gmail.com
+- Discord srpen6#6983
 
 ## Topics
 
@@ -43,4 +43,4 @@ text. For business opportunities, contact me:
 
 ## Repo
 
-https://github.com/89z/std
+https://github.com/89z/rosso

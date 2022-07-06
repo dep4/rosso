@@ -8,7 +8,7 @@ type Stream struct {
    URI string
 }
 
-func (s Streams) Filter(callback Stream_Filter) Streams {
+func (s Streams) Filter(callback Filter[Stream]) Streams {
    if callback == nil {
       return s
    }
@@ -21,7 +21,10 @@ func (s Streams) Filter(callback Stream_Filter) Streams {
    return carry
 }
 
-func (s Streams) Reduce(callback Stream_Reduce) *Stream {
+func (s Streams) Reduce(callback Reduce[Stream]) *Stream {
+   if callback == nil {
+      return nil
+   }
    var carry *Stream
    for _, item := range s {
       carry = callback(carry, item)
@@ -29,11 +32,7 @@ func (s Streams) Reduce(callback Stream_Reduce) *Stream {
    return carry
 }
 
-type Stream_Filter func(Stream) bool
-
-type Stream_Reduce func(*Stream, Stream) *Stream
-
-func Bandwidth(v int) Stream_Reduce {
+func Bandwidth(v int) Reduce[Stream] {
    distance := func(s *Stream) int {
       if s.Bandwidth > v {
          return s.Bandwidth - v

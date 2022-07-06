@@ -3,7 +3,7 @@ package http
 import (
    "bytes"
    "errors"
-   "github.com/89z/std/strconv"
+   "github.com/89z/rosso/strconv"
    "net/http"
    "net/http/httputil"
    "os"

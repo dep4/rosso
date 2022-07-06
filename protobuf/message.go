@@ -2,7 +2,7 @@ package protobuf
 
 import (
    "errors"
-   "github.com/89z/std/strconv"
+   "github.com/89z/rosso/strconv"
    "google.golang.org/protobuf/encoding/protowire"
    "io"
    "sort"

@@ -2,7 +2,7 @@ package main
 
 import (
    "fmt"
-   "github.com/89z/std/crypto"
+   "github.com/89z/rosso/crypto"
    "io"
    "net"
    "net/http"

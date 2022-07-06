@@ -1,4 +1,4 @@
-module github.com/89z/std
+module github.com/89z/rosso
 
 go 1.18
 
