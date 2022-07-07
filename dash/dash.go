@@ -75,42 +75,6 @@ func (r Representation) Role() string {
    return r.Adaptation.Role.Value
 }
 
-func (r Representation) String() string {
-   var (
-      a []string
-      b []string
-      c []string
-   )
-   a = append(a, "ID:" + r.ID)
-   if r.Width >= 1 {
-      b = append(b, "Width:" + strconv.Itoa(r.Width))
-   }
-   if r.Height >= 1 {
-      b = append(b, "Height:" + strconv.Itoa(r.Height))
-   }
-   if r.Bandwidth >= 1 {
-      b = append(b, "Bandwidth:" + strconv.Itoa(r.Bandwidth))
-   }
-   c = append(c, "MimeType:" + r.MimeType)
-   if r.Codecs != "" {
-      c = append(c, "Codecs:" + r.Codecs)
-   }
-   if r.Adaptation.Lang != "" {
-      c = append(c, "Lang:" + r.Adaptation.Lang)
-   }
-   if r.Adaptation.Role != nil {
-      c = append(c, "Role:" + r.Adaptation.Role.Value)
-   }
-   s := strings.Join(a, " ")
-   if b != nil {
-      s += "\n  " + strings.Join(b, " ")
-   }
-   if c != nil {
-      s += "\n  " + strings.Join(c, " ")
-   }
-   return s
-}
-
 func (r Representation) replace_ID(s string) string {
    return strings.Replace(s, "$RepresentationID$", r.ID, 1)
 }

@@ -1,27 +1,9 @@
 package dash
 
-func Audio(r Representation) bool {
-   return r.MimeType == "audio/mp4"
-}
-
-func Audio_Video(r Representation) bool {
-   return Audio(r) || Video(r)
-}
-
-func Bandwidth(v int) func(Representation) int {
-   return func(r Representation) int {
-      if r.Bandwidth > v {
-         return r.Bandwidth - v
-      }
-      return v - r.Bandwidth
-   }
-}
-
-func Video(r Representation) bool {
-   return r.MimeType == "video/mp4"
-}
-
-type Filter func(Representation) bool
+import (
+   "strconv"
+   "strings"
+)
 
 func (m Media) Representations() Representations {
    var reps Representations
@@ -46,8 +28,6 @@ func (m Media) Representations() Representations {
    return reps
 }
 
-type Reduce func(Representation, Representation) bool
-
 type Representation struct {
    Adaptation *Adaptation
    Bandwidth int `xml:"bandwidth,attr"`
@@ -61,6 +41,27 @@ type Representation struct {
 }
 
 type Representations []Representation
+
+func Audio(r Representation) bool {
+   return r.MimeType == "audio/mp4"
+}
+
+func Bandwidth(v int) func(Representation) int {
+   return func(r Representation) int {
+      if r.Bandwidth > v {
+         return r.Bandwidth - v
+      }
+      return v - r.Bandwidth
+   }
+}
+
+func Video(r Representation) bool {
+   return r.MimeType == "video/mp4"
+}
+
+type Filter func(Representation) bool
+
+type Reduce func(Representation, Representation) bool
 
 func (r Representations) Filter(callback Filter) Representations {
    var carry Representations
@@ -80,4 +81,32 @@ func (r Representations) Reduce(callback Reduce) *Representation {
       }
    }
    return carry
+}
+
+func (r Representation) String() string {
+   var a, b []string
+   if r.Width >= 1 {
+      a = append(a, "Width:" + strconv.Itoa(r.Width))
+   }
+   if r.Height >= 1 {
+      a = append(a, "Height:" + strconv.Itoa(r.Height))
+   }
+   if r.Bandwidth >= 1 {
+      a = append(a, "Bandwidth:" + strconv.Itoa(r.Bandwidth))
+   }
+   b = append(b, "MimeType:" + r.MimeType)
+   if r.Codecs != "" {
+      b = append(b, "Codecs:" + r.Codecs)
+   }
+   if r.Adaptation.Lang != "" {
+      b = append(b, "Lang:" + r.Adaptation.Lang)
+   }
+   if r.Adaptation.Role != nil {
+      b = append(b, "Role:" + r.Adaptation.Role.Value)
+   }
+   s := "ID:" + r.ID
+   if a != nil {
+      s += "\n  " + strings.Join(a, " ")
+   }
+   return s + "\n  " + strings.Join(b, " ")
 }

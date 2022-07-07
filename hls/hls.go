@@ -43,21 +43,6 @@ func (Media) Ext() string {
    return ".m4a"
 }
 
-func (m Media) String() string {
-   var b strings.Builder
-   b.WriteString("Type:")
-   b.WriteString(m.Type)
-   b.WriteString(" Name:")
-   b.WriteString(m.Name)
-   b.WriteString("\n  Group ID:")
-   b.WriteString(m.Group_ID)
-   if m.Characteristics != "" {
-      b.WriteString("\n  Characteristics:")
-      b.WriteString(m.Characteristics)
-   }
-   return b.String()
-}
-
 type Scanner struct {
    line scanner.Scanner
    scanner.Scanner
@@ -225,26 +210,4 @@ func (s Segment) IV() ([]byte, error) {
 
 func (Stream) Ext() string {
    return ".m4v"
-}
-
-func (s Stream) String() string {
-   var (
-      a []string
-      b string
-   )
-   if s.Resolution != "" {
-      a = append(a, "Resolution:" + s.Resolution)
-   }
-   a = append(a, "Bandwidth:" + strconv.Itoa(s.Bandwidth))
-   if s.Codecs != "" {
-      a = append(a, "Codecs:" + s.Codecs)
-   }
-   if s.Audio != "" {
-      b = "Audio:" + s.Audio
-   }
-   ja := strings.Join(a, " ")
-   if b != "" {
-      return ja + "\n  " + b
-   }
-   return ja
 }

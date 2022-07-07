@@ -82,7 +82,10 @@ func Test_Info(t *testing.T) {
          t.Fatal(err)
       }
       fmt.Println(name)
-      for _, rep := range med.Representations().Filter(Audio_Video) {
+      reps := med.Representations().Filter(func(r Representation) bool {
+         return Audio(r) || Video(r)
+      })
+      for _, rep := range reps {
          fmt.Println(rep)
       }
       fmt.Println()
