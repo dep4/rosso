@@ -5,9 +5,20 @@ import (
    "strings"
 )
 
+func Bandwidth(v int) func(Stream) int {
+   return func(s Stream) int {
+      if s.Bandwidth > v {
+         return s.Bandwidth - v
+      }
+      return v - s.Bandwidth
+   }
+}
+
 type Element interface {
    Media | Stream
 }
+
+type Filter[T Element] func(T) bool
 
 type Master struct {
    Media Slice[Media]
@@ -22,21 +33,29 @@ type Media struct {
    Characteristics string
 }
 
-type Stream struct {
-   Audio string
-   Bandwidth int
-   Codecs string
-   Resolution string
-   URI string
+func (m Media) String() string {
+   var b strings.Builder
+   b.WriteString("Type:")
+   b.WriteString(m.Type)
+   b.WriteString(" Name:")
+   b.WriteString(m.Name)
+   b.WriteString("\n  Group ID:")
+   b.WriteString(m.Group_ID)
+   if m.Characteristics != "" {
+      b.WriteString("\n  Characteristics:")
+      b.WriteString(m.Characteristics)
+   }
+   return b.String()
 }
-
-type Slice[T Element] []T
-
-type Filter[T Element] func(T) bool
 
 type Reduce[T Element] func(T, T) bool
 
+type Slice[T Element] []T
+
 func (s Slice[T]) Filter(callback Filter[T]) Slice[T] {
+   if callback == nil {
+      return s
+   }
    var carry Slice[T]
    for _, item := range s {
       if callback(item) {
@@ -56,13 +75,12 @@ func (s Slice[T]) Reduce(callback Reduce[T]) *T {
    return carry
 }
 
-func Bandwidth(v int) func(Stream) int {
-   return func(s Stream) int {
-      if s.Bandwidth > v {
-         return s.Bandwidth - v
-      }
-      return v - s.Bandwidth
-   }
+type Stream struct {
+   Audio string
+   Bandwidth int
+   Codecs string
+   Resolution string
+   URI string
 }
 
 func (s Stream) String() string {
@@ -85,19 +103,4 @@ func (s Stream) String() string {
       c += "\n  " + b
    }
    return c
-}
-
-func (m Media) String() string {
-   var b strings.Builder
-   b.WriteString("Type:")
-   b.WriteString(m.Type)
-   b.WriteString(" Name:")
-   b.WriteString(m.Name)
-   b.WriteString("\n  Group ID:")
-   b.WriteString(m.Group_ID)
-   if m.Characteristics != "" {
-      b.WriteString("\n  Characteristics:")
-      b.WriteString(m.Characteristics)
-   }
-   return b.String()
 }
