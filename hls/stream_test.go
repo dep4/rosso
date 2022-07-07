@@ -29,7 +29,7 @@ func Test_Stream(t *testing.T) {
          t.Fatal(err)
       }
       fmt.Println(name)
-      for _, stream := master.Stream {
+      for _, stream := range master.Stream {
          fmt.Println(stream)
       }
       fmt.Println()
