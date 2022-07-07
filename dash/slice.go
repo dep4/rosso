@@ -1,5 +1,28 @@
 package dash
 
+func Audio(r Representation) bool {
+   return r.MimeType == "audio/mp4"
+}
+
+func Audio_Video(r Representation) bool {
+   return Audio(r) || Video(r)
+}
+
+func Bandwidth(v int) func(Representation) int {
+   return func(r Representation) int {
+      if r.Bandwidth > v {
+         return r.Bandwidth - v
+      }
+      return v - r.Bandwidth
+   }
+}
+
+func Video(r Representation) bool {
+   return r.MimeType == "video/mp4"
+}
+
+type Filter func(Representation) bool
+
 func (m Media) Representations() Representations {
    var reps Representations
    for i, ada := range m.Period.AdaptationSet {
@@ -23,7 +46,7 @@ func (m Media) Representations() Representations {
    return reps
 }
 
-type Representations []Representation
+type Reduce func(Representation, Representation) bool
 
 type Representation struct {
    Adaptation *Adaptation
@@ -37,7 +60,7 @@ type Representation struct {
    Width int `xml:"width,attr"`
 }
 
-type Filter func(Representation) bool
+type Representations []Representation
 
 func (r Representations) Filter(callback Filter) Representations {
    var carry Representations
@@ -49,20 +72,6 @@ func (r Representations) Filter(callback Filter) Representations {
    return carry
 }
 
-func Audio(r Representation) bool {
-   return r.MimeType == "audio/mp4"
-}
-
-func Video(r Representation) bool {
-   return r.MimeType == "video/mp4"
-}
-
-func Audio_Video(r Representation) bool {
-   return Audio(r) || Video(r)
-}
-
-type Reduce func(Representation, Representation) bool
-
 func (r Representations) Reduce(callback Reduce) *Representation {
    var carry *Representation
    for i, item := range r {
@@ -71,13 +80,4 @@ func (r Representations) Reduce(callback Reduce) *Representation {
       }
    }
    return carry
-}
-
-func Bandwidth(v int) func(Representation) int {
-   return func(r Representation) int {
-      if r.Bandwidth > v {
-         return r.Bandwidth - v
-      }
-      return v - r.Bandwidth
-   }
 }
