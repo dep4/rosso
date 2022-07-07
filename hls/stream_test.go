@@ -7,33 +7,16 @@ import (
    "testing"
 )
 
-func avc1_stream_filter(s Stream) bool {
-   return strings.Contains(s.Codecs, "avc1.")
-}
-
-func apple_stream_filter(s Stream) bool {
-   if !strings.Contains(s.Audio, "-ak-") {
-      return false
-   }
-   if !strings.Contains(s.Codecs, "avc1.") {
-      return false
-   }
-   if !strings.Contains(s.Codecs, "mp4a.") {
-      return false
-   }
-   return true
-}
-
-var stream_filters = map[string]Filter[Stream]{
-   "m3u8/nbc-master.m3u8": nil,
-   "m3u8/roku-master.m3u8": nil,
-   "m3u8/paramount-master.m3u8": avc1_stream_filter,
-   "m3u8/cbc-master.m3u8": avc1_stream_filter,
-   "m3u8/apple-master.m3u8": apple_stream_filter,
+var tests = []string{
+   "m3u8/nbc-master.m3u8",
+   "m3u8/roku-master.m3u8",
+   "m3u8/paramount-master.m3u8",
+   "m3u8/cbc-master.m3u8",
+   "m3u8/apple-master.m3u8",
 }
 
 func Test_Stream(t *testing.T) {
-   for name, callback := range stream_filters {
+   for _, name := range tests {
       file, err := os.Open(name)
       if err != nil {
          t.Fatal(err)
@@ -45,7 +28,10 @@ func Test_Stream(t *testing.T) {
       if err := file.Close(); err != nil {
          t.Fatal(err)
       }
-      stream := master.Stream.Filter(callback).Reduce(Bandwidth(0))
-      fmt.Print(name, "\n", stream, "\n\n")
+      fmt.Println(name)
+      for _, stream := master.Stream {
+         fmt.Println(stream)
+      }
+      fmt.Println()
    }
 }

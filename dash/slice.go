@@ -42,23 +42,6 @@ type Representation struct {
 
 type Representations []Representation
 
-func Audio(r Representation) bool {
-   return r.MimeType == "audio/mp4"
-}
-
-func Bandwidth(v int) func(Representation) int {
-   return func(r Representation) int {
-      if r.Bandwidth > v {
-         return r.Bandwidth - v
-      }
-      return v - r.Bandwidth
-   }
-}
-
-func Video(r Representation) bool {
-   return r.MimeType == "video/mp4"
-}
-
 type Filter func(Representation) bool
 
 type Reduce func(Representation, Representation) bool
@@ -83,8 +66,28 @@ func (r Representations) Reduce(callback Reduce) *Representation {
    return carry
 }
 
+func Audio(r Representation) bool {
+   return r.MimeType == "audio/mp4"
+}
+
+func Video(r Representation) bool {
+   return r.MimeType == "video/mp4"
+}
+
+func Bandwidth(v int) func(Representation) int {
+   return func(r Representation) int {
+      if r.Bandwidth > v {
+         return r.Bandwidth - v
+      }
+      return v - r.Bandwidth
+   }
+}
+
 func (r Representation) String() string {
-   var a, b []string
+   var (
+      a []string
+      b []string
+   )
    if r.Width >= 1 {
       a = append(a, "Width:" + strconv.Itoa(r.Width))
    }
@@ -104,9 +107,9 @@ func (r Representation) String() string {
    if r.Adaptation.Role != nil {
       b = append(b, "Role:" + r.Adaptation.Role.Value)
    }
-   s := "ID:" + r.ID
+   c := "ID:" + r.ID
    if a != nil {
-      s += "\n  " + strings.Join(a, " ")
+      c += "\n  " + strings.Join(a, " ")
    }
-   return s + "\n  " + strings.Join(b, " ")
+   return c + "\n  " + strings.Join(b, " ")
 }
