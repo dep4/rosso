@@ -40,37 +40,11 @@ type Representation struct {
 type Filter func(Representation) bool
 
 func (r Representations) Filter(callback Filter) Representations {
-   if callback == nil {
-      return r
-   }
    var carry Representations
    for _, item := range r {
       if callback(item) {
          carry = append(carry, item)
       }
-   }
-   return carry
-}
-
-type Map func(Representation) Representation
-
-func (r Representations) Map(callback Map) Representations {
-   if callback == nil {
-      return r
-   }
-   for i, item := range r {
-      r[i] = callback(item)
-   }
-   return r
-}
-
-func (r Representations) Reduce(callback Reduce) *Representation {
-   if callback == nil {
-      return nil
-   }
-   var carry *Representation
-   for _, item := range r {
-      carry = callback(carry, item)
    }
    return carry
 }
@@ -87,15 +61,23 @@ func Audio_Video(r Representation) bool {
    return Audio(r) || Video(r)
 }
 
-type Reduce func(*Representation, Representation) *Representation
+type Reduce func(Representation, Representation) bool
 
-func Bandwidth(v int) Map {
-   return func(r Representation) Representation {
-      if r.Bandwidth > v {
-         r.Bandwidth = r.Bandwidth - v
-      } else {
-         r.Bandwidth = v - r.Bandwidth
+func (r Representations) Reduce(callback Reduce) *Representation {
+   var carry *Representation
+   for i, item := range r {
+      if carry == nil || callback(*carry, item) {
+         carry = &r[i]
       }
-      return r
+   }
+   return carry
+}
+
+func Bandwidth(v int) func(Representation) int {
+   return func(r Representation) int {
+      if r.Bandwidth > v {
+         return r.Bandwidth - v
+      }
+      return v - r.Bandwidth
    }
 }
