@@ -21,7 +21,7 @@ func Test_Ext(t *testing.T) {
          t.Fatal(err)
       }
       fmt.Println(name)
-      for _, rep := range med.Representations() {
+      for _, rep := range med.Representation() {
          fmt.Printf("%q\n", rep.Ext())
       }
       fmt.Println()
