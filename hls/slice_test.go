@@ -75,16 +75,17 @@ func Test_Media(t *testing.T) {
       if err := file.Close(); err != nil {
          t.Fatal(err)
       }
-      media := master.Media.
-      Filter(val.media).
-      Reduce(func(carry, item Media) bool {
+      master.Media = master.Media.Filter(val.media)
+      target := master.Media.Index(func(carry, item Media) bool {
          return item.Name == "English"
       })
       fmt.Println(key)
-      if media != nil {
-         fmt.Println(media.Ext())
+      for i, media := range master.Media {
+         if i == target {
+            fmt.Print("!")
+         }
+         fmt.Println(media)
       }
-      fmt.Println(media)
       fmt.Println()
    }
 }
@@ -103,12 +104,18 @@ func Test_Stream(t *testing.T) {
       if err := file.Close(); err != nil {
          t.Fatal(err)
       }
-      stream := master.Stream.
-      Filter(val.stream).
-      Reduce(func(carry, item Stream) bool {
+      master.Stream = master.Stream.Filter(val.stream)
+      target := master.Stream.Index(func(carry, item Stream) bool {
          return distance(item) < distance(carry)
       })
-      fmt.Print(key, "\n", stream, "\n\n")
+      fmt.Println(key)
+      for i, stream := range master.Stream {
+         if i == target {
+            fmt.Print("!")
+         }
+         fmt.Println(stream)
+      }
+      fmt.Println()
    }
 }
 
@@ -126,8 +133,8 @@ func Test_Info(t *testing.T) {
          t.Fatal(err)
       }
       fmt.Println(key)
-      for _, stream := range master.Stream.Filter(val.stream) {
-         fmt.Println(stream)
+      for _, item := range master.Stream.Filter(val.stream) {
+         fmt.Println(item)
       }
       for _, item := range master.Media.Filter(val.media) {
          fmt.Println(item)

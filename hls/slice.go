@@ -14,6 +14,23 @@ func Bandwidth(v int) func(Stream) int {
    }
 }
 
+type Master struct {
+   Media Slice[Media]
+   Stream Slice[Stream]
+}
+
+type Media struct {
+   Characteristics string
+   Group_ID string
+   Name string
+   Raw_URI string
+   Type string
+}
+
+func (Media) Ext() string {
+   return ".m4a"
+}
+
 func (m Media) String() string {
    var b strings.Builder
    b.WriteString("Type:")
@@ -27,6 +44,52 @@ func (m Media) String() string {
       b.WriteString(m.Characteristics)
    }
    return b.String()
+}
+
+func (m Media) URI() string {
+   return m.Raw_URI
+}
+
+type Mixed interface {
+   Ext() string
+   URI() string
+}
+
+type Slice[T Mixed] []T
+
+func (s Slice[T]) Filter(callback func(T) bool) Slice[T] {
+   if callback == nil {
+      return s
+   }
+   var carry []T
+   for _, item := range s {
+      if callback(item) {
+         carry = append(carry, item)
+      }
+   }
+   return carry
+}
+
+func (s Slice[T]) Index(callback func(T, T) bool) int {
+   carry := -1
+   for i, item := range s {
+      if carry == -1 || callback(s[carry], item) {
+         carry = i
+      }
+   }
+   return carry
+}
+
+type Stream struct {
+   Audio string
+   Bandwidth int
+   Codecs string
+   Resolution string
+   Raw_URI string
+}
+
+func (Stream) Ext() string {
+   return ".m4v"
 }
 
 func (s Stream) String() string {
@@ -51,69 +114,6 @@ func (s Stream) String() string {
    return c
 }
 
-type Stream struct {
-   Audio string
-   Bandwidth int
-   Codecs string
-   Resolution string
-   Raw_URI string
-}
-
-type Media struct {
-   Raw_URI string
-   Type string
-   Name string
-   Group_ID string
-   Characteristics string
-}
-
-type Mixed interface {
-   Ext() string
-   URI() string
-}
-
-func (m Media) URI() string {
-   return m.Raw_URI
-}
-
 func (s Stream) URI() string {
    return s.Raw_URI
-}
-
-func (Media) Ext() string {
-   return ".m4a"
-}
-
-func (Stream) Ext() string {
-   return ".m4v"
-}
-
-type Slice[T Mixed] []T
-
-type Master struct {
-   Media Slice[Media]
-   Stream Slice[Stream]
-}
-
-func (s Slice[T]) Filter(callback func(T) bool) Slice[T] {
-   if callback == nil {
-      return s
-   }
-   var carry Slice[T]
-   for _, item := range s {
-      if callback(item) {
-         carry = append(carry, item)
-      }
-   }
-   return carry
-}
-
-func (s Slice[T]) Reduce(callback func(T, T) bool) Mixed {
-   var carry Mixed
-   for i, item := range s {
-      if carry == nil || callback(carry.(T), item) {
-         carry = s[i]
-      }
-   }
-   return carry
 }
