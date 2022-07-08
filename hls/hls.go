@@ -39,10 +39,6 @@ func (b Block) Decrypt_Key(text []byte) []byte {
    return b.Decrypt(text, b.key)
 }
 
-func (Media) Ext() string {
-   return ".m4a"
-}
-
 type Scanner struct {
    line scanner.Scanner
    scanner.Scanner
@@ -108,7 +104,7 @@ func (s Scanner) Master() (*Master, error) {
             case "URI":
                s.Scan()
                s.Scan()
-               med.URI, err = strconv.Unquote(s.TokenText())
+               med.Raw_URI, err = strconv.Unquote(s.TokenText())
             }
             if err != nil {
                return nil, err
@@ -141,7 +137,7 @@ func (s Scanner) Master() (*Master, error) {
             }
          }
          s.line.Scan()
-         str.URI = s.line.TokenText()
+         str.Raw_URI = s.line.TokenText()
          mas.Stream = append(mas.Stream, str)
       }
    }
@@ -206,8 +202,4 @@ type Segment struct {
 func (s Segment) IV() ([]byte, error) {
    up := strings.ToUpper(s.Raw_IV)
    return hex.DecodeString(strings.TrimPrefix(up, "0X"))
-}
-
-func (Stream) Ext() string {
-   return ".m4v"
 }

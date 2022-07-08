@@ -80,7 +80,12 @@ func Test_Media(t *testing.T) {
       Reduce(func(carry, item Media) bool {
          return item.Name == "English"
       })
-      fmt.Print(key, "\n", media, "\n\n")
+      fmt.Println(key)
+      if media != nil {
+         fmt.Println(media.Ext())
+      }
+      fmt.Println(media)
+      fmt.Println()
    }
 }
 

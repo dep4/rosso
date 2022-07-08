@@ -14,25 +14,6 @@ func Bandwidth(v int) func(Stream) int {
    }
 }
 
-type Item interface {
-   Media | Stream
-}
-
-type Filter[T Item] func(T) bool
-
-type Master struct {
-   Media Slice[Media]
-   Stream Slice[Stream]
-}
-
-type Media struct {
-   URI string
-   Type string
-   Name string
-   Group_ID string
-   Characteristics string
-}
-
 func (m Media) String() string {
    var b strings.Builder
    b.WriteString("Type:")
@@ -48,9 +29,68 @@ func (m Media) String() string {
    return b.String()
 }
 
+func (s Stream) String() string {
+   var (
+      a []string
+      b string
+   )
+   if s.Resolution != "" {
+      a = append(a, "Resolution:" + s.Resolution)
+   }
+   a = append(a, "Bandwidth:" + strconv.Itoa(s.Bandwidth))
+   if s.Codecs != "" {
+      a = append(a, "Codecs:" + s.Codecs)
+   }
+   if s.Audio != "" {
+      b = "Audio:" + s.Audio
+   }
+   c := strings.Join(a, " ")
+   if b != "" {
+      c += "\n  " + b
+   }
+   return c
+}
+
+type Stream struct {
+   Audio string
+   Bandwidth int
+   Codecs string
+   Resolution string
+   Raw_URI string
+}
+
+type Media struct {
+   Raw_URI string
+   Type string
+   Name string
+   Group_ID string
+   Characteristics string
+}
+
+type Item interface {
+   Ext() string
+   URI() string
+}
+
+type Filter[T Item] func(T) bool
+
 type Reduce[T Item] func(T, T) bool
 
-type Slice[T Item] []T
+func (m Media) URI() string {
+   return m.Raw_URI
+}
+
+func (s Stream) URI() string {
+   return s.Raw_URI
+}
+
+func (Media) Ext() string {
+   return ".m4a"
+}
+
+func (Stream) Ext() string {
+   return ".m4v"
+}
 
 func (s Slice[T]) Filter(callback Filter[T]) Slice[T] {
    if callback == nil {
@@ -75,32 +115,9 @@ func (s Slice[T]) Reduce(callback Reduce[T]) *T {
    return carry
 }
 
-type Stream struct {
-   Audio string
-   Bandwidth int
-   Codecs string
-   Resolution string
-   URI string
+type Master struct {
+   Media Slice[Media]
+   Stream Slice[Stream]
 }
 
-func (s Stream) String() string {
-   var (
-      a []string
-      b string
-   )
-   if s.Resolution != "" {
-      a = append(a, "Resolution:" + s.Resolution)
-   }
-   a = append(a, "Bandwidth:" + strconv.Itoa(s.Bandwidth))
-   if s.Codecs != "" {
-      a = append(a, "Codecs:" + s.Codecs)
-   }
-   if s.Audio != "" {
-      b = "Audio:" + s.Audio
-   }
-   c := strings.Join(a, " ")
-   if b != "" {
-      c += "\n  " + b
-   }
-   return c
-}
+type Slice[T Item] []T
