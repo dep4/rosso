@@ -5,18 +5,6 @@ import (
    "strings"
 )
 
-type Adaptation struct {
-   Codecs string `xml:"codecs,attr"`
-   ContentProtection *ContentProtection
-   Lang string `xml:"lang,attr"`
-   MimeType string `xml:"mimeType,attr"`
-   Representation Representations
-   Role *struct {
-      Value string `xml:"value,attr"`
-   }
-   SegmentTemplate *SegmentTemplate
-}
-
 type ContentProtection struct {
    Default_KID string `xml:"default_KID,attr"`
 }
