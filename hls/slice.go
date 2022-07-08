@@ -67,14 +67,10 @@ type Media struct {
    Characteristics string
 }
 
-type Item interface {
+type Mixed interface {
    Ext() string
    URI() string
 }
-
-type Filter[T Item] func(T) bool
-
-type Reduce[T Item] func(T, T) bool
 
 func (m Media) URI() string {
    return m.Raw_URI
@@ -92,7 +88,14 @@ func (Stream) Ext() string {
    return ".m4v"
 }
 
-func (s Slice[T]) Filter(callback Filter[T]) Slice[T] {
+type Slice[T Mixed] []T
+
+type Master struct {
+   Media Slice[Media]
+   Stream Slice[Stream]
+}
+
+func (s Slice[T]) Filter(callback func(T) bool) Slice[T] {
    if callback == nil {
       return s
    }
@@ -105,19 +108,12 @@ func (s Slice[T]) Filter(callback Filter[T]) Slice[T] {
    return carry
 }
 
-func (s Slice[T]) Reduce(callback Reduce[T]) *T {
-   var carry *T
+func (s Slice[T]) Reduce(callback func(T, T) bool) Mixed {
+   var carry Mixed
    for i, item := range s {
-      if carry == nil || callback(*carry, item) {
-         carry = &s[i]
+      if carry == nil || callback(carry.(T), item) {
+         carry = s[i]
       }
    }
    return carry
 }
-
-type Master struct {
-   Media Slice[Media]
-   Stream Slice[Stream]
-}
-
-type Slice[T Item] []T

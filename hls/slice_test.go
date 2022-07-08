@@ -58,8 +58,8 @@ var tests = map[string]filters{
 }
 
 type filters struct {
-   media Filter[Media]
-   stream Filter[Stream]
+   media func(Media) bool
+   stream func(Stream) bool
 }
 
 func Test_Media(t *testing.T) {
