@@ -13,15 +13,15 @@ func Test_Ext(t *testing.T) {
       if err != nil {
          t.Fatal(err)
       }
-      var med Media
-      if err := xml.NewDecoder(file).Decode(&med); err != nil {
+      var pre Presentation
+      if err := xml.NewDecoder(file).Decode(&pre); err != nil {
          t.Fatal(err)
       }
       if err := file.Close(); err != nil {
          t.Fatal(err)
       }
       fmt.Println(name)
-      for _, rep := range med.Representation() {
+      for _, rep := range pre.Representation() {
          fmt.Printf("%q\n", rep.Ext())
       }
       fmt.Println()

@@ -65,9 +65,7 @@ func Bandwidth(v int) func(Representation) int {
    }
 }
 
-type Filter func(Representation) bool
-
-type Representations []Representation
+type Slice[T Representation] []T
 
 type Adaptation struct {
    Codecs string `xml:"codecs,attr"`
@@ -78,12 +76,12 @@ type Adaptation struct {
       Value string `xml:"value,attr"`
    }
    SegmentTemplate *SegmentTemplate
-   Representation Representations
+   Representation []Representation
 }
 
-func (r Representations) Filter(callback Filter) Representations {
-   var carry Representations
-   for _, item := range r {
+func (s Slice[T]) Filter(callback func(T) bool) Slice[T] {
+   var carry []T
+   for _, item := range s {
       if callback(item) {
          carry = append(carry, item)
       }
@@ -91,23 +89,21 @@ func (r Representations) Filter(callback Filter) Representations {
    return carry
 }
 
-type Index func(a, b Representation) bool
-
-func (r Representations) Index(callback Index) int {
+func (s Slice[T]) Index(callback func(T, T) bool) int {
    carry := -1
-   for i, item := range r {
-      if carry == -1 || callback(r[carry], item) {
+   for i, item := range s {
+      if carry == -1 || callback(s[carry], item) {
          carry = i
       }
    }
    return carry
 }
 
-func (m Media) Representation() Representations {
-   var reps Representations
-   for i, ada := range m.Period.AdaptationSet {
+func (p Presentation) Representation() Slice[Representation] {
+   var reps []Representation
+   for i, ada := range p.Period.AdaptationSet {
       for _, rep := range ada.Representation {
-         rep.Adaptation = &m.Period.AdaptationSet[i]
+         rep.Adaptation = &p.Period.AdaptationSet[i]
          if rep.Codecs == "" {
             rep.Codecs = ada.Codecs
          }

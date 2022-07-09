@@ -22,14 +22,14 @@ func Test_Audio(t *testing.T) {
       if err != nil {
          t.Fatal(err)
       }
-      var med Media
-      if err := xml.NewDecoder(file).Decode(&med); err != nil {
+      var pre Presentation
+      if err := xml.NewDecoder(file).Decode(&pre); err != nil {
          t.Fatal(err)
       }
       if err := file.Close(); err != nil {
          t.Fatal(err)
       }
-      reps := med.Representation().Filter(Audio)
+      reps := pre.Representation().Filter(Audio)
       target := reps.Index(func(carry, item Representation) bool {
          if !strings.HasPrefix(item.Adaptation.Lang, "en") {
             return false
@@ -60,14 +60,14 @@ func Test_Video(t *testing.T) {
       if err != nil {
          t.Fatal(err)
       }
-      var med Media
-      if err := xml.NewDecoder(file).Decode(&med); err != nil {
+      var pre Presentation
+      if err := xml.NewDecoder(file).Decode(&pre); err != nil {
          t.Fatal(err)
       }
       if err := file.Close(); err != nil {
          t.Fatal(err)
       }
-      reps := med.Representation().Filter(Video)
+      reps := pre.Representation().Filter(Video)
       target := reps.Index(func(carry, item Representation) bool {
          return distance(item) < distance(carry)
       })
@@ -88,15 +88,15 @@ func Test_Info(t *testing.T) {
       if err != nil {
          t.Fatal(err)
       }
-      var med Media
-      if err := xml.NewDecoder(file).Decode(&med); err != nil {
+      var pre Presentation
+      if err := xml.NewDecoder(file).Decode(&pre); err != nil {
          t.Fatal(err)
       }
       if err := file.Close(); err != nil {
          t.Fatal(err)
       }
       fmt.Println(name)
-      reps := med.Representation().Filter(func(r Representation) bool {
+      reps := pre.Representation().Filter(func(r Representation) bool {
          return Audio(r) || Video(r)
       })
       for _, rep := range reps {

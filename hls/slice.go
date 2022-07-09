@@ -14,11 +14,6 @@ func Bandwidth(v int) func(Stream) int {
    }
 }
 
-type Master struct {
-   Media Slice[Media]
-   Stream Slice[Stream]
-}
-
 type Media struct {
    Characteristics string
    Group_ID string
@@ -54,8 +49,6 @@ type Mixed interface {
    Ext() string
    URI() string
 }
-
-type Slice[T Mixed] []T
 
 type Stream struct {
    Audio string
@@ -95,9 +88,14 @@ func (s Stream) URI() string {
    return s.Raw_URI
 }
 
-type Filter[T Mixed] func(T) bool
+type Slice[T Mixed] []T
 
-func (s Slice[T]) Filter(callback Filter[T]) Slice[T] {
+type Master struct {
+   Media Slice[Media]
+   Stream Slice[Stream]
+}
+
+func (s Slice[T]) Filter(callback func(T) bool) Slice[T] {
    if callback == nil {
       return s
    }
@@ -110,9 +108,7 @@ func (s Slice[T]) Filter(callback Filter[T]) Slice[T] {
    return carry
 }
 
-type Index[T Mixed] func(T, T) bool
-
-func (s Slice[T]) Index(callback Index[T]) int {
+func (s Slice[T]) Index(callback func(T, T) bool) int {
    carry := -1
    for i, item := range s {
       if carry == -1 || callback(s[carry], item) {

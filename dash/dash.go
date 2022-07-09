@@ -9,7 +9,7 @@ type ContentProtection struct {
    Default_KID string `xml:"default_KID,attr"`
 }
 
-type Media struct {
+type Presentation struct {
    Period struct {
       AdaptationSet []Adaptation
    }
