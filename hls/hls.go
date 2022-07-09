@@ -82,7 +82,7 @@ func (s Scanner) Master() (*Master, error) {
       s.Init(strings.NewReader(line))
       switch {
       case strings.HasPrefix(line, "#EXT-X-MEDIA:"):
-         var med Media
+         var med Medium
          for s.Scan() != scanner.EOF {
             switch s.TokenText() {
             case "CHARACTERISTICS":
@@ -138,7 +138,7 @@ func (s Scanner) Master() (*Master, error) {
          }
          s.line.Scan()
          str.Raw_URI = s.line.TokenText()
-         mas.Stream = append(mas.Stream, str)
+         mas.Streams = append(mas.Streams, str)
       }
    }
    return &mas, nil

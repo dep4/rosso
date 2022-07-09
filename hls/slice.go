@@ -5,28 +5,11 @@ import (
    "strings"
 )
 
-func Bandwidth(v int) func(Stream) int {
-   return func(s Stream) int {
-      if s.Bandwidth > v {
-         return s.Bandwidth - v
-      }
-      return v - s.Bandwidth
-   }
-}
-
-type Media struct {
-   Characteristics string
-   Group_ID string
-   Name string
-   Raw_URI string
-   Type string
-}
-
-func (Media) Ext() string {
+func (Medium) Ext() string {
    return ".m4a"
 }
 
-func (m Media) String() string {
+func (m Medium) String() string {
    var b strings.Builder
    b.WriteString("Type:")
    b.WriteString(m.Type)
@@ -41,21 +24,13 @@ func (m Media) String() string {
    return b.String()
 }
 
-func (m Media) URI() string {
+func (m Medium) URI() string {
    return m.Raw_URI
 }
 
 type Mixed interface {
    Ext() string
    URI() string
-}
-
-type Stream struct {
-   Audio string
-   Bandwidth int
-   Codecs string
-   Resolution string
-   Raw_URI string
 }
 
 func (Stream) Ext() string {
@@ -88,19 +63,34 @@ func (s Stream) URI() string {
    return s.Raw_URI
 }
 
-type Slice[T Mixed] []T
-
-type Master struct {
-   Media Slice[Media]
-   Stream Slice[Stream]
+type Medium struct {
+   Characteristics string
+   Group_ID string
+   Name string
+   Raw_URI string
+   Type string
 }
 
-func (s Slice[T]) Filter(callback func(T) bool) Slice[T] {
-   if callback == nil {
-      return s
-   }
+type Stream struct {
+   Audio string
+   Bandwidth int
+   Codecs string
+   Resolution string
+   Raw_URI string
+}
+
+type Master struct {
+   Media Media
+   Streams Streams
+}
+
+type Media []Medium
+
+type Streams []Stream
+
+func filter[T Mixed](slice []T, callback func(T) bool) []T {
    var carry []T
-   for _, item := range s {
+   for _, item := range slice {
       if callback(item) {
          carry = append(carry, item)
       }
@@ -108,12 +98,40 @@ func (s Slice[T]) Filter(callback func(T) bool) Slice[T] {
    return carry
 }
 
-func (s Slice[T]) Index(callback func(T, T) bool) int {
+func index[T Mixed](slice []T, callback func(T, T) bool) int {
    carry := -1
-   for i, item := range s {
-      if carry == -1 || callback(s[carry], item) {
+   for i, item := range slice {
+      if carry == -1 || callback(slice[carry], item) {
          carry = i
       }
    }
    return carry
+}
+
+func (m Media) Filter(f func(Medium) bool) Media {
+   return filter(m, f)
+}
+
+func (s Streams) Filter(f func(Stream) bool) Streams {
+   return filter(s, f)
+}
+
+func (m Media) Index(f func(a, b Medium) bool) int {
+   return index(m, f)
+}
+
+func (s Streams) Index(f func(a, b Stream) bool) int {
+   return index(s, f)
+}
+
+func (s Streams) Bandwidth(v int) int {
+   distance := func(a Stream) int {
+      if a.Bandwidth > v {
+         return a.Bandwidth - v
+      }
+      return v - a.Bandwidth
+   }
+   return s.Index(func(carry, item Stream) bool {
+      return distance(item) < distance(carry)
+   })
 }

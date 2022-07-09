@@ -29,7 +29,7 @@ func Test_Audio(t *testing.T) {
       if err := file.Close(); err != nil {
          t.Fatal(err)
       }
-      reps := pre.Representation().Filter(Audio)
+      reps := pre.Representation().Audio()
       target := reps.Index(func(carry, item Representation) bool {
          if !strings.HasPrefix(item.Adaptation.Lang, "en") {
             return false
@@ -54,7 +54,6 @@ func Test_Audio(t *testing.T) {
 }
 
 func Test_Video(t *testing.T) {
-   distance := Bandwidth(0)
    for _, name := range tests {
       file, err := os.Open(name)
       if err != nil {
@@ -67,13 +66,10 @@ func Test_Video(t *testing.T) {
       if err := file.Close(); err != nil {
          t.Fatal(err)
       }
-      reps := pre.Representation().Filter(Video)
-      target := reps.Index(func(carry, item Representation) bool {
-         return distance(item) < distance(carry)
-      })
+      reps := pre.Representation().Video()
       fmt.Println(name)
       for i, rep := range reps {
-         if i == target {
+         if i == reps.Bandwidth(0) {
             fmt.Print("!")
          }
          fmt.Println(rep)
@@ -96,10 +92,11 @@ func Test_Info(t *testing.T) {
          t.Fatal(err)
       }
       fmt.Println(name)
-      reps := pre.Representation().Filter(func(r Representation) bool {
-         return Audio(r) || Video(r)
-      })
-      for _, rep := range reps {
+      reps := pre.Representation()
+      for _, rep := range reps.Video() {
+         fmt.Println(rep)
+      }
+      for _, rep := range reps.Audio() {
          fmt.Println(rep)
       }
       fmt.Println()

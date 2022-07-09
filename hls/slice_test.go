@@ -7,7 +7,7 @@ import (
    "testing"
 )
 
-func apple_media(m Media) bool {
+func apple_media(m Medium) bool {
    if !strings.Contains(m.Group_ID, "-ak-") {
       return false
    }
@@ -33,7 +33,7 @@ func apple_stream(s Stream) bool {
    return true
 }
 
-func cbc_media(m Media) bool {
+func cbc_media(m Medium) bool {
    return m.Type == "AUDIO"
 }
 
@@ -41,7 +41,7 @@ func cbc_stream(s Stream) bool {
    return strings.Contains(s.Codecs, "avc1.")
 }
 
-func nbc_media(m Media) bool {
+func nbc_media(m Medium) bool {
    return m.Type == "AUDIO"
 }
 
@@ -58,7 +58,7 @@ var tests = map[string]filters{
 }
 
 type filters struct {
-   media func(Media) bool
+   medium func(Medium) bool
    stream func(Stream) bool
 }
 
@@ -75,23 +75,22 @@ func Test_Media(t *testing.T) {
       if err := file.Close(); err != nil {
          t.Fatal(err)
       }
-      master.Media = master.Media.Filter(val.media)
-      target := master.Media.Index(func(carry, item Media) bool {
+      master.Media = master.Media.Filter(val.medium)
+      target := master.Media.Index(func(carry, item Medium) bool {
          return item.Name == "English"
       })
       fmt.Println(key)
-      for i, media := range master.Media {
+      for i, medium := range master.Media {
          if i == target {
             fmt.Print("!")
          }
-         fmt.Println(media)
+         fmt.Println(medium)
       }
       fmt.Println()
    }
 }
 
 func Test_Stream(t *testing.T) {
-   distance := Bandwidth(0)
    for key, val := range tests {
       file, err := os.Open(key)
       if err != nil {
@@ -104,16 +103,14 @@ func Test_Stream(t *testing.T) {
       if err := file.Close(); err != nil {
          t.Fatal(err)
       }
-      master.Stream = master.Stream.Filter(val.stream)
-      target := master.Stream.Index(func(carry, item Stream) bool {
-         return distance(item) < distance(carry)
-      })
+      items := master.Streams.Filter(val.stream)
+      index := items.Bandwidth(0)
       fmt.Println(key)
-      for i, stream := range master.Stream {
-         if i == target {
+      for i, item := range items {
+         if i == index {
             fmt.Print("!")
          }
-         fmt.Println(stream)
+         fmt.Println(item)
       }
       fmt.Println()
    }
@@ -133,10 +130,10 @@ func Test_Info(t *testing.T) {
          t.Fatal(err)
       }
       fmt.Println(key)
-      for _, item := range master.Stream.Filter(val.stream) {
+      for _, item := range master.Streams.Filter(val.stream) {
          fmt.Println(item)
       }
-      for _, item := range master.Media.Filter(val.media) {
+      for _, item := range master.Media.Filter(val.medium) {
          fmt.Println(item)
       }
       fmt.Println()

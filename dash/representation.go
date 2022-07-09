@@ -2,26 +2,6 @@ package dash
 
 type Representations []Representation
 
-func (r Representations) Filter(f func(Representation) bool) Representations {
-   var carry []Representation
-   for _, item := range r {
-      if f(item) {
-         carry = append(carry, item)
-      }
-   }
-   return carry
-}
-
-func (r Representations) Index(f func(a, b Representation) bool) int {
-   carry := -1
-   for i, item := range r {
-      if carry == -1 || f(r[carry], item) {
-         carry = i
-      }
-   }
-   return carry
-}
-
 func (p Presentation) Representation() Representations {
    var reps []Representation
    for i, ada := range p.Period.AdaptationSet {
@@ -45,19 +25,50 @@ func (p Presentation) Representation() Representations {
    return reps
 }
 
-func Audio(r Representation) bool {
-   return r.MimeType == "audio/mp4"
-}
+type Filter func(Representation) bool
 
-func Video(r Representation) bool {
-   return r.MimeType == "video/mp4"
-}
-
-func Bandwidth(v int) func(Representation) int {
-   return func(r Representation) int {
-      if r.Bandwidth > v {
-         return r.Bandwidth - v
+func (r Representations) Filter(callback Filter) Representations {
+   var carry []Representation
+   for _, item := range r {
+      if callback(item) {
+         carry = append(carry, item)
       }
-      return v - r.Bandwidth
    }
+   return carry
+}
+
+func (r Representations) Video() Representations {
+   return r.Filter(func(a Representation) bool {
+      return a.MimeType == "video/mp4"
+   })
+}
+
+func (r Representations) Audio() Representations {
+   return r.Filter(func(a Representation) bool {
+      return a.MimeType == "audio/mp4"
+   })
+}
+
+type Index func(carry, item Representation) bool
+
+func (r Representations) Index(callback Index) int {
+   carry := -1
+   for i, item := range r {
+      if carry == -1 || callback(r[carry], item) {
+         carry = i
+      }
+   }
+   return carry
+}
+
+func (r Representations) Bandwidth(v int) int {
+   distance := func(a Representation) int {
+      if a.Bandwidth > v {
+         return a.Bandwidth - v
+      }
+      return v - a.Bandwidth
+   }
+   return r.Index(func(carry, item Representation) bool {
+      return distance(item) < distance(carry)
+   })
 }
