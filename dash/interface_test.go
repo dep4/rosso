@@ -12,19 +12,19 @@ type test_filter struct {
    bandwidth int
 }
 
-func (test_filter) Audio(r Representations) Representations {
+func (test_filter) Audio(r []Representation) []Representation {
    return Audio(r)
 }
 
-func (test_filter) Video(r Representations) Representations {
+func (test_filter) Video(r []Representation) []Representation {
    return Video(r)
 }
 
-func (t test_filter) Video_Index(r Representations) int {
+func (t test_filter) Video_Index(r []Representation) int {
    return Bandwidth(r, t.bandwidth)
 }
 
-func (test_filter) Audio_Index(r Representations) int {
+func (test_filter) Audio_Index(r []Representation) int {
    carry := -1
    for i, item := range r {
       if !strings.Contains(item.Codecs, "mp4a.") {

@@ -1,7 +1,7 @@
 package dash
 
-func Audio(r Representations) Representations {
-   var carry Representations
+func Audio(r []Representation) []Representation {
+   var carry []Representation
    for _, item := range r {
       if item.MimeType == "audio/mp4" {
          carry = append(carry, item)
@@ -10,7 +10,7 @@ func Audio(r Representations) Representations {
    return carry
 }
 
-func Bandwidth(r Representations, b int) int {
+func Bandwidth(r []Representation, b int) int {
    distance := func(r Representation) int {
       if r.Bandwidth > b {
          return r.Bandwidth - b
@@ -26,8 +26,8 @@ func Bandwidth(r Representations, b int) int {
    return carry
 }
 
-func Video(r Representations) Representations {
-   var carry Representations
+func Video(r []Representation) []Representation {
+   var carry []Representation
    for _, item := range r {
       if item.MimeType == "video/mp4" {
          carry = append(carry, item)
@@ -37,8 +37,8 @@ func Video(r Representations) Representations {
 }
 
 type Filter interface {
-   Audio(Representations) Representations
-   Audio_Index(Representations) int
-   Video(Representations) Representations
-   Video_Index(Representations) int
+   Audio([]Representation) []Representation
+   Audio_Index([]Representation) int
+   Video([]Representation) []Representation
+   Video_Index([]Representation) int
 }
