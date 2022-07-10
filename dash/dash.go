@@ -27,7 +27,7 @@ type Presentation struct {
    }
 }
 
-func (p Presentation) Representation() Representations {
+func (p Presentation) Representation() []Representation {
    var reps []Representation
    for i, ada := range p.Period.AdaptationSet {
       for _, rep := range ada.Representation {
@@ -144,8 +144,6 @@ func (r Representation) String() string {
 func (r Representation) replace_ID(s string) string {
    return strings.Replace(s, "$RepresentationID$", r.ID, 1)
 }
-
-type Representations []Representation
 
 type SegmentTemplate struct {
    Initialization string `xml:"initialization,attr"`
