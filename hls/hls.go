@@ -11,6 +11,68 @@ import (
    "unicode"
 )
 
+func (s Stream) String() string {
+   var (
+      a []string
+      b string
+   )
+   if s.Resolution != "" {
+      a = append(a, "Resolution:" + s.Resolution)
+   }
+   a = append(a, "Bandwidth:" + strconv.Itoa(s.Bandwidth))
+   if s.Codecs != "" {
+      a = append(a, "Codecs:" + s.Codecs)
+   }
+   if s.Audio != "" {
+      b = "Audio:" + s.Audio
+   }
+   c := strings.Join(a, " ")
+   if b != "" {
+      c += "\n  " + b
+   }
+   return c
+}
+
+type Medium struct {
+   Characteristics string
+   Group_ID string
+   Name string
+   Raw_URI string
+   Type string
+}
+
+type Stream struct {
+   Audio string
+   Bandwidth int
+   Codecs string
+   Resolution string
+   Raw_URI string
+}
+
+type Master struct {
+   Media Media
+   Streams Streams
+}
+
+type Media []Medium
+
+type Streams []Stream
+
+func (m Medium) String() string {
+   var b strings.Builder
+   b.WriteString("Type:")
+   b.WriteString(m.Type)
+   b.WriteString(" Name:")
+   b.WriteString(m.Name)
+   b.WriteString("\n  Group ID:")
+   b.WriteString(m.Group_ID)
+   if m.Characteristics != "" {
+      b.WriteString("\n  Characteristics:")
+      b.WriteString(m.Characteristics)
+   }
+   return b.String()
+}
+
 type Block struct {
    cipher.Block
    key []byte
