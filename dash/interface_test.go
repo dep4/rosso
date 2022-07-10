@@ -8,6 +8,39 @@ import (
    "testing"
 )
 
+type test_filter struct {
+   bandwidth int
+}
+
+func (test_filter) Audio(r Representations) Representations {
+   return Audio(r)
+}
+
+func (test_filter) Video(r Representations) Representations {
+   return Video(r)
+}
+
+func (t test_filter) Video_Index(r Representations) int {
+   return Bandwidth(r, t.bandwidth)
+}
+
+func (test_filter) Audio_Index(r Representations) int {
+   carry := -1
+   for i, item := range r {
+      if !strings.Contains(item.Codecs, "mp4a.") {
+         continue
+      }
+      if !strings.HasPrefix(item.Adaptation.Lang, "en") {
+         continue
+      }
+      if item.Role() == "description" {
+         continue
+      }
+      carry = i
+   }
+   return carry
+}
+
 var tests = []string{
    "mpd/amc-clear.mpd",
    "mpd/amc-protected.mpd",
@@ -16,69 +49,8 @@ var tests = []string{
    "mpd/roku.mpd",
 }
 
-func Test_Audio(t *testing.T) {
-   for _, name := range tests {
-      file, err := os.Open(name)
-      if err != nil {
-         t.Fatal(err)
-      }
-      var pre Presentation
-      if err := xml.NewDecoder(file).Decode(&pre); err != nil {
-         t.Fatal(err)
-      }
-      if err := file.Close(); err != nil {
-         t.Fatal(err)
-      }
-      reps := pre.Representation().Audio()
-      target := reps.Index(func(carry, item Representation) bool {
-         if !strings.HasPrefix(item.Adaptation.Lang, "en") {
-            return false
-         }
-         if !strings.Contains(item.Codecs, "mp4a.") {
-            return false
-         }
-         if item.Role() == "description" {
-            return false
-         }
-         return true
-      })
-      fmt.Println(name)
-      for i, rep := range reps {
-         if i == target {
-            fmt.Print("!")
-         }
-         fmt.Println(rep)
-      }
-      fmt.Println()
-   }
-}
-
-func Test_Video(t *testing.T) {
-   for _, name := range tests {
-      file, err := os.Open(name)
-      if err != nil {
-         t.Fatal(err)
-      }
-      var pre Presentation
-      if err := xml.NewDecoder(file).Decode(&pre); err != nil {
-         t.Fatal(err)
-      }
-      if err := file.Close(); err != nil {
-         t.Fatal(err)
-      }
-      reps := pre.Representation().Video()
-      fmt.Println(name)
-      for i, rep := range reps {
-         if i == reps.Bandwidth(0) {
-            fmt.Print("!")
-         }
-         fmt.Println(rep)
-      }
-      fmt.Println()
-   }
-}
-
 func Test_Info(t *testing.T) {
+   test := test_filter{988020}
    for _, name := range tests {
       file, err := os.Open(name)
       if err != nil {
@@ -93,11 +65,19 @@ func Test_Info(t *testing.T) {
       }
       fmt.Println(name)
       reps := pre.Representation()
-      for _, rep := range reps.Video() {
-         fmt.Println(rep)
+      items := test.Audio(reps)
+      for i, item := range items {
+         if i == test.Audio_Index(items) {
+            fmt.Print("!")
+         }
+         fmt.Println(item)
       }
-      for _, rep := range reps.Audio() {
-         fmt.Println(rep)
+      items = test.Video(reps)
+      for i, item := range items {
+         if i == test.Video_Index(items) {
+            fmt.Print("!")
+         }
+         fmt.Println(item)
       }
       fmt.Println()
    }

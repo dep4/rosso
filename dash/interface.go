@@ -1,52 +1,44 @@
 package dash
 
-type Filter interface {
-   Audio(Representations) Representations
-   Audio_Index(Representations) int
-   Video(Representations) Representations
-   Video_Index(Representations) int
-}
-
-func (r Representations) Filter(f func(Representation) bool) Representations {
-   var carry []Representation
+func Audio(r Representations) Representations {
+   var carry Representations
    for _, item := range r {
-      if f(item) {
+      if item.MimeType == "audio/mp4" {
          carry = append(carry, item)
       }
    }
    return carry
 }
 
-func (r Representations) Video() Representations {
-   return r.Filter(func(a Representation) bool {
-      return a.MimeType == "video/mp4"
-   })
-}
-
-func (r Representations) Audio() Representations {
-   return r.Filter(func(a Representation) bool {
-      return a.MimeType == "audio/mp4"
-   })
-}
-
-func (r Representations) Index(f func(a, b Representation) bool) int {
+func Bandwidth(r Representations, b int) int {
+   distance := func(r Representation) int {
+      if r.Bandwidth > b {
+         return r.Bandwidth - b
+      }
+      return b - r.Bandwidth
+   }
    carry := -1
    for i, item := range r {
-      if carry == -1 || f(r[carry], item) {
+      if carry == -1 || distance(item) < distance(r[carry]) {
          carry = i
       }
    }
    return carry
 }
 
-func (r Representations) Bandwidth(v int) int {
-   distance := func(a Representation) int {
-      if a.Bandwidth > v {
-         return a.Bandwidth - v
+func Video(r Representations) Representations {
+   var carry Representations
+   for _, item := range r {
+      if item.MimeType == "video/mp4" {
+         carry = append(carry, item)
       }
-      return v - a.Bandwidth
    }
-   return r.Index(func(carry, item Representation) bool {
-      return distance(item) < distance(carry)
-   })
+   return carry
+}
+
+type Filter interface {
+   Audio(Representations) Representations
+   Audio_Index(Representations) int
+   Video(Representations) Representations
+   Video_Index(Representations) int
 }

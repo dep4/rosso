@@ -5,7 +5,27 @@ import (
    "strings"
 )
 
-type Representations []Representation
+type Adaptation struct {
+   Codecs string `xml:"codecs,attr"`
+   ContentProtection *ContentProtection
+   Lang string `xml:"lang,attr"`
+   MimeType string `xml:"mimeType,attr"`
+   Role *struct {
+      Value string `xml:"value,attr"`
+   }
+   SegmentTemplate *SegmentTemplate
+   Representation []Representation
+}
+
+type ContentProtection struct {
+   Default_KID string `xml:"default_KID,attr"`
+}
+
+type Presentation struct {
+   Period struct {
+      AdaptationSet []Adaptation
+   }
+}
 
 func (p Presentation) Representation() Representations {
    var reps []Representation
@@ -40,59 +60,6 @@ type Representation struct {
    MimeType string `xml:"mimeType,attr"`
    SegmentTemplate *SegmentTemplate
    Width int `xml:"width,attr"`
-}
-
-func (r Representation) String() string {
-   var (
-      a []string
-      b []string
-   )
-   if r.Width >= 1 {
-      a = append(a, "Width:" + strconv.Itoa(r.Width))
-   }
-   if r.Height >= 1 {
-      a = append(a, "Height:" + strconv.Itoa(r.Height))
-   }
-   if r.Bandwidth >= 1 {
-      a = append(a, "Bandwidth:" + strconv.Itoa(r.Bandwidth))
-   }
-   b = append(b, "MimeType:" + r.MimeType)
-   if r.Codecs != "" {
-      b = append(b, "Codecs:" + r.Codecs)
-   }
-   if r.Adaptation.Lang != "" {
-      b = append(b, "Lang:" + r.Adaptation.Lang)
-   }
-   if r.Adaptation.Role != nil {
-      b = append(b, "Role:" + r.Adaptation.Role.Value)
-   }
-   c := "ID:" + r.ID
-   if a != nil {
-      c += "\n  " + strings.Join(a, " ")
-   }
-   return c + "\n  " + strings.Join(b, " ")
-}
-
-type Adaptation struct {
-   Codecs string `xml:"codecs,attr"`
-   ContentProtection *ContentProtection
-   Lang string `xml:"lang,attr"`
-   MimeType string `xml:"mimeType,attr"`
-   Role *struct {
-      Value string `xml:"value,attr"`
-   }
-   SegmentTemplate *SegmentTemplate
-   Representation []Representation
-}
-
-type ContentProtection struct {
-   Default_KID string `xml:"default_KID,attr"`
-}
-
-type Presentation struct {
-   Period struct {
-      AdaptationSet []Adaptation
-   }
 }
 
 func (r Representation) Ext() string {
@@ -143,9 +110,42 @@ func (r Representation) Role() string {
    return r.Adaptation.Role.Value
 }
 
+func (r Representation) String() string {
+   var (
+      a []string
+      b []string
+   )
+   if r.Width >= 1 {
+      a = append(a, "Width:" + strconv.Itoa(r.Width))
+   }
+   if r.Height >= 1 {
+      a = append(a, "Height:" + strconv.Itoa(r.Height))
+   }
+   if r.Bandwidth >= 1 {
+      a = append(a, "Bandwidth:" + strconv.Itoa(r.Bandwidth))
+   }
+   b = append(b, "MimeType:" + r.MimeType)
+   if r.Codecs != "" {
+      b = append(b, "Codecs:" + r.Codecs)
+   }
+   if r.Adaptation.Lang != "" {
+      b = append(b, "Lang:" + r.Adaptation.Lang)
+   }
+   if r.Adaptation.Role != nil {
+      b = append(b, "Role:" + r.Adaptation.Role.Value)
+   }
+   c := "ID:" + r.ID
+   if a != nil {
+      c += "\n  " + strings.Join(a, " ")
+   }
+   return c + "\n  " + strings.Join(b, " ")
+}
+
 func (r Representation) replace_ID(s string) string {
    return strings.Replace(s, "$RepresentationID$", r.ID, 1)
 }
+
+type Representations []Representation
 
 type SegmentTemplate struct {
    Initialization string `xml:"initialization,attr"`
