@@ -17,12 +17,12 @@ import (
 func Transport(spec *tls.ClientHelloSpec) *http.Transport {
    var tr http.Transport
    //lint:ignore SA1019 godocs.io/context
-   tr.DialTLS = func(network, addr string) (net.Conn, error) {
-      conn, err := net.Dial(network, addr)
+   tr.DialTLS = func(host, address string) (net.Conn, error) {
+      conn, err := net.Dial(host, address)
       if err != nil {
          return nil, err
       }
-      host, _, err := net.SplitHostPort(addr)
+      host, _, err := net.SplitHostPort(address)
       if err != nil {
          return nil, err
       }

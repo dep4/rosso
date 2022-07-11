@@ -55,8 +55,8 @@ func (c Client) Do(req *http.Request) (*http.Response, error) {
    return res, nil
 }
 
-func (c Client) Get(addr string) (*http.Response, error) {
-   req, err := http.NewRequest("GET", addr, nil)
+func (c Client) Get(address string) (*http.Response, error) {
+   req, err := http.NewRequest("GET", address, nil)
    if err != nil {
       return nil, err
    }

@@ -28,9 +28,9 @@ func main() {
          fmt.Println(err)
       }
    })
-   addr := ":8080"
-   fmt.Println(addr)
-   err := http.ListenAndServe(addr, nil)
+   port := ":8080"
+   fmt.Println(port)
+   err := http.ListenAndServe(port, nil)
    if err != nil {
       panic(err)
    }
