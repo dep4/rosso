@@ -2,7 +2,6 @@ package main
 
 import (
    "bytes"
-   "flag"
    "fmt"
    "github.com/89z/rosso/http"
    "github.com/89z/rosso/strconv"
@@ -12,6 +11,13 @@ import (
    "os"
    "text/template"
 )
+
+type request_template struct {
+   *http.Request
+   Body_IO string
+   Query url.Values
+   Var_Body string
+}
 
 func Write_Request(req *http.Request, w io.Writer) error {
    var req_temp request_template
@@ -82,65 +88,6 @@ func main() {
 
 var body = strings.NewReader({{ .Var_Body }})
 `
-
-type request_template struct {
-   *http.Request
-   Body_IO string
-   Query url.Values
-   Var_Body string
-}
-
-func main() {
-   // f
-   var name string
-   flag.StringVar(&name, "f", "", "input file")
-   // g
-   var golang bool
-   flag.BoolVar(&golang, "g", false, "request as Go code")
-   // o
-   var output string
-   flag.StringVar(&output, "o", "", "output file")
-   // s
-   var https bool
-   flag.BoolVar(&https, "s", false, "HTTPS")
-   flag.Parse()
-   if name != "" {
-      out, err := os.Create(output)
-      if err != nil {
-         out = os.Stdout
-      }
-      defer out.Close()
-      src, err := os.Open(name)
-      if err != nil {
-         panic(err)
-      }
-      defer src.Close()
-      req, err := http.Read_Request(src)
-      if err != nil {
-         panic(err)
-      }
-      if req.URL.Scheme == "" {
-         if https {
-            req.URL.Scheme = "https"
-         } else {
-            req.URL.Scheme = "http"
-         }
-      }
-      if golang {
-         err := Write_Request(req, out)
-         if err != nil {
-            panic(err)
-         }
-      } else {
-         err := write(req, out)
-         if err != nil {
-            panic(err)
-         }
-      }
-   } else {
-      flag.Usage()
-   }
-}
 
 func write(req *http.Request, file *os.File) error {
    res, err := new(http.Transport).RoundTrip(req)
