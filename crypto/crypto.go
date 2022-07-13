@@ -17,8 +17,8 @@ import (
 func Transport(spec *tls.ClientHelloSpec) *http.Transport {
    var tr http.Transport
    //lint:ignore SA1019 godocs.io/context
-   tr.DialTLS = func(host, address string) (net.Conn, error) {
-      conn, err := net.Dial(host, address)
+   tr.DialTLS = func(network, address string) (net.Conn, error) {
+      conn, err := net.Dial(network, address)
       if err != nil {
          return nil, err
       }
