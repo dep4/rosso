@@ -39,34 +39,6 @@ func (b Block) Decrypt_Key(text []byte) []byte {
    return b.Decrypt(text, b.key)
 }
 
-type Master struct {
-   Media []Media
-   Stream []Stream
-}
-
-type Media struct {
-   Characteristics string
-   Group_ID string
-   Name string
-   Raw_URI string
-   Type string
-}
-
-func (m Media) String() string {
-   var b strings.Builder
-   b.WriteString("Type:")
-   b.WriteString(m.Type)
-   b.WriteString(" Name:")
-   b.WriteString(m.Name)
-   b.WriteString("\n  Group ID:")
-   b.WriteString(m.Group_ID)
-   if m.Characteristics != "" {
-      b.WriteString("\n  Characteristics:")
-      b.WriteString(m.Characteristics)
-   }
-   return b.String()
-}
-
 type Scanner struct {
    line scanner.Scanner
    scanner.Scanner
@@ -110,7 +82,7 @@ func (s Scanner) Master() (*Master, error) {
       s.Init(strings.NewReader(line))
       switch {
       case strings.HasPrefix(line, "#EXT-X-MEDIA:"):
-         var med Media
+         var med Medium
          for s.Scan() != scanner.EOF {
             switch s.TokenText() {
             case "CHARACTERISTICS":
@@ -166,7 +138,7 @@ func (s Scanner) Master() (*Master, error) {
          }
          s.line.Scan()
          str.Raw_URI = s.line.TokenText()
-         mas.Stream = append(mas.Stream, str)
+         mas.Streams = append(mas.Streams, str)
       }
    }
    return &mas, nil
@@ -230,34 +202,4 @@ type Segment struct {
 func (s Segment) IV() ([]byte, error) {
    up := strings.ToUpper(s.Raw_IV)
    return hex.DecodeString(strings.TrimPrefix(up, "0X"))
-}
-
-type Stream struct {
-   Audio string
-   Bandwidth int
-   Codecs string
-   Resolution string
-   Raw_URI string
-}
-
-func (s Stream) String() string {
-   var (
-      a []string
-      b string
-   )
-   if s.Resolution != "" {
-      a = append(a, "Resolution:" + s.Resolution)
-   }
-   a = append(a, "Bandwidth:" + strconv.Itoa(s.Bandwidth))
-   if s.Codecs != "" {
-      a = append(a, "Codecs:" + s.Codecs)
-   }
-   if s.Audio != "" {
-      b = "Audio:" + s.Audio
-   }
-   c := strings.Join(a, " ")
-   if b != "" {
-      c += "\n  " + b
-   }
-   return c
 }

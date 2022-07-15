@@ -76,9 +76,9 @@ func Test_Block(t *testing.T) {
    if err != nil {
       t.Fatal(err)
    }
-   for i, address := range seg.URI {
+   for i, addr := range seg.URI {
       fmt.Println(len(seg.URI)-i)
-      res, err := client.Level(0).Get(address)
+      res, err := client.Level(0).Get(addr)
       if err != nil {
          t.Fatal(err)
       }
