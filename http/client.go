@@ -26,6 +26,15 @@ var Default_Client = Client{
 }
 
 func (c Client) Do(req *http.Request) (*http.Response, error) {
+   quote := func(buf []byte) {
+      if !strconv.String(buf) {
+         buf = strconv.AppendQuote(nil, string(buf))
+      }
+      if !bytes.HasSuffix(buf, []byte{'\n'}) {
+         buf = append(buf, '\n')
+      }
+      os.Stderr.Write(buf)
+   }
    switch c.Log_Level {
    case 1:
       os.Stderr.WriteString(req.Method)
@@ -37,13 +46,13 @@ func (c Client) Do(req *http.Request) (*http.Response, error) {
       if err != nil {
          return nil, err
       }
-      if !strconv.String(buf) {
-         buf = strconv.AppendQuote(nil, string(buf))
+      quote(buf)
+   case 3:
+      buf, err := httputil.DumpRequestOut(req, true)
+      if err != nil {
+         return nil, err
       }
-      if !bytes.HasSuffix(buf, []byte{'\n'}) {
-         buf = append(buf, '\n')
-      }
-      os.Stderr.Write(buf)
+      quote(buf)
    }
    res, err := c.client.Do(req)
    if err != nil {
