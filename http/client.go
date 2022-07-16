@@ -25,17 +25,8 @@ var Default_Client = Client{
    status: http.StatusOK,
 }
 
-func (c Client) Do(req *http.Request) (*http.Response, error) {
-   quote := func(buf []byte) {
-      if !strconv.String(buf) {
-         buf = strconv.AppendQuote(nil, string(buf))
-      }
-      if !bytes.HasSuffix(buf, []byte{'\n'}) {
-         buf = append(buf, '\n')
-      }
-      os.Stderr.Write(buf)
-   }
-   switch c.Log_Level {
+func (self Client) Do(req *http.Request) (*http.Response, error) {
+   switch self.Log_Level {
    case 1:
       os.Stderr.WriteString(req.Method)
       os.Stderr.WriteString(" ")
@@ -46,50 +37,50 @@ func (c Client) Do(req *http.Request) (*http.Response, error) {
       if err != nil {
          return nil, err
       }
-      quote(buf)
-   case 3:
-      buf, err := httputil.DumpRequestOut(req, true)
-      if err != nil {
-         return nil, err
+      if !strconv.String(buf) {
+         buf = strconv.AppendQuote(nil, string(buf))
       }
-      quote(buf)
+      if !bytes.HasSuffix(buf, []byte{'\n'}) {
+         buf = append(buf, '\n')
+      }
+      os.Stderr.Write(buf)
    }
-   res, err := c.client.Do(req)
+   res, err := self.client.Do(req)
    if err != nil {
       return nil, err
    }
-   if res.StatusCode != c.status {
+   if res.StatusCode != self.status {
       return nil, errors.New(res.Status)
    }
    return res, nil
 }
 
-func (c Client) Get(address string) (*http.Response, error) {
+func (self Client) Get(address string) (*http.Response, error) {
    req, err := http.NewRequest("GET", address, nil)
    if err != nil {
       return nil, err
    }
-   return c.Do(req)
+   return self.Do(req)
 }
 
-func (c Client) Level(level int) Client {
-   c.Log_Level = level
-   return c
+func (self Client) Level(level int) Client {
+   self.Log_Level = level
+   return self
 }
 
-func (c Client) Redirect(fn Redirect_Func) Client {
-   c.client.CheckRedirect = nil
-   return c
+func (self Client) Redirect(fn Redirect_Func) Client {
+   self.client.CheckRedirect = nil
+   return self
 }
 
-func (c Client) Status(status int) Client {
-   c.status = status
-   return c
+func (self Client) Status(status int) Client {
+   self.status = status
+   return self
 }
 
-func (c Client) Transport(tr *http.Transport) Client {
-   c.client.Transport = tr
-   return c
+func (self Client) Transport(tr *http.Transport) Client {
+   self.client.Transport = tr
+   return self
 }
 
 type Redirect_Func func(*http.Request, []*http.Request) error
