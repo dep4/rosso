@@ -24,8 +24,8 @@ func New_Block(key []byte) (*Block, error) {
    return &Block{block, key}, nil
 }
 
-func (self Block) Decrypt(text, iv []byte) []byte {
-   cipher.NewCBCDecrypter(self.Block, iv).CryptBlocks(text, text)
+func (b Block) Decrypt(text, iv []byte) []byte {
+   cipher.NewCBCDecrypter(b.Block, iv).CryptBlocks(text, text)
    if len(text) >= 1 {
       pad := text[len(text)-1]
       if len(text) >= int(pad) {
@@ -35,8 +35,8 @@ func (self Block) Decrypt(text, iv []byte) []byte {
    return text
 }
 
-func (self Block) Decrypt_Key(text []byte) []byte {
-   return self.Decrypt(text, self.key)
+func (b Block) Decrypt_Key(text []byte) []byte {
+   return b.Decrypt(text, b.key)
 }
 
 type Scanner struct {
@@ -74,37 +74,37 @@ func New_Scanner(body io.Reader) Scanner {
    return scan
 }
 
-func (self Scanner) Master() (*Master, error) {
+func (s Scanner) Master() (*Master, error) {
    var mas Master
-   for self.line.Scan() != scanner.EOF {
+   for s.line.Scan() != scanner.EOF {
       var err error
-      line := self.line.TokenText()
-      self.Init(strings.NewReader(line))
+      line := s.line.TokenText()
+      s.Init(strings.NewReader(line))
       switch {
       case strings.HasPrefix(line, "#EXT-X-MEDIA:"):
          var med Medium
-         for self.Scan() != scanner.EOF {
-            switch self.TokenText() {
+         for s.Scan() != scanner.EOF {
+            switch s.TokenText() {
             case "CHARACTERISTICS":
-               self.Scan()
-               self.Scan()
-               med.Characteristics, err = strconv.Unquote(self.TokenText())
+               s.Scan()
+               s.Scan()
+               med.Characteristics, err = strconv.Unquote(s.TokenText())
             case "GROUP-ID":
-               self.Scan()
-               self.Scan()
-               med.Group_ID, err = strconv.Unquote(self.TokenText())
+               s.Scan()
+               s.Scan()
+               med.Group_ID, err = strconv.Unquote(s.TokenText())
             case "NAME":
-               self.Scan()
-               self.Scan()
-               med.Name, err = strconv.Unquote(self.TokenText())
+               s.Scan()
+               s.Scan()
+               med.Name, err = strconv.Unquote(s.TokenText())
             case "TYPE":
-               self.Scan()
-               self.Scan()
-               med.Type = self.TokenText()
+               s.Scan()
+               s.Scan()
+               med.Type = s.TokenText()
             case "URI":
-               self.Scan()
-               self.Scan()
-               med.Raw_URI, err = strconv.Unquote(self.TokenText())
+               s.Scan()
+               s.Scan()
+               med.Raw_URI, err = strconv.Unquote(s.TokenText())
             }
             if err != nil {
                return nil, err
@@ -113,41 +113,41 @@ func (self Scanner) Master() (*Master, error) {
          mas.Media = append(mas.Media, med)
       case strings.HasPrefix(line, "#EXT-X-STREAM-INF:"):
          var str Stream
-         for self.Scan() != scanner.EOF {
-            switch self.TokenText() {
+         for s.Scan() != scanner.EOF {
+            switch s.TokenText() {
             case "AUDIO":
-               self.Scan()
-               self.Scan()
-               str.Audio, err = strconv.Unquote(self.TokenText())
+               s.Scan()
+               s.Scan()
+               str.Audio, err = strconv.Unquote(s.TokenText())
             case "BANDWIDTH":
-               self.Scan()
-               self.Scan()
-               str.Bandwidth, err = strconv.Atoi(self.TokenText())
+               s.Scan()
+               s.Scan()
+               str.Bandwidth, err = strconv.Atoi(s.TokenText())
             case "CODECS":
-               self.Scan()
-               self.Scan()
-               str.Codecs, err = strconv.Unquote(self.TokenText())
+               s.Scan()
+               s.Scan()
+               str.Codecs, err = strconv.Unquote(s.TokenText())
             case "RESOLUTION":
-               self.Scan()
-               self.Scan()
-               str.Resolution = self.TokenText()
+               s.Scan()
+               s.Scan()
+               str.Resolution = s.TokenText()
             }
             if err != nil {
                return nil, err
             }
          }
-         self.line.Scan()
-         str.Raw_URI = self.line.TokenText()
+         s.line.Scan()
+         str.Raw_URI = s.line.TokenText()
          mas.Streams = append(mas.Streams, str)
       }
    }
    return &mas, nil
 }
 
-func (self Scanner) Segment() (*Segment, error) {
+func (s Scanner) Segment() (*Segment, error) {
    var seg Segment
-   for self.line.Scan() != scanner.EOF {
-      line := self.line.TokenText()
+   for s.line.Scan() != scanner.EOF {
+      line := s.line.TokenText()
       var err error
       switch {
       case len(line) >= 1 && !strings.HasPrefix(line, "#"):
@@ -158,30 +158,30 @@ func (self Scanner) Segment() (*Segment, error) {
          }
       case strings.HasPrefix(line, "#EXT-X-KEY:"):
          seg.URI = nil
-         self.Init(strings.NewReader(line))
-         for self.Scan() != scanner.EOF {
-            switch self.TokenText() {
+         s.Init(strings.NewReader(line))
+         for s.Scan() != scanner.EOF {
+            switch s.TokenText() {
             case "IV":
-               self.Scan()
-               self.Scan()
-               seg.Raw_IV = self.TokenText()
+               s.Scan()
+               s.Scan()
+               seg.Raw_IV = s.TokenText()
             case "URI":
-               self.Scan()
-               self.Scan()
-               seg.Key, err = strconv.Unquote(self.TokenText())
+               s.Scan()
+               s.Scan()
+               seg.Key, err = strconv.Unquote(s.TokenText())
                if err != nil {
                   return nil, err
                }
             }
          }
       case strings.HasPrefix(line, "#EXT-X-MAP:"):
-         self.Init(strings.NewReader(line))
-         for self.Scan() != scanner.EOF {
-            switch self.TokenText() {
+         s.Init(strings.NewReader(line))
+         for s.Scan() != scanner.EOF {
+            switch s.TokenText() {
             case "URI":
-               self.Scan()
-               self.Scan()
-               seg.Map, err = strconv.Unquote(self.TokenText())
+               s.Scan()
+               s.Scan()
+               seg.Map, err = strconv.Unquote(s.TokenText())
                if err != nil {
                   return nil, err
                }
@@ -199,7 +199,7 @@ type Segment struct {
    URI []string
 }
 
-func (self Segment) IV() ([]byte, error) {
-   up := strings.ToUpper(self.Raw_IV)
+func (s Segment) IV() ([]byte, error) {
+   up := strings.ToUpper(s.Raw_IV)
    return hex.DecodeString(strings.TrimPrefix(up, "0X"))
 }

@@ -17,7 +17,7 @@ func New_Decrypt(w io.Writer) Decrypt {
    return dec
 }
 
-func (self *Decrypt) Init(r io.Reader) error {
+func (d *Decrypt) Init(r io.Reader) error {
    file, err := mp4.DecodeFile(r)
    if err != nil {
       return err
@@ -27,9 +27,9 @@ func (self *Decrypt) Init(r io.Reader) error {
       for _, child := range trak.Mdia.Minf.Stbl.Stsd.Children {
          switch box := child.(type) {
          case *mp4.AudioSampleEntryBox:
-            self.sinf[trak.Tkhd.TrackID], err = box.RemoveEncryption()
+            d.sinf[trak.Tkhd.TrackID], err = box.RemoveEncryption()
          case *mp4.VisualSampleEntryBox:
-            self.sinf[trak.Tkhd.TrackID], err = box.RemoveEncryption()
+            d.sinf[trak.Tkhd.TrackID], err = box.RemoveEncryption()
          }
          if err != nil {
             return err
@@ -38,10 +38,10 @@ func (self *Decrypt) Init(r io.Reader) error {
    }
    // need for Mozilla Firefox
    file.Init.Moov.RemovePsshs()
-   return file.Init.Encode(self.write)
+   return file.Init.Encode(d.write)
 }
 
-func (self Decrypt) Segment(r io.Reader, key []byte) error {
+func (d Decrypt) Segment(r io.Reader, key []byte) error {
    file, err := mp4.DecodeFile(r)
    if err != nil {
       return err
@@ -50,7 +50,7 @@ func (self Decrypt) Segment(r io.Reader, key []byte) error {
       for _, frag := range seg.Fragments {
          var removed uint64
          for _, traf := range frag.Moof.Trafs {
-            sinf := self.sinf[traf.Tfhd.TrackID]
+            sinf := d.sinf[traf.Tfhd.TrackID]
             if sinf == nil {
                continue
             }
@@ -95,7 +95,7 @@ func (self Decrypt) Segment(r io.Reader, key []byte) error {
       }
       // fix jerk between fragments
       seg.Sidx = nil
-      err := seg.Encode(self.write)
+      err := seg.Encode(d.write)
       if err != nil {
          return err
       }

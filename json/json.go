@@ -18,8 +18,8 @@ type Scanner struct {
    Sep []byte
 }
 
-func (self Scanner) Decode(val any) error {
-   data := append(self.Sep, self.Data...)
+func (s Scanner) Decode(val any) error {
+   data := append(s.Sep, s.Data...)
    dec := NewDecoder(bytes.NewReader(data))
    for {
       _, err := dec.Token()
@@ -30,8 +30,8 @@ func (self Scanner) Decode(val any) error {
    }
 }
 
-func (self *Scanner) Scan() bool {
+func (s *Scanner) Scan() bool {
    var found bool
-   _, self.Data, found = bytes.Cut(self.Data, self.Sep)
+   _, s.Data, found = bytes.Cut(s.Data, s.Sep)
    return found
 }

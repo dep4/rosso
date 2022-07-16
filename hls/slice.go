@@ -9,23 +9,23 @@ func (Medium) Ext() string {
    return ".m4a"
 }
 
-func (self Medium) String() string {
+func (m Medium) String() string {
    var b strings.Builder
    b.WriteString("Type:")
-   b.WriteString(self.Type)
+   b.WriteString(m.Type)
    b.WriteString(" Name:")
-   b.WriteString(self.Name)
+   b.WriteString(m.Name)
    b.WriteString("\n  Group ID:")
-   b.WriteString(self.Group_ID)
-   if self.Characteristics != "" {
+   b.WriteString(m.Group_ID)
+   if m.Characteristics != "" {
       b.WriteString("\n  Characteristics:")
-      b.WriteString(self.Characteristics)
+      b.WriteString(m.Characteristics)
    }
    return b.String()
 }
 
-func (self Medium) URI() string {
-   return self.Raw_URI
+func (m Medium) URI() string {
+   return m.Raw_URI
 }
 
 type Mixed interface {
@@ -37,20 +37,20 @@ func (Stream) Ext() string {
    return ".m4v"
 }
 
-func (self Stream) String() string {
+func (m Stream) String() string {
    var (
       a []string
       b string
    )
-   if self.Resolution != "" {
-      a = append(a, "Resolution:" + self.Resolution)
+   if m.Resolution != "" {
+      a = append(a, "Resolution:" + m.Resolution)
    }
-   a = append(a, "Bandwidth:" + strconv.Itoa(self.Bandwidth))
-   if self.Codecs != "" {
-      a = append(a, "Codecs:" + self.Codecs)
+   a = append(a, "Bandwidth:" + strconv.Itoa(m.Bandwidth))
+   if m.Codecs != "" {
+      a = append(a, "Codecs:" + m.Codecs)
    }
-   if self.Audio != "" {
-      b = "Audio:" + self.Audio
+   if m.Audio != "" {
+      b = "Audio:" + m.Audio
    }
    c := strings.Join(a, " ")
    if b != "" {
@@ -59,8 +59,8 @@ func (self Stream) String() string {
    return c
 }
 
-func (self Stream) URI() string {
-   return self.Raw_URI
+func (m Stream) URI() string {
+   return m.Raw_URI
 }
 
 type Medium struct {
@@ -108,30 +108,30 @@ func index[T Mixed](slice []T, callback func(T, T) bool) int {
    return carry
 }
 
-func (self Media) Filter(f func(Medium) bool) Media {
-   return filter(self, f)
+func (m Media) Filter(f func(Medium) bool) Media {
+   return filter(m, f)
 }
 
-func (self Streams) Filter(f func(Stream) bool) Streams {
-   return filter(self, f)
+func (m Streams) Filter(f func(Stream) bool) Streams {
+   return filter(m, f)
 }
 
-func (self Media) Index(f func(a, b Medium) bool) int {
-   return index(self, f)
+func (m Media) Index(f func(a, b Medium) bool) int {
+   return index(m, f)
 }
 
-func (self Streams) Index(f func(a, b Stream) bool) int {
-   return index(self, f)
+func (m Streams) Index(f func(a, b Stream) bool) int {
+   return index(m, f)
 }
 
-func (self Streams) Bandwidth(v int) int {
+func (m Streams) Bandwidth(v int) int {
    distance := func(a Stream) int {
       if a.Bandwidth > v {
          return a.Bandwidth - v
       }
       return v - a.Bandwidth
    }
-   return self.Index(func(carry, item Stream) bool {
+   return m.Index(func(carry, item Stream) bool {
       return distance(item) < distance(carry)
    })
 }
