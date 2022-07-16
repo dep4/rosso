@@ -9,8 +9,8 @@ import (
    "strconv"
 )
 
-func (self spy_conn) Read(buf []byte) (int, error) {
-   num, err := self.Conn.Read(buf)
+func (s spy_conn) Read(buf []byte) (int, error) {
+   num, err := s.Conn.Read(buf)
    if hello, err := crypto.Parse_TLS(buf[:num]); err == nil {
       ja3, err := crypto.Format_JA3(hello)
       if err == nil {

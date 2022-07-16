@@ -96,16 +96,17 @@ func write(req *http.Request, file *os.File) error {
    }
    defer res.Body.Close()
    if file == os.Stdout {
-      buf, err := httputil.DumpResponse(res, true)
+      dump, err := httputil.DumpResponse(res, true)
       if err != nil {
          return err
       }
-      if strconv.String(buf) {
-         file.Write(buf)
+      var buf strconv.Buffer
+      if strconv.String(dump) {
+         buf = dump
       } else {
-         quote := strconv.Quote(string(buf))
-         file.WriteString(quote)
+         buf.Quote(string(dump))
       }
+      file.Write(buf)
    } else {
       buf, err := httputil.DumpResponse(res, false)
       if err != nil {

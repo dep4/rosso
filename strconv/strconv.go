@@ -5,14 +5,6 @@ import (
    "unicode/utf8"
 )
 
-var (
-   AppendInt = strconv.AppendInt
-   AppendQuote = strconv.AppendQuote
-   AppendUint = strconv.AppendUint
-   FormatFloat = strconv.FormatFloat
-   Quote = strconv.Quote
-)
-
 func Number[T Ordered](value T) string {
    return label(value, "", " K", " M", " B", " T")
 }
@@ -56,13 +48,13 @@ func String(buf []byte) bool {
    return utf8.Valid(buf)
 }
 
-func label[T Ordered](value T, unit ...string) string {
+func label[T Ordered](value T, units ...string) string {
    var (
       i int
-      symbol string
+      unit string
       val = float64(value)
    )
-   for i, symbol = range unit {
+   for i, unit = range units {
       if val < 1000 {
          break
       }
@@ -71,7 +63,7 @@ func label[T Ordered](value T, unit ...string) string {
    if i >= 1 {
       i = 3
    }
-   return strconv.FormatFloat(val, 'f', i, 64) + symbol
+   return strconv.FormatFloat(val, 'f', i, 64) + unit
 }
 
 type Ordered interface {

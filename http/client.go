@@ -33,15 +33,18 @@ func (c Client) Do(req *http.Request) (*http.Response, error) {
       os.Stderr.WriteString(req.URL.String())
       os.Stderr.WriteString("\n")
    case 2:
-      buf, err := httputil.DumpRequest(req, true)
+      dump, err := httputil.DumpRequest(req, true)
       if err != nil {
          return nil, err
       }
-      if !strconv.String(buf) {
-         buf = strconv.AppendQuote(nil, string(buf))
+      var buf strconv.Buffer
+      if strconv.String(dump) {
+         buf = dump
+      } else {
+         buf.Quote(string(dump))
       }
       if !bytes.HasSuffix(buf, []byte{'\n'}) {
-         buf = append(buf, '\n')
+         buf.Byte('\n')
       }
       os.Stderr.Write(buf)
    }

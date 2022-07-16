@@ -10,18 +10,18 @@ func (Medium) Ext() string {
 }
 
 func (m Medium) String() string {
-   var b strings.Builder
-   b.WriteString("Type:")
-   b.WriteString(m.Type)
-   b.WriteString(" Name:")
-   b.WriteString(m.Name)
-   b.WriteString("\n  Group ID:")
-   b.WriteString(m.Group_ID)
+   var buf strings.Builder
+   buf.WriteString("Type:")
+   buf.WriteString(m.Type)
+   buf.WriteString(" Name:")
+   buf.WriteString(m.Name)
+   buf.WriteString("\n  Group ID:")
+   buf.WriteString(m.Group_ID)
    if m.Characteristics != "" {
-      b.WriteString("\n  Characteristics:")
-      b.WriteString(m.Characteristics)
+      buf.WriteString("\n  Characteristics:")
+      buf.WriteString(m.Characteristics)
    }
-   return b.String()
+   return buf.String()
 }
 
 func (m Medium) URI() string {

@@ -17,31 +17,31 @@ type Representation struct {
    Width int `xml:"width,attr"`
 }
 
-func (self Representation) String() string {
+func (r Representation) String() string {
    var (
       a []string
       b []string
    )
-   if self.Width >= 1 {
-      a = append(a, "Width:" + strconv.Itoa(self.Width))
+   if r.Width >= 1 {
+      a = append(a, "Width:" + strconv.Itoa(r.Width))
    }
-   if self.Height >= 1 {
-      a = append(a, "Height:" + strconv.Itoa(self.Height))
+   if r.Height >= 1 {
+      a = append(a, "Height:" + strconv.Itoa(r.Height))
    }
-   if self.Bandwidth >= 1 {
-      a = append(a, "Bandwidth:" + strconv.Itoa(self.Bandwidth))
+   if r.Bandwidth >= 1 {
+      a = append(a, "Bandwidth:" + strconv.Itoa(r.Bandwidth))
    }
-   b = append(b, "MimeType:" + self.MimeType)
-   if self.Codecs != "" {
-      b = append(b, "Codecs:" + self.Codecs)
+   b = append(b, "MimeType:" + r.MimeType)
+   if r.Codecs != "" {
+      b = append(b, "Codecs:" + r.Codecs)
    }
-   if self.Adaptation.Lang != "" {
-      b = append(b, "Lang:" + self.Adaptation.Lang)
+   if r.Adaptation.Lang != "" {
+      b = append(b, "Lang:" + r.Adaptation.Lang)
    }
-   if self.Adaptation.Role != nil {
-      b = append(b, "Role:" + self.Adaptation.Role.Value)
+   if r.Adaptation.Role != nil {
+      b = append(b, "Role:" + r.Adaptation.Role.Value)
    }
-   c := "ID:" + self.ID
+   c := "ID:" + r.ID
    if a != nil {
       c += "\n  " + strings.Join(a, " ")
    }
@@ -70,8 +70,8 @@ type Presentation struct {
    }
 }
 
-func (self Representation) Ext() string {
-   switch self.MimeType {
+func (r Representation) Ext() string {
+   switch r.MimeType {
    case "video/mp4":
       return ".m4v"
    case "audio/mp4":
@@ -80,23 +80,23 @@ func (self Representation) Ext() string {
    return ""
 }
 
-func (self Representation) Initialization() string {
-   return self.replace_ID(self.SegmentTemplate.Initialization)
+func (r Representation) Initialization() string {
+   return r.replace_ID(r.SegmentTemplate.Initialization)
 }
 
-func (self Representation) Media() []string {
+func (r Representation) Media() []string {
    var (
       media []string
       start int
    )
-   if self.SegmentTemplate.StartNumber != nil {
-      start = *self.SegmentTemplate.StartNumber
+   if r.SegmentTemplate.StartNumber != nil {
+      start = *r.SegmentTemplate.StartNumber
    }
-   for _, seg := range self.SegmentTemplate.SegmentTimeline.S {
+   for _, seg := range r.SegmentTemplate.SegmentTimeline.S {
       for seg.Time = start; seg.Repeat >= 0; seg.Repeat-- {
-         medium := self.replace_ID(self.SegmentTemplate.Media)
+         medium := r.replace_ID(r.SegmentTemplate.Media)
          time_attr := strconv.Itoa(seg.Time)
-         if self.SegmentTemplate.StartNumber != nil {
+         if r.SegmentTemplate.StartNumber != nil {
             medium = strings.Replace(medium, "$Number$", time_attr, 1)
             seg.Time++
             start++
@@ -111,15 +111,15 @@ func (self Representation) Media() []string {
    return media
 }
 
-func (self Representation) Role() string {
-   if self.Adaptation.Role == nil {
+func (r Representation) Role() string {
+   if r.Adaptation.Role == nil {
       return ""
    }
-   return self.Adaptation.Role.Value
+   return r.Adaptation.Role.Value
 }
 
-func (self Representation) replace_ID(s string) string {
-   return strings.Replace(s, "$RepresentationID$", self.ID, 1)
+func (r Representation) replace_ID(s string) string {
+   return strings.Replace(s, "$RepresentationID$", r.ID, 1)
 }
 
 type SegmentTemplate struct {

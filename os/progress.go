@@ -39,14 +39,14 @@ func (p *Progress) Write(buf []byte) (int, error) {
    }
    since := time.Since(p.time_lap)
    if since >= time.Second {
-      var s string
-      s += strconv.Percent(p.bytes_written, p.bytes)
-      s += "\t"
-      s += strconv.Size(p.bytes_written)
-      s += "\t"
-      s += strconv.Rate(p.bytes_written, time.Since(p.time).Seconds())
-      s += "\n"
-      os.Stderr.WriteString(s)
+      var str string
+      str += strconv.Percent(p.bytes_written, p.bytes)
+      str += "\t"
+      str += strconv.Size(p.bytes_written)
+      str += "\t"
+      str += strconv.Rate(p.bytes_written, time.Since(p.time).Seconds())
+      str += "\n"
+      os.Stderr.WriteString(str)
       p.time_lap = p.time_lap.Add(since)
    }
    write, err := p.w.Write(buf)
