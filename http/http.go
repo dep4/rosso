@@ -31,11 +31,11 @@ func Read_Request(in io.Reader) (*http.Request, error) {
    method_path := strings.Fields(raw_method_path)
    req.Method = method_path[0]
    // .URL
-   address, err := url.Parse(method_path[1])
+   ref, err := url.Parse(method_path[1])
    if err != nil {
       return nil, err
    }
-   req.URL = address
+   req.URL = ref
    // .URL.Host
    head, err := text.ReadMIMEHeader()
    if err != nil {
