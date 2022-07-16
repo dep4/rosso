@@ -5,7 +5,7 @@ import (
    "strconv"
 )
 
-func (t type_error) Error() string {
+func (self type_error) Error() string {
    get_type := func(e Encoder) string {
       if e == nil {
          return "nil"
@@ -14,11 +14,11 @@ func (t type_error) Error() string {
    }
    var b []byte
    b = append(b, "field "...)
-   b = strconv.AppendInt(b, int64(t.Number), 10)
+   b = strconv.AppendInt(b, int64(self.Number), 10)
    b = append(b, " is "...)
-   b = append(b, get_type(t.lvalue)...)
+   b = append(b, get_type(self.lvalue)...)
    b = append(b, ", not "...)
-   b = append(b, get_type(t.rvalue)...)
+   b = append(b, get_type(self.rvalue)...)
    return string(b)
 }
 
@@ -30,9 +30,9 @@ type type_error struct {
 
 type Bytes []byte
 
-func (b Bytes) encode(buf []byte, num Number) []byte {
+func (self Bytes) encode(buf []byte, num Number) []byte {
    buf = protowire.AppendTag(buf, num, protowire.BytesType)
-   return protowire.AppendBytes(buf, b)
+   return protowire.AppendBytes(buf, self)
 }
 
 func (Bytes) get_type() string { return "Bytes" }
@@ -44,18 +44,18 @@ type Encoder interface {
 
 type Fixed32 uint32
 
-func (f Fixed32) encode(buf []byte, num Number) []byte {
+func (self Fixed32) encode(buf []byte, num Number) []byte {
    buf = protowire.AppendTag(buf, num, protowire.Fixed32Type)
-   return protowire.AppendFixed32(buf, uint32(f))
+   return protowire.AppendFixed32(buf, uint32(self))
 }
 
 func (Fixed32) get_type() string { return "Fixed32" }
 
 type Fixed64 uint64
 
-func (f Fixed64) encode(buf []byte, num Number) []byte {
+func (self Fixed64) encode(buf []byte, num Number) []byte {
    buf = protowire.AppendTag(buf, num, protowire.Fixed64Type)
-   return protowire.AppendFixed64(buf, uint64(f))
+   return protowire.AppendFixed64(buf, uint64(self))
 }
 
 func (Fixed64) get_type() string { return "Fixed64" }
@@ -68,17 +68,17 @@ type Raw struct {
    Message map[Number]Encoder
 }
 
-func (r Raw) encode(buf []byte, num Number) []byte {
+func (self Raw) encode(buf []byte, num Number) []byte {
    buf = protowire.AppendTag(buf, num, protowire.BytesType)
-   return protowire.AppendBytes(buf, r.Bytes)
+   return protowire.AppendBytes(buf, self.Bytes)
 }
 
 func (Raw) get_type() string { return "Raw" }
 
 type Slice[T Encoder] []T
 
-func (s Slice[T]) encode(buf []byte, num Number) []byte {
-   for _, value := range s {
+func (self Slice[T]) encode(buf []byte, num Number) []byte {
+   for _, value := range self {
       buf = value.encode(buf, num)
    }
    return buf
@@ -91,18 +91,18 @@ func (Slice[T]) get_type() string {
 
 type String string
 
-func (s String) encode(buf []byte, num Number) []byte {
+func (self String) encode(buf []byte, num Number) []byte {
    buf = protowire.AppendTag(buf, num, protowire.BytesType)
-   return protowire.AppendString(buf, string(s))
+   return protowire.AppendString(buf, string(self))
 }
 
 func (String) get_type() string { return "String" }
 
 type Varint uint64
 
-func (v Varint) encode(buf []byte, num Number) []byte {
+func (self Varint) encode(buf []byte, num Number) []byte {
    buf = protowire.AppendTag(buf, num, protowire.VarintType)
-   return protowire.AppendVarint(buf, uint64(v))
+   return protowire.AppendVarint(buf, uint64(self))
 }
 
 func (Varint) get_type() string { return "Varint" }

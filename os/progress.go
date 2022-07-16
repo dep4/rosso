@@ -26,30 +26,30 @@ func Progress_Chunks(dst io.Writer, chunks int) *Progress {
    return &Progress{w: dst, chunks: chunks}
 }
 
-func (p *Progress) Add_Chunk(bytes int64) {
-   p.bytes_read += bytes
-   p.chunks_read += 1
-   p.bytes = int64(p.chunks) * p.bytes_read / p.chunks_read
+func (self *Progress) Add_Chunk(bytes int64) {
+   self.bytes_read += bytes
+   self.chunks_read += 1
+   self.bytes = int64(self.chunks) * self.bytes_read / self.chunks_read
 }
 
-func (p *Progress) Write(buf []byte) (int, error) {
-   if p.time.IsZero() {
-      p.time = time.Now()
-      p.time_lap = time.Now()
+func (self *Progress) Write(buf []byte) (int, error) {
+   if self.time.IsZero() {
+      self.time = time.Now()
+      self.time_lap = time.Now()
    }
-   since := time.Since(p.time_lap)
+   since := time.Since(self.time_lap)
    if since >= time.Second {
       var s string
-      s += strconv.Percent(p.bytes_written, p.bytes)
+      s += strconv.Percent(self.bytes_written, self.bytes)
       s += "\t"
-      s += strconv.Size(p.bytes_written)
+      s += strconv.Size(self.bytes_written)
       s += "\t"
-      s += strconv.Rate(p.bytes_written, time.Since(p.time).Seconds())
+      s += strconv.Rate(self.bytes_written, time.Since(self.time).Seconds())
       s += "\n"
       os.Stderr.WriteString(s)
-      p.time_lap = p.time_lap.Add(since)
+      self.time_lap = self.time_lap.Add(since)
    }
-   write, err := p.w.Write(buf)
-   p.bytes_written += write
+   write, err := self.w.Write(buf)
+   self.bytes_written += write
    return write, err
 }
