@@ -104,7 +104,7 @@ func write(req *http.Request, file *os.File) error {
       if strconv.String(dump) {
          buf = dump
       } else {
-         buf.Quote(string(dump))
+         buf.AppendQuote(string(dump))
       }
       file.Write(buf)
    } else {

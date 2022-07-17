@@ -1,8 +1,8 @@
 package protobuf
 
 import (
+   "github.com/89z/rosso/strconv"
    "google.golang.org/protobuf/encoding/protowire"
-   "strconv"
 )
 
 func (t type_error) Error() string {
@@ -12,13 +12,13 @@ func (t type_error) Error() string {
       }
       return enc.get_type()
    }
-   var buf []byte
-   buf = append(buf, "field "...)
-   buf = strconv.AppendInt(buf, int64(t.Number), 10)
-   buf = append(buf, " is "...)
-   buf = append(buf, get_type(t.lvalue)...)
-   buf = append(buf, ", not "...)
-   buf = append(buf, get_type(t.rvalue)...)
+   var buf strconv.Buffer
+   buf.WriteString("field ")
+   buf.AppendInt(int64(t.Number))
+   buf.WriteString(" is ")
+   buf.WriteString(get_type(t.lvalue))
+   buf.WriteString(", not ")
+   buf.WriteString(get_type(t.rvalue))
    return string(buf)
 }
 
