@@ -5,6 +5,8 @@ import (
    "unicode/utf8"
 )
 
+var FormatUint = strconv.FormatUint
+
 func Number[T Ordered](value T) string {
    return label(value, "", " K", " M", " B", " T")
 }

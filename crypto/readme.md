@@ -20,7 +20,7 @@ higher is wrong.
 
 ## How to get Android JA3?
 
-Check out the `cmd/proxy` folder.
+https://github.com/89z/rosso/tree/v1.47.3/cmd/proxy
 
 ## Servers
 

@@ -41,10 +41,10 @@ func (c Client) Do(req *http.Request) (*http.Response, error) {
       if strconv.String(dump) {
          buf = dump
       } else {
-         buf.Quote(string(dump))
+         buf.AppendQuote(string(dump))
       }
       if !bytes.HasSuffix(buf, []byte{'\n'}) {
-         buf.Byte('\n')
+         buf.WriteByte('\n')
       }
       os.Stderr.Write(buf)
    }
