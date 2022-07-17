@@ -4,10 +4,36 @@ import (
    "bytes"
    "fmt"
    "os"
+   "strconv"
+   "strings"
    "testing"
 )
 
-var value byte = 3
+const (
+   runs = 199_999
+   value byte = 3
+)
+
+func Benchmark_Format(b *testing.B) {
+   var s string
+   for n := 0; n < runs; n++ {
+      s += strconv.FormatInt(1, 10)
+   }
+}
+
+func Benchmark_Build(b *testing.B) {
+   var s strings.Builder
+   for n := 0; n < runs; n++ {
+      s.WriteString(strconv.FormatInt(1, 10))
+   }
+}
+
+func Benchmark_Append(b *testing.B) {
+   var s []byte
+   for n := 0; n < runs; n++ {
+      s = strconv.AppendInt(s, 1, 10)
+   }
+}
 
 func Test_String(t *testing.T) {
    var str string
