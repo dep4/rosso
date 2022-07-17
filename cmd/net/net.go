@@ -12,6 +12,37 @@ import (
    "text/template"
 )
 
+func write(req *http.Request, file *os.File) error {
+   res, err := new(http.Transport).RoundTrip(req)
+   if err != nil {
+      return err
+   }
+   defer res.Body.Close()
+   if file == os.Stdout {
+      dump, err := httputil.DumpResponse(res, true)
+      if err != nil {
+         return err
+      }
+      var buf string
+      if strconv.Valid(dump) {
+         buf = string(dump)
+      } else {
+         buf = strconv.Quote(dump)
+      }
+      file.WriteString(buf)
+   } else {
+      buf, err := httputil.DumpResponse(res, false)
+      if err != nil {
+         return err
+      }
+      os.Stdout.Write(buf)
+      if _, err := file.ReadFrom(res.Body); err != nil {
+         return err
+      }
+   }
+   return nil
+}
+
 type request_template struct {
    *http.Request
    Body_IO string
@@ -88,34 +119,3 @@ func main() {
 
 var body = strings.NewReader({{ .Var_Body }})
 `
-
-func write(req *http.Request, file *os.File) error {
-   res, err := new(http.Transport).RoundTrip(req)
-   if err != nil {
-      return err
-   }
-   defer res.Body.Close()
-   if file == os.Stdout {
-      dump, err := httputil.DumpResponse(res, true)
-      if err != nil {
-         return err
-      }
-      var buf strconv.Buffer
-      if strconv.String(dump) {
-         buf = dump
-      } else {
-         buf.AppendQuote(string(dump))
-      }
-      file.Write(buf)
-   } else {
-      buf, err := httputil.DumpResponse(res, false)
-      if err != nil {
-         return err
-      }
-      os.Stdout.Write(buf)
-      if _, err := file.ReadFrom(res.Body); err != nil {
-         return err
-      }
-   }
-   return nil
-}

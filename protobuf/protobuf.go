@@ -12,14 +12,14 @@ func (t type_error) Error() string {
       }
       return enc.get_type()
    }
-   var buf strconv.Buffer
-   buf.WriteString("field ")
-   buf.AppendInt(int64(t.Number))
-   buf.WriteString(" is ")
-   buf.WriteString(get_type(t.lvalue))
-   buf.WriteString(", not ")
-   buf.WriteString(get_type(t.rvalue))
-   return string(buf)
+   var buf string
+   buf += "field "
+   buf += strconv.Itoa(t.Number)
+   buf += " is "
+   buf += get_type(t.lvalue)
+   buf += ", not "
+   buf += get_type(t.rvalue)
+   return buf
 }
 
 type type_error struct {
