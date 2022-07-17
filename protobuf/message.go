@@ -230,7 +230,7 @@ func (m Message) consume_raw(num Number, buf []byte) ([]byte, error) {
    if err != nil {
       return nil, err
    }
-   if strconv.String(rvalue.Bytes) {
+   if strconv.Valid(rvalue.Bytes) {
       rvalue.String = string(rvalue.Bytes)
    }
    rvalue.Message, _ = Unmarshal(rvalue.Bytes)

@@ -5,37 +5,48 @@ import (
    "unicode/utf8"
 )
 
-type Buffer []byte
-
-func (b *Buffer) AppendInt(i int64) {
-   *b = strconv.AppendInt(*b, i, 10)
+func FormatInt[T Signed](value T, base int) string {
+   return strconv.FormatInt(int64(value), base)
 }
 
-func (b *Buffer) AppendUint(val uint64) {
-   *b = strconv.AppendUint(*b, val, 10)
+func FormatUint[T Unsigned](value T, base int) string {
+   return strconv.FormatUint(uint64(value), base)
 }
 
-func (b *Buffer) Write(p []byte) (int, error) {
-   *b = append(*b, p...)
-   return len(p), nil
+func Itoa[T Signed](value T) string {
+   return FormatInt(value, 10)
 }
 
-func (b *Buffer) WriteByte(c byte) {
-   *b = append(*b, c)
+func Number[T Ordered](value T) string {
+   return label(value, "", " K", " M", " B", " T")
 }
 
-func (b *Buffer) WriteString(s string) {
-   *b = append(*b, s...)
+func Percent[T, U Signed](value T, total U) string {
+   var ratio float64
+   if total != 0 {
+      ratio = 100 * float64(value) / float64(total)
+   }
+   return strconv.FormatFloat(ratio, 'f', 1, 64) + "%"
 }
 
-var FormatUint = strconv.FormatUint
+func Quote[T String](value T) string {
+   return strconv.Quote(string(value))
+}
 
-func (b *Buffer) AppendQuote(val string) {
-   *b = strconv.AppendQuote(*b, val)
+func Rate[T, U Ordered](value T, total U) string {
+   var ratio float64
+   if total != 0 {
+      ratio = float64(value) / float64(total)
+   }
+   return label(ratio, " B/s", " kB/s", " MB/s", " GB/s", " TB/s")
+}
+
+func Size[T Ordered](value T) string {
+   return label(value, " B", " kB", " MB", " GB", " TB")
 }
 
 // mimesniff.spec.whatwg.org#binary-data-byte
-func String(buf []byte) bool {
+func Valid(buf []byte) bool {
    for _, b := range buf {
       if b <= 0x08 {
          return false
@@ -51,18 +62,6 @@ func String(buf []byte) bool {
       }
    }
    return utf8.Valid(buf)
-}
-
-type Ordered interface {
-   float64 | int | int64 | uint64
-}
-
-func Percent[T, U Ordered](value T, total U) string {
-   var ratio float64
-   if total != 0 {
-      ratio = 100 * float64(value) / float64(total)
-   }
-   return strconv.FormatFloat(ratio, 'f', 1, 64) + "%"
 }
 
 func label[T Ordered](value T, units ...string) string {
@@ -83,18 +82,18 @@ func label[T Ordered](value T, units ...string) string {
    return strconv.FormatFloat(val, 'f', i, 64) + unit
 }
 
-func Number[T Ordered](value T) string {
-   return label(value, "", " K", " M", " B", " T")
+type Ordered interface {
+   Signed | Unsigned | ~float32 | ~float64
 }
 
-func Rate[T, U Ordered](value T, total U) string {
-   var ratio float64
-   if total != 0 {
-      ratio = float64(value) / float64(total)
-   }
-   return label(ratio, " B/s", " kB/s", " MB/s", " GB/s", " TB/s")
+type Signed interface {
+   ~int | ~int8 | ~int16 | ~int32 | ~int64
 }
 
-func Size[T Ordered](value T) string {
-   return label(value, " B", " kB", " MB", " GB", " TB")
+type String interface {
+   ~[]byte | ~[]rune | ~byte | ~rune | ~string
+}
+
+type Unsigned interface {
+   ~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64 | ~uintptr
 }
