@@ -13,10 +13,6 @@ func FormatUint[T Unsigned](value T, base int) string {
    return strconv.FormatUint(uint64(value), base)
 }
 
-func Itoa[T Signed](value T) string {
-   return FormatInt(value, 10)
-}
-
 func Number[T Ordered](value T) string {
    return label(value, "", " K", " M", " B", " T")
 }
