@@ -2,52 +2,60 @@ package strconv
 
 import (
    "strconv"
+   "unicode/utf8"
 )
 
-func label(value, total float64, items []scale) string {
+func FormatInt[T Signed](value T, base int) string {
+   return strconv.FormatInt(int64(value), base)
+}
+
+func FormatUint[T Unsigned](value T, base int) string {
+   return strconv.FormatUint(uint64(value), base)
+}
+
+func Percent[T, U Signed](value T, total U) string {
    var ratio float64
    if total != 0 {
-      ratio = value / total
+      ratio = 100 * float64(value) / float64(total)
    }
-   var item scale
-   for _, item = range items {
-      if ratio < 1000 {
-         break
+   return strconv.FormatFloat(ratio, 'f', 1, 64) + "%"
+}
+
+func Quote[T String](value T) string {
+   return strconv.Quote(string(value))
+}
+
+// mimesniff.spec.whatwg.org#binary-data-byte
+func Valid(buf []byte) bool {
+   for _, b := range buf {
+      if b <= 0x08 {
+         return false
       }
-      ratio /= 1000
+      if b == 0x0B {
+         return false
+      }
+      if b >= 0x0E && b <= 0x1A {
+         return false
+      }
+      if b >= 0x1C && b <= 0x1F {
+         return false
+      }
    }
-   return strconv.FormatFloat(ratio, 'f', 3, 64) + unit
+   return utf8.Valid(buf)
 }
 
-type scale struct {
-   factor float64
-   unit string
+type Ordered interface {
+   Signed | Unsigned | ~float32 | ~float64
 }
 
-var number = []scale{
-   {1, ""},
-   {1e3, " K"},
-   {1e6, " M"},
-   {1e9, " B"},
-   {1e12, " T"},
+type Signed interface {
+   ~int | ~int8 | ~int16 | ~int32 | ~int64
 }
 
-var size = []scale{
-   {1, " B"},
-   {1e3, " kB"},
-   {1e6, " MB"},
-   {1e9, " GB"},
-   {1e12, " TB"},
+type String interface {
+   ~[]byte | ~[]rune | ~byte | ~rune | ~string
 }
 
-var rate = []scale{
-   {1, " B/s"},
-   {1e3, " kB/s"},
-   {1e6, " MB/s"},
-   {1e9, " GB/s"},
-   {1e12, " TB/s"},
-}
-
-var percent = []scale{
-   {0.01, "%"},
+type Unsigned interface {
+   ~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64 | ~uintptr
 }
