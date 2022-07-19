@@ -17,9 +17,9 @@ func (p *Progress) Write(buf []byte) (int, error) {
       total := time.Since(p.total).Seconds()
       var b []byte
       b = strconv.NewRatio(p.bytes_written, p.bytes).AppendPercent(b)
-      b = append(b, '\t')
+      b = append(b, "   "...)
       b = strconv.AppendSize(b, p.bytes_written)
-      b = append(b, '\t')
+      b = append(b, "   "...)
       b = strconv.NewRatio(p.bytes_written, total).AppendRate(b)
       b = append(b, '\n')
       os.Stderr.Write(b)

@@ -7,6 +7,7 @@ import (
 
 func AppendCardinal[T Ordered](b []byte, value T) []byte {
    units := []unit{
+      {1, ""},
       {1e-3, " thousand"},
       {1e-6, " million"},
       {1e-9, " billion"},
@@ -25,6 +26,7 @@ func AppendQuote[T String](b []byte, value T) []byte {
 
 func AppendSize[T Integer](b []byte, value T) []byte {
    units := []unit{
+      {1, " byte"},
       {1e-3, " kilobyte"},
       {1e-6, " megabyte"},
       {1e-9, " gigabyte"},
@@ -57,8 +59,12 @@ func Valid(b []byte) bool {
 }
 
 func label[T Ordered](b []byte, value T, u unit) []byte {
+   var prec int
+   if u.factor != 1 {
+      prec = 2
+   }
    u.factor *= float64(value)
-   b = strconv.AppendFloat(b, u.factor, 'f', 3, 64)
+   b = strconv.AppendFloat(b, u.factor, 'f', prec, 64)
    return append(b, u.name...)
 }
 
@@ -90,16 +96,13 @@ func NewRatio[T, U Ordered](value T, total U) Ratio {
    return Ratio(r)
 }
 
-func (r Ratio) AppendCardinal(b []byte) []byte {
-   return AppendCardinal(b, r)
-}
-
 func (r Ratio) AppendPercent(b []byte) []byte {
    return label(b, r, unit{100, "%"})
 }
 
 func (r Ratio) AppendRate(b []byte) []byte {
    units := []unit{
+      {1, " byte/s"},
       {1e-3, " kilobyte/s"},
       {1e-6, " megabyte/s"},
       {1e-9, " gigabyte/s"},

@@ -1,27 +1,37 @@
 package strconv
 
 import (
-   "os"
    "testing"
 )
 
 func Test_Append(t *testing.T) {
    var b []byte
-   b = AppendCardinal(b, 1234)
-   b = append(b, '\n')
-   b = AppendInt(b, 9, 10)
-   b = append(b, '\n')
-   b = AppendQuote(b, "hello")
-   b = append(b, '\n')
-   b = AppendSize(b, 1234)
-   b = append(b, '\n')
-   b = AppendUint[byte](b, 9, 10)
-   b = append(b, '\n')
-   b = NewRatio(12345, 10).AppendCardinal(b)
-   b = append(b, '\n')
-   b = NewRatio(2, 3).AppendPercent(b)
-   b = append(b, '\n')
-   b = NewRatio(12345, 10).AppendRate(b)
-   b = append(b, '\n')
-   os.Stdout.Write(b)
+   b = AppendCardinal(nil, 123)
+   if s := string(b); s != "123" {
+      t.Fatal(s)
+   }
+   b = AppendCardinal(nil, 1234)
+   if s := string(b); s != "1.23 thousand" {
+      t.Fatal(s)
+   }
+   b = AppendSize(nil, 123)
+   if s := string(b); s != "123 byte" {
+      t.Fatal(s)
+   }
+   b = AppendSize(nil, 1234)
+   if s := string(b); s != "1.23 kilobyte" {
+      t.Fatal(s)
+   }
+   b = NewRatio(1234, 10).AppendRate(nil)
+   if s := string(b); s != "123 byte/s" {
+      t.Fatal(s)
+   }
+   b = NewRatio(12345, 10).AppendRate(nil)
+   if s := string(b); s != "1.23 kilobyte/s" {
+      t.Fatal(s)
+   }
+   b = NewRatio(1234, 10000).AppendPercent(nil)
+   if s := string(b); s != "12.34%" {
+      t.Fatal(s)
+   }
 }
