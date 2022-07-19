@@ -5,8 +5,30 @@ import (
    "unicode/utf8"
 )
 
+func label[T Ordered](b []byte, value T, u unit) []byte {
+   var prec int
+   if u.factor != 1 {
+      prec = 2
+   }
+   u.factor *= float64(value)
+   b = strconv.AppendFloat(b, u.factor, 'f', prec, 64)
+   return append(b, u.name...)
+}
+
+func (r Ratio) AppendRate(b []byte) []byte {
+   units := []unit{
+      {1, " byte/s"},
+      {1e-3, " kilobyte/s"},
+      {1e-6, " megabyte/s"},
+      {1e-9, " gigabyte/s"},
+      {1e-12, " terabyte/s"},
+   }
+   return scale(b, r, units)
+}
+
 func AppendCardinal[T Ordered](b []byte, value T) []byte {
    units := []unit{
+      {1, ""},
       {1e-3, " thousand"},
       {1e-6, " million"},
       {1e-9, " billion"},
@@ -25,6 +47,7 @@ func AppendQuote[T String](b []byte, value T) []byte {
 
 func AppendSize[T Integer](b []byte, value T) []byte {
    units := []unit{
+      {1, " byte"},
       {1e-3, " kilobyte"},
       {1e-6, " megabyte"},
       {1e-9, " gigabyte"},
@@ -54,12 +77,6 @@ func Valid(b []byte) bool {
       }
    }
    return utf8.Valid(b)
-}
-
-func label[T Ordered](b []byte, value T, u unit) []byte {
-   u.factor *= float64(value)
-   b = strconv.AppendFloat(b, u.factor, 'f', 3, 64)
-   return append(b, u.name...)
 }
 
 func scale[T Ordered](b []byte, value T, units []unit) []byte {
@@ -96,16 +113,6 @@ func (r Ratio) AppendCardinal(b []byte) []byte {
 
 func (r Ratio) AppendPercent(b []byte) []byte {
    return label(b, r, unit{100, "%"})
-}
-
-func (r Ratio) AppendRate(b []byte) []byte {
-   units := []unit{
-      {1e-3, " kilobyte/s"},
-      {1e-6, " megabyte/s"},
-      {1e-9, " gigabyte/s"},
-      {1e-12, " terabyte/s"},
-   }
-   return scale(b, r, units)
 }
 
 type Signed interface {
