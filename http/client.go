@@ -1,12 +1,12 @@
 package http
 
 import (
+   "bytes"
    "errors"
    "github.com/89z/rosso/strconv"
    "net/http"
    "net/http/httputil"
    "os"
-   "strings"
 )
 
 type Client struct {
@@ -33,20 +33,17 @@ func (c Client) Do(req *http.Request) (*http.Response, error) {
       os.Stderr.WriteString(req.URL.String())
       os.Stderr.WriteString("\n")
    case 2:
-      dump, err := httputil.DumpRequest(req, true)
+      buf, err := httputil.DumpRequest(req, true)
       if err != nil {
          return nil, err
       }
-      var str string
-      if strconv.Valid(dump) {
-         str = string(dump)
-      } else {
-         str = strconv.Quote(dump)
+      if !strconv.Valid(buf) {
+         buf = strconv.AppendQuote(nil, buf)
       }
-      if !strings.HasSuffix(str, "\n") {
-         str += "\n"
+      if !bytes.HasSuffix(buf, []byte{'\n'}) {
+         buf = append(buf, '\n')
       }
-      os.Stderr.WriteString(str)
+      os.Stderr.Write(buf)
    }
    res, err := c.client.Do(req)
    if err != nil {

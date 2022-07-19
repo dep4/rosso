@@ -19,23 +19,20 @@ func write(req *http.Request, file *os.File) error {
    }
    defer res.Body.Close()
    if file == os.Stdout {
-      dump, err := httputil.DumpResponse(res, true)
+      buf, err := httputil.DumpResponse(res, true)
       if err != nil {
          return err
       }
-      var str string
-      if strconv.Valid(dump) {
-         str = string(dump)
-      } else {
-         str = strconv.Quote(dump)
+      if !strconv.Valid(buf) {
+         buf = strconv.AppendQuote(nil, buf)
       }
-      file.WriteString(str)
+      file.Write(buf)
    } else {
-      dump, err := httputil.DumpResponse(res, false)
+      buf, err := httputil.DumpResponse(res, false)
       if err != nil {
          return err
       }
-      os.Stdout.Write(dump)
+      os.Stdout.Write(buf)
       if _, err := file.ReadFrom(res.Body); err != nil {
          return err
       }
@@ -110,11 +107,11 @@ func main() {
       panic(err)
    }
    defer res.Body.Close()
-   dump, err := httputil.DumpResponse(res, true)
+   buf, err := httputil.DumpResponse(res, true)
    if err != nil {
       panic(err)
    }
-   os.Stdout.Write(dump)
+   os.Stdout.Write(buf)
 }
 
 var body = strings.NewReader({{ .Var_Body }})

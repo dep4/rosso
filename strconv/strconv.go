@@ -5,81 +5,107 @@ import (
    "unicode/utf8"
 )
 
-func FormatInt[T Signed](value T, base int) string {
-   return strconv.FormatInt(int64(value), base)
-}
-
-func FormatUint[T Unsigned](value T, base int) string {
-   return strconv.FormatUint(uint64(value), base)
-}
-
-func Number[T Ordered](value T) string {
-   return label(value, "", " K", " M", " B", " T")
-}
-
-func Percent[T, U Signed](value T, total U) string {
-   var ratio float64
-   if total != 0 {
-      ratio = 100 * float64(value) / float64(total)
+func AppendCardinal[T Ordered](b []byte, value T) []byte {
+   units := []unit{
+      {1e-3, " thousand"},
+      {1e-6, " million"},
+      {1e-9, " billion"},
+      {1e-12, " trillion"},
    }
-   return strconv.FormatFloat(ratio, 'f', 1, 64) + "%"
+   return scale(b, value, units)
 }
 
-func Quote[T String](value T) string {
-   return strconv.Quote(string(value))
+func AppendInt[T Signed](b []byte, value T, base int) []byte {
+   return strconv.AppendInt(b, int64(value), base)
 }
 
-func Rate[T, U Ordered](value T, total U) string {
-   var ratio float64
-   if total != 0 {
-      ratio = float64(value) / float64(total)
+func AppendQuote[T String](b []byte, value T) []byte {
+   return strconv.AppendQuote(b, string(value))
+}
+
+func AppendSize[T Integer](b []byte, value T) []byte {
+   units := []unit{
+      {1e-3, " kilobyte"},
+      {1e-6, " megabyte"},
+      {1e-9, " gigabyte"},
+      {1e-12, " terabyte"},
    }
-   return label(ratio, " B/s", " kB/s", " MB/s", " GB/s", " TB/s")
+   return scale(b, value, units)
 }
 
-func Size[T Ordered](value T) string {
-   return label(value, " B", " kB", " MB", " GB", " TB")
+func AppendUint[T Unsigned](b []byte, value T, base int) []byte {
+   return strconv.AppendUint(b, uint64(value), base)
 }
 
 // mimesniff.spec.whatwg.org#binary-data-byte
-func Valid(buf []byte) bool {
-   for _, b := range buf {
-      if b <= 0x08 {
+func Valid(b []byte) bool {
+   for _, c := range b {
+      if c <= 0x08 {
          return false
       }
-      if b == 0x0B {
+      if c == 0x0B {
          return false
       }
-      if b >= 0x0E && b <= 0x1A {
+      if c >= 0x0E && c <= 0x1A {
          return false
       }
-      if b >= 0x1C && b <= 0x1F {
+      if c >= 0x1C && c <= 0x1F {
          return false
       }
    }
-   return utf8.Valid(buf)
+   return utf8.Valid(b)
 }
 
-func label[T Ordered](value T, units ...string) string {
-   var (
-      i int
-      unit string
-      val = float64(value)
-   )
-   for i, unit = range units {
-      if val < 1000 {
+func label[T Ordered](b []byte, value T, u unit) []byte {
+   u.factor *= float64(value)
+   b = strconv.AppendFloat(b, u.factor, 'f', 3, 64)
+   return append(b, u.name...)
+}
+
+func scale[T Ordered](b []byte, value T, units []unit) []byte {
+   var u unit
+   for _, u = range units {
+      if u.factor * float64(value) < 1000 {
          break
       }
-      val /= 1000
    }
-   if i >= 1 {
-      i = 3
-   }
-   return strconv.FormatFloat(val, 'f', i, 64) + unit
+   return label(b, value, u)
+}
+
+type Integer interface {
+   Signed | Unsigned
 }
 
 type Ordered interface {
-   Signed | Unsigned | ~float32 | ~float64
+   Integer | ~float32 | ~float64
+}
+
+type Ratio float64
+
+func NewRatio[T, U Ordered](value T, total U) Ratio {
+   var r float64
+   if total != 0 {
+      r = float64(value) / float64(total)
+   }
+   return Ratio(r)
+}
+
+func (r Ratio) AppendCardinal(b []byte) []byte {
+   return AppendCardinal(b, r)
+}
+
+func (r Ratio) AppendPercent(b []byte) []byte {
+   return label(b, r, unit{100, "%"})
+}
+
+func (r Ratio) AppendRate(b []byte) []byte {
+   units := []unit{
+      {1e-3, " kilobyte/s"},
+      {1e-6, " megabyte/s"},
+      {1e-9, " gigabyte/s"},
+      {1e-12, " terabyte/s"},
+   }
+   return scale(b, r, units)
 }
 
 type Signed interface {
@@ -92,4 +118,9 @@ type String interface {
 
 type Unsigned interface {
    ~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64 | ~uintptr
+}
+
+type unit struct {
+   factor float64
+   name string
 }

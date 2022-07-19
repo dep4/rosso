@@ -7,14 +7,37 @@ import (
    "time"
 )
 
+func (p *Progress) Write(buf []byte) (int, error) {
+   if p.total.IsZero() {
+      p.total = time.Now()
+      p.lap = time.Now()
+   }
+   lap := time.Since(p.lap)
+   if lap >= time.Second {
+      total := time.Since(p.total).Seconds()
+      var b []byte
+      b = strconv.NewRatio(p.bytes_written, p.bytes).AppendPercent(b)
+      b = append(b, '\t')
+      b = strconv.AppendSize(b, p.bytes_written)
+      b = append(b, '\t')
+      b = strconv.NewRatio(p.bytes_written, total).AppendRate(b)
+      b = append(b, '\n')
+      os.Stderr.Write(b)
+      p.lap = p.lap.Add(lap)
+   }
+   write, err := p.w.Write(buf)
+   p.bytes_written += write
+   return write, err
+}
+
 type Progress struct {
    bytes int64
    bytes_read int64
    bytes_written int
    chunks int
    chunks_read int64
-   time time.Time
-   time_lap time.Time
+   lap time.Time
+   total time.Time
    w io.Writer
 }
 
@@ -30,26 +53,4 @@ func (p *Progress) Add_Chunk(bytes int64) {
    p.bytes_read += bytes
    p.chunks_read += 1
    p.bytes = int64(p.chunks) * p.bytes_read / p.chunks_read
-}
-
-func (p *Progress) Write(buf []byte) (int, error) {
-   if p.time.IsZero() {
-      p.time = time.Now()
-      p.time_lap = time.Now()
-   }
-   since := time.Since(p.time_lap)
-   if since >= time.Second {
-      var str string
-      str += strconv.Percent(p.bytes_written, p.bytes)
-      str += "\t"
-      str += strconv.Size(p.bytes_written)
-      str += "\t"
-      str += strconv.Rate(p.bytes_written, time.Since(p.time).Seconds())
-      str += "\n"
-      os.Stderr.WriteString(str)
-      p.time_lap = p.time_lap.Add(since)
-   }
-   write, err := p.w.Write(buf)
-   p.bytes_written += write
-   return write, err
 }
