@@ -6,32 +6,50 @@ import (
 )
 
 func (r Representation) String() string {
-   var a []string
-   if r.Width >= 1 {
-      a = append(a, "Width:" + strconv.Itoa(r.Width))
+   var b strings.Builder
+   b.WriteString("ID:")
+   b.WriteString(r.ID)
+   if line := r.line_two(); line != nil {
+      b.WriteByte('\n')
+      b.Write(line)
    }
-   if r.Height >= 1 {
-      a = append(a, "Height:" + strconv.Itoa(r.Height))
-   }
-   if r.Bandwidth >= 1 {
-      a = append(a, "Bandwidth:" + strconv.Itoa(r.Bandwidth))
-   }
-   var b []string
-   b = append(b, "MimeType:" + r.MimeType)
+   b.WriteString("\nMimeType:")
+   b.WriteString(r.MimeType)
    if r.Codecs != "" {
-      b = append(b, "Codecs:" + r.Codecs)
+      b.WriteString(" Codecs:")
+      b.WriteString(r.Codecs)
    }
    if r.Adaptation.Lang != "" {
-      b = append(b, "Lang:" + r.Adaptation.Lang)
+      b.WriteString(" Lang:")
+      b.WriteString(r.Adaptation.Lang)
    }
    if r.Adaptation.Role != nil {
-      b = append(b, "Role:" + r.Adaptation.Role.Value)
+      b.WriteString(" Role:")
+      b.WriteString(r.Adaptation.Role.Value)
    }
-   c := "ID:" + r.ID
-   if a != nil {
-      c += "\n  " + strings.Join(a, " ")
+   return b.String()
+}
+
+func (r Representation) line_two() []byte {
+   var (
+      b []byte
+      space bool
+   )
+   if r.Width >= 1 {
+      b = append(b, "Width:"...)
+      b = strconv.AppendInt(b, r.Width, 10)
+      b = append(b, " Height:"...)
+      b = strconv.AppendInt(b, r.Height, 10)
+      space = true
    }
-   return c + "\n  " + strings.Join(b, " ")
+   if r.Bandwidth >= 1 {
+      if space {
+         b = append(b, ' ')
+      }
+      b = append(b, "Bandwidth:"...)
+      b = strconv.AppendInt(b, r.Bandwidth, 10)
+   }
+   return b
 }
 
 type Representations []Representation
@@ -95,8 +113,8 @@ func (r Representations) Index(callback Index) int {
    return carry
 }
 
-func (r Representations) Bandwidth(v int) int {
-   distance := func(a Representation) int {
+func (r Representations) Bandwidth(v int64) int {
+   distance := func(a Representation) int64 {
       if a.Bandwidth > v {
          return a.Bandwidth - v
       }
@@ -109,14 +127,14 @@ func (r Representations) Bandwidth(v int) int {
 
 type Representation struct {
    Adaptation *Adaptation
-   Bandwidth int `xml:"bandwidth,attr"`
+   Bandwidth int64 `xml:"bandwidth,attr"`
    Codecs string `xml:"codecs,attr"`
    ContentProtection *ContentProtection
-   Height int `xml:"height,attr"`
+   Height int64 `xml:"height,attr"`
    ID string `xml:"id,attr"`
    MimeType string `xml:"mimeType,attr"`
    SegmentTemplate *SegmentTemplate
-   Width int `xml:"width,attr"`
+   Width int64 `xml:"width,attr"`
 }
 
 type Adaptation struct {
