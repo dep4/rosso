@@ -11,6 +11,33 @@ import (
    "unicode"
 )
 
+func (m Stream) String() string {
+   var b []byte
+   if m.Resolution != "" {
+      b = append(b, "Resolution:"...)
+      b = append(b, m.Resolution...)
+      b = append(b, ' ')
+   }
+   b = append(b, "Bandwidth:"...)
+   b = strconv.AppendInt(b, m.Bandwidth, 10)
+   if m.Codecs != "" {
+      b = append(b, " Codecs:"...)
+      b = append(b, m.Codecs...)
+   }
+   if m.Audio != "" {
+      b = append(b, "\n  Audio:"...)
+      b = append(b, m.Audio...)
+   }
+   return string(b)
+}
+
+type Stream struct {
+   Audio string
+   Bandwidth int64
+   Codecs string
+   Resolution string
+   Raw_URI string
+}
 func (Medium) Ext() string {
    return ".m4a"
 }
@@ -43,28 +70,6 @@ func (Stream) Ext() string {
    return ".m4v"
 }
 
-func (m Stream) String() string {
-   var (
-      a []string
-      b string
-   )
-   if m.Resolution != "" {
-      a = append(a, "Resolution:" + m.Resolution)
-   }
-   a = append(a, "Bandwidth:" + strconv.Itoa(m.Bandwidth))
-   if m.Codecs != "" {
-      a = append(a, "Codecs:" + m.Codecs)
-   }
-   if m.Audio != "" {
-      b = "Audio:" + m.Audio
-   }
-   c := strings.Join(a, " ")
-   if b != "" {
-      c += "\n  " + b
-   }
-   return c
-}
-
 func (m Stream) URI() string {
    return m.Raw_URI
 }
@@ -75,14 +80,6 @@ type Medium struct {
    Name string
    Raw_URI string
    Type string
-}
-
-type Stream struct {
-   Audio string
-   Bandwidth int
-   Codecs string
-   Resolution string
-   Raw_URI string
 }
 
 type Master struct {
@@ -130,8 +127,8 @@ func (m Streams) Index(f func(a, b Stream) bool) int {
    return index(m, f)
 }
 
-func (m Streams) Bandwidth(v int) int {
-   distance := func(a Stream) int {
+func (m Streams) Bandwidth(v int64) int {
+   distance := func(a Stream) int64 {
       if a.Bandwidth > v {
          return a.Bandwidth - v
       }
@@ -252,7 +249,7 @@ func (s Scanner) Master() (*Master, error) {
             case "BANDWIDTH":
                s.Scan()
                s.Scan()
-               str.Bandwidth, err = strconv.Atoi(s.TokenText())
+               str.Bandwidth, err = strconv.ParseInt(s.TokenText(), 10, 64)
             case "CODECS":
                s.Scan()
                s.Scan()

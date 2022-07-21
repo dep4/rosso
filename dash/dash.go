@@ -6,50 +6,45 @@ import (
 )
 
 func (r Representation) String() string {
-   var b strings.Builder
-   b.WriteString("ID:")
-   b.WriteString(r.ID)
-   if line := r.line_two(); line != nil {
-      b.WriteByte('\n')
-      b.Write(line)
-   }
-   b.WriteString("\nMimeType:")
-   b.WriteString(r.MimeType)
-   if r.Codecs != "" {
-      b.WriteString(" Codecs:")
-      b.WriteString(r.Codecs)
-   }
-   if r.Adaptation.Lang != "" {
-      b.WriteString(" Lang:")
-      b.WriteString(r.Adaptation.Lang)
-   }
-   if r.Adaptation.Role != nil {
-      b.WriteString(" Role:")
-      b.WriteString(r.Adaptation.Role.Value)
-   }
-   return b.String()
-}
-
-func (r Representation) line_two() []byte {
    var (
-      b []byte
+      a []byte
       space bool
    )
    if r.Width >= 1 {
-      b = append(b, "Width:"...)
-      b = strconv.AppendInt(b, r.Width, 10)
-      b = append(b, " Height:"...)
-      b = strconv.AppendInt(b, r.Height, 10)
+      a = append(a, "Width:"...)
+      a = strconv.AppendInt(a, r.Width, 10)
+      a = append(a, " Height:"...)
+      a = strconv.AppendInt(a, r.Height, 10)
       space = true
    }
    if r.Bandwidth >= 1 {
       if space {
-         b = append(b, ' ')
+         a = append(a, ' ')
       }
-      b = append(b, "Bandwidth:"...)
-      b = strconv.AppendInt(b, r.Bandwidth, 10)
+      a = append(a, "Bandwidth:"...)
+      a = strconv.AppendInt(a, r.Bandwidth, 10)
    }
-   return b
+   b := []byte("ID:")
+   b = append(b, r.ID...)
+   if a != nil {
+      b = append(b, "\n  "...)
+      b = append(b, a...)
+   }
+   b = append(b, "\n  MimeType:"...)
+   b = append(b, r.MimeType...)
+   if r.Codecs != "" {
+      b = append(b, " Codecs:"...)
+      b = append(b, r.Codecs...)
+   }
+   if r.Adaptation.Lang != "" {
+      b = append(b, " Lang:"...)
+      b = append(b, r.Adaptation.Lang...)
+   }
+   if r.Adaptation.Role != nil {
+      b = append(b, " Role:"...)
+      b = append(b, r.Adaptation.Role.Value...)
+   }
+   return string(b)
 }
 
 type Representations []Representation
@@ -171,33 +166,6 @@ func (r Representation) Ext() string {
 
 func (r Representation) Initialization() string {
    return r.replace_ID(r.SegmentTemplate.Initialization)
-}
-
-func (r Representation) Media() []string {
-   var (
-      media []string
-      start int
-   )
-   if r.SegmentTemplate.StartNumber != nil {
-      start = *r.SegmentTemplate.StartNumber
-   }
-   for _, seg := range r.SegmentTemplate.SegmentTimeline.S {
-      for seg.Time = start; seg.Repeat >= 0; seg.Repeat-- {
-         medium := r.replace_ID(r.SegmentTemplate.Media)
-         time_attr := strconv.Itoa(seg.Time)
-         if r.SegmentTemplate.StartNumber != nil {
-            medium = strings.Replace(medium, "$Number$", time_attr, 1)
-            seg.Time++
-            start++
-         } else {
-            medium = strings.Replace(medium, "$Time$", time_attr, 1)
-            seg.Time += seg.Duration
-            start += seg.Duration
-         }
-         media = append(media, medium)
-      }
-   }
-   return media
 }
 
 func (r Representation) Role() string {
