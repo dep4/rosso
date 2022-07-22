@@ -86,8 +86,8 @@ func Parse_JA3(str string) (*tls.ClientHelloSpec, error) {
          ext = &tls.UtlsExtendedMasterSecretExtension{}
       case "27":
          // Google Chrome
-         ext = &tls.FakeCertCompressionAlgsExtension{
-            Methods: []tls.CertCompressionAlgo{tls.CertCompressionBrotli},
+         ext = &tls.UtlsCompressCertExtension{
+            Algorithms: []tls.CertCompressionAlgo{tls.CertCompressionBrotli},
          }
       case "43":
          // Android API 29
