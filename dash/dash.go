@@ -1,34 +1,63 @@
 package dash
 
 import (
+   "net/url"
    "strconv"
    "strings"
 )
 
+func (r Representation) Initialization(base *url.URL) (*url.URL, error) {
+   ref := r.replace_ID(r.SegmentTemplate.Initialization)
+   return base.Parse(ref)
+}
+
+func (r Representation) Media(base *url.URL) ([]*url.URL, error) {
+   var start int
+   if r.SegmentTemplate.StartNumber != nil {
+      start = *r.SegmentTemplate.StartNumber
+   }
+   var refs []*url.URL
+   for _, seg := range r.SegmentTemplate.SegmentTimeline.S {
+      for seg.T = start; seg.R >= 0; seg.R-- {
+         raw := r.replace_ID(r.SegmentTemplate.Media)
+         if r.SegmentTemplate.StartNumber != nil {
+            raw = strings.Replace(raw, "$Number$", seg.Time(), 1)
+            seg.T++
+            start++
+         } else {
+            raw = strings.Replace(raw, "$Time$", seg.Time(), 1)
+            seg.T += seg.D
+            start += seg.D
+         }
+         ref, err := base.Parse(raw)
+         if err != nil {
+            return nil, err
+         }
+         refs = append(refs, ref)
+      }
+   }
+   return refs, nil
+}
+
 func (r Representation) String() string {
-   var (
-      a []byte
-      space bool
-   )
+   var b []byte
+   b = append(b, "ID:"...)
+   b = append(b, r.ID...)
+   if r.Width + r.Bandwidth >= 1 {
+      b = append(b, "\n  "...)
+   }
    if r.Width >= 1 {
-      a = append(a, "Width:"...)
-      a = strconv.AppendInt(a, r.Width, 10)
-      a = append(a, " Height:"...)
-      a = strconv.AppendInt(a, r.Height, 10)
-      space = true
+      b = append(b, "Width:"...)
+      b = strconv.AppendInt(b, r.Width, 10)
+      b = append(b, " Height:"...)
+      b = strconv.AppendInt(b, r.Height, 10)
    }
    if r.Bandwidth >= 1 {
-      if space {
-         a = append(a, ' ')
+      if r.Width >= 1 {
+         b = append(b, ' ')
       }
-      a = append(a, "Bandwidth:"...)
-      a = strconv.AppendInt(a, r.Bandwidth, 10)
-   }
-   b := []byte("ID:")
-   b = append(b, r.ID...)
-   if a != nil {
-      b = append(b, "\n  "...)
-      b = append(b, a...)
+      b = append(b, "Bandwidth:"...)
+      b = strconv.AppendInt(b, r.Bandwidth, 10)
    }
    b = append(b, "\n  MimeType:"...)
    b = append(b, r.MimeType...)
@@ -45,6 +74,25 @@ func (r Representation) String() string {
       b = append(b, r.Adaptation.Role.Value...)
    }
    return string(b)
+}
+
+type Segment struct {
+   D int `xml:"d,attr"` // duration
+   R int `xml:"r,attr"` // repeat
+   T int `xml:"t,attr"` // time
+}
+
+func (s Segment) Time() string {
+   return strconv.Itoa(s.T)
+}
+
+type SegmentTemplate struct {
+   Initialization string `xml:"initialization,attr"`
+   Media string `xml:"media,attr"`
+   SegmentTimeline struct {
+      S []Segment
+   }
+   StartNumber *int `xml:"startNumber,attr"`
 }
 
 type Representations []Representation
@@ -70,54 +118,6 @@ func (p Presentation) Representation() Representations {
       }
    }
    return reps
-}
-
-type Filter func(Representation) bool
-
-func (r Representations) Filter(callback Filter) Representations {
-   var carry []Representation
-   for _, item := range r {
-      if callback(item) {
-         carry = append(carry, item)
-      }
-   }
-   return carry
-}
-
-func (r Representations) Video() Representations {
-   return r.Filter(func(a Representation) bool {
-      return a.MimeType == "video/mp4"
-   })
-}
-
-func (r Representations) Audio() Representations {
-   return r.Filter(func(a Representation) bool {
-      return a.MimeType == "audio/mp4"
-   })
-}
-
-type Index func(carry, item Representation) bool
-
-func (r Representations) Index(callback Index) int {
-   carry := -1
-   for i, item := range r {
-      if carry == -1 || callback(r[carry], item) {
-         carry = i
-      }
-   }
-   return carry
-}
-
-func (r Representations) Bandwidth(v int64) int {
-   distance := func(a Representation) int64 {
-      if a.Bandwidth > v {
-         return a.Bandwidth - v
-      }
-      return v - a.Bandwidth
-   }
-   return r.Index(func(carry, item Representation) bool {
-      return distance(item) < distance(carry)
-   })
 }
 
 type Representation struct {
@@ -164,10 +164,6 @@ func (r Representation) Ext() string {
    return ""
 }
 
-func (r Representation) Initialization() string {
-   return r.replace_ID(r.SegmentTemplate.Initialization)
-}
-
 func (r Representation) Role() string {
    if r.Adaptation.Role == nil {
       return ""
@@ -177,17 +173,4 @@ func (r Representation) Role() string {
 
 func (r Representation) replace_ID(s string) string {
    return strings.Replace(s, "$RepresentationID$", r.ID, 1)
-}
-
-type SegmentTemplate struct {
-   Initialization string `xml:"initialization,attr"`
-   Media string `xml:"media,attr"`
-   SegmentTimeline struct {
-      S []struct {
-         Duration int `xml:"d,attr"`
-         Repeat int `xml:"r,attr"`
-         Time int `xml:"t,attr"`
-      }
-   }
-   StartNumber *int `xml:"startNumber,attr"`
 }
