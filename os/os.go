@@ -18,6 +18,8 @@ var (
    UserHomeDir = os.UserHomeDir
 )
 
+type File = os.File
+
 type Progress struct {
    bytes int64
    bytes_read int64

@@ -38,6 +38,7 @@ type Stream struct {
    Resolution string
    Raw_URI string
 }
+
 func (Medium) Ext() string {
    return ".m4a"
 }
@@ -138,6 +139,7 @@ func (m Streams) Bandwidth(v int64) int {
       return distance(item) < distance(carry)
    })
 }
+
 type Block struct {
    cipher.Block
    key []byte
