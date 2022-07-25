@@ -6,21 +6,6 @@ import (
    "strings"
 )
 
-func Create(name string) (*os.File, error) {
-   os.Stderr.WriteString("Create " + name + "\n")
-   return os.Create(name)
-}
-
-func Rename(old_path, new_path string) error {
-   os.Stderr.WriteString("Rename " + new_path + "\n")
-   return os.Rename(old_path, new_path)
-}
-
-func WriteFile(name string, data []byte) error {
-   os.Stderr.WriteString("WriteFile " + name + "\n")
-   return os.WriteFile(name, data, os.ModePerm)
-}
-
 type Cleaner struct {
    name string
 }
@@ -41,4 +26,19 @@ func Clean(dir, file string) Cleaner {
 func (c Cleaner) Create() (*os.File, error) {
    os.Stderr.WriteString("Create " + c.name + "\n")
    return os.Create(c.name)
+}
+
+func Create(name string) (*os.File, error) {
+   os.Stderr.WriteString("Create " + name + "\n")
+   return os.Create(name)
+}
+
+func Rename(old_path, new_path string) error {
+   os.Stderr.WriteString("Rename " + new_path + "\n")
+   return os.Rename(old_path, new_path)
+}
+
+func WriteFile(name string, data []byte) error {
+   os.Stderr.WriteString("WriteFile " + name + "\n")
+   return os.WriteFile(name, data, os.ModePerm)
 }
