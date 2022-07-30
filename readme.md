@@ -19,19 +19,21 @@
 
 Data parsers and formatters
 
-## Issues
+## Business
 
-During this time I am trying to support myself, so I am requiring payment for
-all issues. Any issue without payment of at least 9 USD will be closed
-immediately. Payment can be made to one of:
-
-- https://github.com/sponsors/89z
-- <https://paypal.com/donate?hosted_button_id=UEJBQQTU3VYDY>
-
-For business opportunities, contact me:
+Any business using this software, in its original form or modified, must make
+the source code available to its users. This includes software as a service. If
+you wish to purchase an unrestricted license, or for other business questions,
+contact me:
 
 - srpen6@gmail.com
 - Discord srpen6#6983
+
+Also, I only provide paid support for issues. Any issue without payment of at
+least 9 USD will be closed immediately. Payment can be made to one of:
+
+- https://github.com/sponsors/89z
+- <https://paypal.com/donate?hosted_button_id=UEJBQQTU3VYDY>
 
 ## Topics
 
