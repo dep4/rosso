@@ -50,7 +50,11 @@ func (c Client) Do(req *http.Request) (*http.Response, error) {
       return nil, err
    }
    if res.StatusCode != c.status {
-      return nil, errors.New(res.Status)
+      if c.status >= 1 {
+         return nil, errors.New(res.Status)
+      } else {
+         os.Stderr.WriteString(res.Status + "\n")
+      }
    }
    return res, nil
 }
