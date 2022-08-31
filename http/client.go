@@ -49,7 +49,7 @@ func (c Client) Do(req *http.Request) (*http.Response, error) {
    if err != nil {
       return nil, err
    }
-   if res.StatusCode != c.status {
+   if c.status >= 1 && c.status != res.StatusCode {
       return nil, errors.New(res.Status)
    }
    return res, nil
