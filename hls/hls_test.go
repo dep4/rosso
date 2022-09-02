@@ -36,7 +36,7 @@ func Test_Block(t *testing.T) {
    }
    for i, ref := range seg.URI {
       fmt.Println(len(seg.URI)-i)
-      res, err := client.Warning().Get(ref)
+      res, err := client.Level(0).Get(ref)
       if err != nil {
          t.Fatal(err)
       }
