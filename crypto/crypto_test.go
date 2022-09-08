@@ -10,6 +10,43 @@ import (
    "time"
 )
 
+var hellos = []string{
+   Android_API_24,
+   Android_API_25,
+   Android_API_26,
+   Android_API_29,
+}
+
+func Test_Parse_JA3(t *testing.T) {
+   val := url.Values{
+      "Email": {email},
+      "Passwd": {password},
+      "client_sig": {""},
+      "droidguard_results": {"!"},
+   }.Encode()
+   for _, hello := range hellos {
+      spec, err := Parse_JA3(hello)
+      if err != nil {
+         t.Fatal(err)
+      }
+      req, err := http.NewRequest(
+         "POST", "https://android.googleapis.com/auth",
+         strings.NewReader(val),
+      )
+      if err != nil {
+         t.Fatal(err)
+      }
+      req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+      res, err := Transport(spec).RoundTrip(req)
+      if err != nil {
+         t.Fatal(err)
+      }
+      defer res.Body.Close()
+      fmt.Println(res.Status, hello)
+      time.Sleep(time.Second)
+   }
+}
+
 const android_handshake =
    "16030100bb010000b703034420d198e7852decbc117dc7f90550b98f2d643c954bf3361d" +
    "daf127ff921b04000024c02bc02ccca9c02fc030cca8009e009fc009c00ac013c0140033" +
@@ -34,43 +71,6 @@ const cURL_handshake =
    "000000000000000000000000000000000000000000000000000000000000000000000000" +
    "000000000000000000000000000000000000000000000000000000000000000000000000" +
    "00000000000000000000000000"
-
-var hellos = []string{
-   Android_API_24,
-   Android_API_25,
-   Android_API_26,
-   Android_API_29,
-}
-
-func Test_Parse_JA3(t *testing.T) {
-   val := url.Values{
-      "Email": {email},
-      "Passwd": {password},
-      "client_sig": {""},
-      "droidguard_results": {""},
-   }.Encode()
-   for _, hello := range hellos {
-      spec, err := Parse_JA3(hello)
-      if err != nil {
-         t.Fatal(err)
-      }
-      req, err := http.NewRequest(
-         "POST", "https://android.googleapis.com/auth",
-         strings.NewReader(val),
-      )
-      if err != nil {
-         t.Fatal(err)
-      }
-      req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-      res, err := Transport(spec).RoundTrip(req)
-      if err != nil {
-         t.Fatal(err)
-      }
-      defer res.Body.Close()
-      fmt.Println(res.Status, hello)
-      time.Sleep(time.Second)
-   }
-}
 
 func Test_Parse_TLS(t *testing.T) {
    hands := []string{android_handshake, cURL_handshake}
