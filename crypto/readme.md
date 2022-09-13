@@ -32,6 +32,11 @@ also:
 - https://github.com/wwhtrbbtt/TrackMe
 - https://tls.peet.ws
 
+also:
+
+- https://github.com/yuzd/ja3-csharp
+- https://kawayiyi.com/tls
+
 ## What about Akamai fingerprint?
 
 Paper says HTTP/2 only:
