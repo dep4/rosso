@@ -8,6 +8,7 @@ import (
    "sort"
 )
 
+// If you need fmt.GoStringer with indent, just use `go fmt`.
 type Message map[Number]Encoder
 
 func Unmarshal(buf []byte) (Message, error) {

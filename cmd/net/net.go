@@ -1,16 +1,68 @@
 package main
 
 import (
-   "bytes"
-   "fmt"
+   "flag"
    "github.com/89z/rosso/http"
    "github.com/89z/rosso/strconv"
-   "io"
    "net/http/httputil"
-   "net/url"
    "os"
-   "text/template"
 )
+
+type flags struct {
+   golang bool
+   https bool
+   name string
+   output string
+}
+
+func main() {
+   var f flags
+   // f
+   flag.StringVar(&f.name, "f", "", "input file")
+   // g
+   flag.BoolVar(&f.golang, "g", false, "request as Go code")
+   // o
+   flag.StringVar(&f.output, "o", "", "output file")
+   // s
+   flag.BoolVar(&f.https, "s", false, "HTTPS")
+   flag.Parse()
+   if f.name != "" {
+      create, err := os.Create(f.output)
+      if err != nil {
+         create = os.Stdout
+      }
+      defer create.Close()
+      open, err := os.Open(f.name)
+      if err != nil {
+         panic(err)
+      }
+      defer open.Close()
+      req, err := http.Read_Request(open)
+      if err != nil {
+         panic(err)
+      }
+      if req.URL.Scheme == "" {
+         if f.https {
+            req.URL.Scheme = "https"
+         } else {
+            req.URL.Scheme = "http"
+         }
+      }
+      if f.golang {
+         err := Write_Request(req, create)
+         if err != nil {
+            panic(err)
+         }
+      } else {
+         err := write(req, create)
+         if err != nil {
+            panic(err)
+         }
+      }
+   } else {
+      flag.Usage()
+   }
+}
 
 func write(req *http.Request, file *os.File) error {
    res, err := new(http.Transport).RoundTrip(req)
@@ -19,20 +71,20 @@ func write(req *http.Request, file *os.File) error {
    }
    defer res.Body.Close()
    if file == os.Stdout {
-      buf, err := httputil.DumpResponse(res, true)
+      dump, err := httputil.DumpResponse(res, true)
       if err != nil {
          return err
       }
-      if !strconv.Valid(buf) {
-         buf = strconv.AppendQuote(nil, buf)
+      if !strconv.Valid(dump) {
+         dump = strconv.AppendQuote(nil, string(dump))
       }
-      file.Write(buf)
+      file.Write(dump)
    } else {
-      buf, err := httputil.DumpResponse(res, false)
+      dump, err := httputil.DumpResponse(res, false)
       if err != nil {
          return err
       }
-      os.Stdout.Write(buf)
+      os.Stdout.Write(dump)
       if _, err := file.ReadFrom(res.Body); err != nil {
          return err
       }
@@ -40,79 +92,9 @@ func write(req *http.Request, file *os.File) error {
    return nil
 }
 
-type request_template struct {
-   *http.Request
-   Body_IO string
-   Query url.Values
-   Var_Body string
+func backquote(s string) string {
+   if strconv.Can_Backquote(s) {
+      return "`" + s + "`"
+   }
+   return strconv.Quote(s)
 }
-
-func Write_Request(req *http.Request, w io.Writer) error {
-   var req_temp request_template
-   if req.Body != nil && req.Method != "GET" {
-      buf, err := io.ReadAll(req.Body)
-      if err != nil {
-         return err
-      }
-      req.Body = io.NopCloser(bytes.NewReader(buf))
-      req_temp.Body_IO = "io.NopCloser(body)"
-      if bytes.IndexByte(buf, '`') >= 0 {
-         req_temp.Var_Body = fmt.Sprintf("%q", buf)
-      } else {
-         req_temp.Var_Body = fmt.Sprintf("`%s`", buf)
-      }
-   } else {
-      req_temp.Body_IO = "io.ReadCloser(nil)"
-   }
-   req_temp.Query = req.URL.Query()
-   req_temp.Request = req
-   temp, err := new(template.Template).Parse(raw_temp)
-   if err != nil {
-      return err
-   }
-   return temp.Execute(w, req_temp)
-}
-
-const raw_temp = `package main
-
-import (
-   "io"
-   "net/http"
-   "net/http/httputil"
-   "net/url"
-   "os"
-   "strings"
-)
-
-func main() {
-   var req http.Request
-   req.Body = {{ .Body_IO }}
-   req.Header = make(http.Header)
-   {{ range $key, $val := .Header -}}
-      req.Header[{{ printf "%q" $key }}] = {{ printf "%#v" $val }}
-   {{ end -}}
-   req.Method = {{ printf "%q" .Method }}
-   req.URL = new(url.URL)
-   req.URL.Host = {{ printf "%q" .URL.Host }}
-   req.URL.Path = {{ printf "%q" .URL.Path }}
-   req.URL.RawPath = {{ printf "%q" .URL.RawPath }}
-   val := make(url.Values)
-   {{ range $key, $val := .Query -}}
-      val[{{ printf "%q" $key }}] = {{ printf "%#v" $val }}
-   {{ end -}}
-   req.URL.RawQuery = val.Encode()
-   req.URL.Scheme = {{ printf "%q" .URL.Scheme }}
-   res, err := new(http.Transport).RoundTrip(&req)
-   if err != nil {
-      panic(err)
-   }
-   defer res.Body.Close()
-   buf, err := httputil.DumpResponse(res, true)
-   if err != nil {
-      panic(err)
-   }
-   os.Stdout.Write(buf)
-}
-
-var body = strings.NewReader({{ .Var_Body }})
-`

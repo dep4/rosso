@@ -1,15 +1,14 @@
-// TLS and JA3 parsers
 package crypto
 
 import (
    "crypto/md5"
    "encoding/binary"
    "encoding/hex"
-   "github.com/89z/rosso/strconv"
    "github.com/refraction-networking/utls"
    "io"
    "net"
    "net/http"
+   "strconv"
 )
 
 func extension_type(ext tls.TLSExtension) (uint16, error) {
@@ -28,14 +27,14 @@ func extension_type(ext tls.TLSExtension) (uint16, error) {
 func Format_JA3(spec *tls.ClientHelloSpec) (string, error) {
    var b []byte
    // TLSVersMin is the record version, TLSVersMax is the handshake version
-   b = strconv.AppendUint(b, spec.TLSVersMax, 10)
+   b = strconv.AppendUint(b, uint64(spec.TLSVersMax), 10)
    // Cipher Suites
    b = append(b, ',')
    for key, val := range spec.CipherSuites {
       if key >= 1 {
          b = append(b, '-')
       }
-      b = strconv.AppendUint(b, val, 10)
+      b = strconv.AppendUint(b, uint64(val), 10)
    }
    // Extensions
    b = append(b, ',')
@@ -57,7 +56,7 @@ func Format_JA3(spec *tls.ClientHelloSpec) (string, error) {
       if key >= 1 {
          b = append(b, '-')
       }
-      b = strconv.AppendUint(b, typ, 10)
+      b = strconv.AppendUint(b, uint64(typ), 10)
    }
    // Elliptic curves
    b = append(b, ',')
@@ -65,7 +64,7 @@ func Format_JA3(spec *tls.ClientHelloSpec) (string, error) {
       if key >= 1 {
          b = append(b, '-')
       }
-      b = strconv.AppendUint(b, val, 10)
+      b = strconv.AppendUint(b, uint64(val), 10)
    }
    // ECPF
    b = append(b, ',')
@@ -73,7 +72,7 @@ func Format_JA3(spec *tls.ClientHelloSpec) (string, error) {
       if key >= 1 {
          b = append(b, '-')
       }
-      b = strconv.AppendUint(b, val, 10)
+      b = strconv.AppendUint(b, uint64(val), 10)
    }
    return string(b), nil
 }

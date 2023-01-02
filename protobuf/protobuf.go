@@ -1,8 +1,8 @@
 package protobuf
 
 import (
-   "github.com/89z/rosso/strconv"
    "google.golang.org/protobuf/encoding/protowire"
+   "strconv"
 )
 
 func (t type_error) Error() string {
@@ -14,12 +14,18 @@ func (t type_error) Error() string {
    }
    var b []byte
    b = append(b, "field "...)
-   b = strconv.AppendInt(b, t.Number, 10)
+   b = strconv.AppendInt(b, int64(t.Number), 10)
    b = append(b, " is "...)
    b = append(b, get_type(t.lvalue)...)
    b = append(b, ", not "...)
    b = append(b, get_type(t.rvalue)...)
    return string(b)
+}
+
+type Raw struct {
+   Bytes []byte
+   String string
+   Message Message
 }
 
 type type_error struct {
@@ -61,12 +67,6 @@ func (f Fixed64) encode(buf []byte, num Number) []byte {
 func (Fixed64) get_type() string { return "Fixed64" }
 
 type Number = protowire.Number
-
-type Raw struct {
-   Bytes []byte
-   String string
-   Message map[Number]Encoder
-}
 
 func (r Raw) encode(buf []byte, num Number) []byte {
    buf = protowire.AppendTag(buf, num, protowire.BytesType)

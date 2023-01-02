@@ -3,22 +3,17 @@ package http
 import (
    "bufio"
    "bytes"
+   "github.com/89z/rosso/strconv"
    "io"
    "net/http"
    "net/textproto"
    "net/url"
+   "os"
    "strings"
+   "time"
 )
 
 var NewRequest = http.NewRequest
-
-type (
-   Cookie = http.Cookie
-   Header = http.Header
-   Request = http.Request
-   Response = http.Response
-   Transport = http.Transport
-)
 
 func Read_Request(in io.Reader) (*http.Request, error) {
    var req http.Request
@@ -58,3 +53,61 @@ func Read_Request(in io.Reader) (*http.Request, error) {
    req.ContentLength = length
    return &req, nil
 }
+
+type Cookie = http.Cookie
+
+type Header = http.Header
+
+type Progress struct {
+   bytes int64
+   bytes_read int64
+   bytes_written int
+   chunks int
+   chunks_read int64
+   lap time.Time
+   total time.Time
+   w io.Writer
+}
+
+func Progress_Bytes(dst io.Writer, bytes int64) *Progress {
+   return &Progress{w: dst, bytes: bytes}
+}
+
+func Progress_Chunks(dst io.Writer, chunks int) *Progress {
+   return &Progress{w: dst, chunks: chunks}
+}
+
+func (p *Progress) Add_Chunk(bytes int64) {
+   p.bytes_read += bytes
+   p.chunks_read += 1
+   p.bytes = int64(p.chunks) * p.bytes_read / p.chunks_read
+}
+
+func (p *Progress) Write(data []byte) (int, error) {
+   if p.total.IsZero() {
+      p.total = time.Now()
+      p.lap = time.Now()
+   }
+   lap := time.Since(p.lap)
+   if lap >= time.Second {
+      total := time.Since(p.total).Seconds()
+      var b []byte
+      b = strconv.Ratio(p.bytes_written, p.bytes).Percent(b)
+      b = append(b, "   "...)
+      b = strconv.New_Number(p.bytes_written).Size(b)
+      b = append(b, "   "...)
+      b = strconv.Ratio(p.bytes_written, total).Rate(b)
+      b = append(b, '\n')
+      os.Stderr.Write(b)
+      p.lap = p.lap.Add(lap)
+   }
+   write, err := p.w.Write(data)
+   p.bytes_written += write
+   return write, err
+}
+
+type Request = http.Request
+
+type Response = http.Response
+
+type Transport = http.Transport

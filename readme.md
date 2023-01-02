@@ -19,22 +19,6 @@
 
 Data parsers and formatters
 
-## Business
-
-Any business using this software, in its original form or modified, must make
-the source code available to its users. This includes software as a service. If
-you wish to purchase an unrestricted license, or for other business questions,
-contact me:
-
-- srpen6@gmail.com
-- Discord srpen6#6983
-
-Also, I only provide paid support for issues. Any issue without payment of at
-least 9 USD will be closed immediately. Payment can be made to one of:
-
-- https://github.com/sponsors/89z
-- <https://paypal.com/donate?hosted_button_id=UEJBQQTU3VYDY>
-
 ## Topics
 
 - DASH
@@ -46,6 +30,16 @@ least 9 USD will be closed immediately. Payment can be made to one of:
 - ProtoBuf
 - XML
 
-## Repo
+## Money
 
-https://github.com/89z/rosso
+I only provide paid support for issues. Any issue without payment of at least
+9 USD will be closed immediately. Payment can be made to one of:
+
+- https://github.com/sponsors/89z
+- <https://paypal.com/donate?hosted_button_id=UEJBQQTU3VYDY>
+
+Software is not licensed for commercial use. If you wish to purchase a
+commercial license, or for other business questions, contact me:
+
+- srpen6@gmail.com
+- Discord srpen6#6983
