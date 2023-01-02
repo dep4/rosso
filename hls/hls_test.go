@@ -2,7 +2,7 @@ package hls
 
 import (
    "fmt"
-   "github.com/89z/rosso/http"
+   "github.com/dep4/rosso/http"
    "io"
    "os"
    "strings"

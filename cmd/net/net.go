@@ -2,8 +2,8 @@ package main
 
 import (
    "flag"
-   "github.com/89z/rosso/http"
-   "github.com/89z/rosso/strconv"
+   "github.com/dep4/rosso/http"
+   "github.com/dep4/rosso/strconv"
    "net/http/httputil"
    "os"
 )

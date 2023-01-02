@@ -3,7 +3,7 @@ package http
 import (
    "bufio"
    "bytes"
-   "github.com/89z/rosso/strconv"
+   "github.com/dep4/rosso/strconv"
    "io"
    "net/http"
    "net/textproto"
